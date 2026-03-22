@@ -19,10 +19,12 @@ services:
       - '6379:6379'
     networks:
       - corpuslab-net
-  volumes:
-    postgres-data:
-      name: 'postgres-data'
-  networks:
-    corpuslab-net:
-      name: 'corpuslab-net'
-      driver: 'bridge'
+
+volumes:
+  postgres-data:
+    name: 'postgres-data'
+
+networks:
+  corpuslab-net:
+    name: 'corpuslab-net'
+    driver: 'bridge'
