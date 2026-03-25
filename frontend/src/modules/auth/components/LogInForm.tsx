@@ -47,9 +47,9 @@ export function LogInForm({
         />
 
         <div className="flex items-end justify-end">
-          <button className="text-xs font-semibold text-[color:var(--cl-tertiary)] hover:text-[color:var(--cl-primary)] cursor-pointer" type="button">
+          <Link className="text-xs font-semibold text-[color:var(--cl-tertiary)] hover:text-[color:var(--cl-primary)]" to="/auth/forgot-password">
             Forgot password?
-          </button>
+          </Link>
         </div>
       </div>
 

@@ -7,7 +7,6 @@ export default function SignUpPage() {
     canSubmit,
     isSubmitting,
     errorMessage,
-    successMessage,
     updateField,
     handleSubmit,
   } = useSignUpForm()
@@ -21,7 +20,6 @@ export default function SignUpPage() {
         errorMessage={errorMessage}
         form={form}
         isSubmitting={isSubmitting}
-        successMessage={successMessage}
         onFieldChange={updateField}
         onSubmit={handleSubmit}
       />
