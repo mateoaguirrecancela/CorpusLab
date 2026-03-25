@@ -1,4 +1,4 @@
-package es.udc.fic.corpuslab.modules.auth.testing.fixtures;
+package es.udc.fic.corpuslab.modules.auth.fixtures;
 
 import java.time.LocalDate;
 
