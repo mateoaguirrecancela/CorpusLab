@@ -49,24 +49,24 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
+  --background: #f3f5ff;
+  --foreground: #0f172a;
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.145 0 0);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
+  --primary: #312e81;
+  --primary-foreground: #ffffff;
+  --secondary: #475569;
+  --secondary-foreground: #ffffff;
+  --muted: #e5e9fb;
+  --muted-foreground: #6b7791;
+  --accent: #d6ddf7;
+  --accent-foreground: #0f172a;
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+  --border: #ced6f2;
+  --input: #ced6f2;
+  --ring: #a8b6e8;
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -81,6 +81,13 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+    --cl-primary: #312e81;
+    --cl-primary-deep: #27246f;
+    --cl-primary-soft: #d6ddf7;
+    --cl-secondary: #475569;
+    --cl-tertiary: #6b7791;
+    --cl-neutral: #0f172a;
+    --cl-line: #ced6f2;
 }
 
 .dark {
@@ -123,8 +130,53 @@
     }
   body {
     @apply bg-background text-foreground;
+    min-height: 100vh;
     }
   html {
     @apply font-sans;
     }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.signup-card {
+  animation: reveal-up 500ms ease-out both;
+}
+
+.reveal {
+  animation: reveal-up 500ms ease-out 100ms both;
+}
+
+.stagger {
+  animation: reveal-up 440ms ease-out both;
+}
+
+.stagger:nth-of-type(1) {
+  animation-delay: 100ms;
+}
+
+.stagger:nth-of-type(2) {
+  animation-delay: 150ms;
+}
+
+.stagger:nth-of-type(3) {
+  animation-delay: 200ms;
+}
+
+.stagger:nth-of-type(4) {
+  animation-delay: 250ms;
+}
+
+.stagger:nth-of-type(5) {
+  animation-delay: 300ms;
 }

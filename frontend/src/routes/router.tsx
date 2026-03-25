@@ -1,5 +1,7 @@
-import { createBrowserRouter } from 'react-router'
+import { createBrowserRouter, Navigate } from 'react-router'
 import RootLayout from '@/layouts/RootLayout'
+import AuthLayout from '@/modules/auth/layouts/AuthLayout'
+import SignUpPage from '@/modules/auth/pages/SignUpPage'
 
 export const router = createBrowserRouter([
   {
@@ -8,11 +10,17 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: (
-          <div className="flex items-center justify-center min-h-screen">
-            <h1 className="text-4xl font-bold">CorpusLab</h1>
-          </div>
-        ),
+        element: <Navigate replace to="/auth/signup" />,
+      },
+      {
+        path: 'auth',
+        element: <AuthLayout />,
+        children: [
+          {
+            path: 'signup',
+            element: <SignUpPage />,
+          },
+        ],
       },
     ],
   },
