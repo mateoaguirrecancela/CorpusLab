@@ -8,7 +8,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import es.udc.fic.corpuslab.modules.auth.entities.User;
-import es.udc.fic.corpuslab.modules.auth.testing.fixtures.UserTestBuilder;
+import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 
 @DataJpaTest
 @ActiveProfiles("test")

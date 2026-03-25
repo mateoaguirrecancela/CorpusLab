@@ -5,9 +5,9 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import es.udc.fic.corpuslab.AbstractIntegrationTest;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterRequestDto;
 import es.udc.fic.corpuslab.modules.auth.entities.User;
+import es.udc.fic.corpuslab.modules.auth.fixtures.UserRegisterRequestTestBuilder;
+import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
-import es.udc.fic.corpuslab.modules.auth.testing.fixtures.UserRegisterRequestTestBuilder;
-import es.udc.fic.corpuslab.modules.auth.testing.fixtures.UserTestBuilder;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class UserIntegrationTest extends AbstractIntegrationTest {
+class AuthSignupIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

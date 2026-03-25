@@ -1,5 +1,6 @@
 import { type FormEvent } from 'react'
 import { CalendarDays, Github, Globe, Lock, Mail, MapPin, User } from 'lucide-react'
+import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { COUNTRY_OPTIONS, GENDER_OPTIONS } from '@/modules/auth/constants/signup'
 import { AuthCombobox } from '@/modules/auth/components/CountryCombobox'
@@ -12,7 +13,6 @@ type SignUpFormProps = {
   canSubmit: boolean
   isSubmitting: boolean
   errorMessage: string
-  successMessage: string
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>
   onFieldChange: <K extends keyof RegisterFormState>(field: K, value: RegisterFormState[K]) => void
 }
@@ -22,7 +22,6 @@ export function SignUpForm({
   canSubmit,
   isSubmitting,
   errorMessage,
-  successMessage,
   onSubmit,
   onFieldChange,
 }: SignUpFormProps) {
@@ -123,10 +122,6 @@ export function SignUpForm({
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
       )}
 
-      {successMessage.length > 0 && (
-        <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{successMessage}</p>
-      )}
-
       <div className="my-8 flex items-center gap-3 text-[0.67rem] font-bold tracking-[0.12em] text-[color:var(--cl-tertiary)] uppercase">
         <span className="h-px flex-1 bg-[color:var(--cl-line)]" />
         <span>Or continue with</span>
@@ -154,9 +149,9 @@ export function SignUpForm({
 
       <p className="mt-8 text-center text-sm text-[color:var(--cl-secondary)]">
         Already part of the laboratory?{' '}
-        <a className="font-semibold text-[color:var(--cl-primary)] hover:underline" href="#">
-          Sign in
-        </a>
+        <Link className="font-semibold text-[color:var(--cl-primary)] hover:underline" to="/auth/login">
+          Log in
+        </Link>
       </p>
     </form>
   )
