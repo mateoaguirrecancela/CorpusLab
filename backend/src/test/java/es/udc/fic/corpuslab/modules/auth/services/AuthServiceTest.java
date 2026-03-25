@@ -223,6 +223,24 @@ class AuthServiceTest {
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
+    @Test
+    void logoutShouldClearContextWhenSessionDoesNotExist() {
+        MockHttpServletRequest httpRequest = new MockHttpServletRequest();
+        SecurityContextHolder.getContext().setAuthentication(
+                org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(
+                        "new.user@example.com",
+                        null,
+                        java.util.List.of()
+                )
+        );
+
+        UserLogoutResponseDto response = authService.logout(httpRequest);
+
+        assertThat(response.message()).isEqualTo("Logged out successfully");
+        assertThat(httpRequest.getSession(false)).isNull();
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
     private static void setId(User user, Long id) {
         try {
             Field idField = User.class.getDeclaredField("id");

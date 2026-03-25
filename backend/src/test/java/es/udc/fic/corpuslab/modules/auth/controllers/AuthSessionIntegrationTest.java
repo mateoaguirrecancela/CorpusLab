@@ -88,12 +88,32 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                 .withPassword("wrong-password")
                 .build();
 
-        mockMvc.perform(post("/api/auth/login")
+        MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
-                .andExpect(jsonPath("$.message").value("Invalid email or password"));
+                .andExpect(jsonPath("$.message").value("Invalid email or password"))
+                .andReturn();
+
+        assertThat(result.getRequest().getSession(false)).isNull();
+    }
+
+    @Test
+    void loginShouldReturnBadRequestWhenPayloadIsInvalid() throws Exception {
+        UserLoginRequestDto request = UserLoginRequestTestBuilder.validRequest()
+                .withEmail("not-an-email")
+                .withPassword("short")
+                .build();
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.details.email").exists())
+                .andExpect(jsonPath("$.details.password").exists());
     }
 
     @Test
@@ -118,4 +138,11 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Logged out successfully"));
     }
+
+        @Test
+        void logoutShouldSucceedWhenSessionDoesNotExist() throws Exception {
+                mockMvc.perform(post("/api/auth/logout"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.message").value("Logged out successfully"));
+        }
 }
