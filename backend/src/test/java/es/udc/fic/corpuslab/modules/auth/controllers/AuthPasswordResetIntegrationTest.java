@@ -1,6 +1,7 @@
 package es.udc.fic.corpuslab.modules.auth.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -17,6 +18,7 @@ import es.udc.fic.corpuslab.modules.auth.fixtures.ResetPasswordRequestTestBuilde
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.PasswordResetTokenRepository;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
+import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +26,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -45,6 +48,9 @@ class AuthPasswordResetIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+        @MockitoBean
+        private EmailService emailService;
 
     private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
 
@@ -93,6 +99,30 @@ class AuthPasswordResetIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void forgotPasswordShouldReturnServiceUnavailableWhenEmailDeliveryFails() throws Exception {
+        User user = UserTestBuilder.validUser()
+                .withEmail("recover.user@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        userRepository.save(user);
+
+        doThrow(new RuntimeException("smtp down"))
+                .when(emailService)
+                .sendPasswordResetEmail(org.mockito.ArgumentMatchers.eq("recover.user@example.com"), org.mockito.ArgumentMatchers.any(String.class));
+
+        ForgotPasswordRequestDto request = ForgotPasswordRequestTestBuilder.validRequest()
+                .withEmail("recover.user@example.com")
+                .build();
+
+        mockMvc.perform(post("/api/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status").value(503))
+                .andExpect(jsonPath("$.message").value("Unable to send reset email at this time"));
+    }
+
+    @Test
     void resetPasswordShouldReturnNotFoundWhenTokenIsInvalid() throws Exception {
         ResetPasswordRequestDto request = ResetPasswordRequestTestBuilder.validRequest()
                 .withToken("invalid-token-value")
@@ -136,6 +166,39 @@ class AuthPasswordResetIntegrationTest extends AbstractIntegrationTest {
         User persisted = userRepository.findByEmailIgnoreCase("recover.user@example.com").orElseThrow();
         assertThat(passwordEncoder.matches("new-strong-password", persisted.getPasswordHash())).isTrue();
         assertThat(passwordResetTokenRepository.findByToken(rawToken)).isEmpty();
+    }
+
+    @Test
+    void resetPasswordShouldReturnNotFoundWhenTokenIsExpired() throws Exception {
+        String rawToken = "known-expired-reset-token";
+
+        User user = UserTestBuilder.validUser()
+                .withEmail("recover.user@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        userRepository.save(user);
+
+        PasswordResetToken passwordResetToken = new PasswordResetToken();
+        passwordResetToken.setToken(rawToken);
+        passwordResetToken.setUser(user);
+        passwordResetToken.setExpiryDate(LocalDateTime.now().minusMinutes(1));
+        passwordResetTokenRepository.save(passwordResetToken);
+
+        ResetPasswordRequestDto request = ResetPasswordRequestTestBuilder.validRequest()
+                .withToken(rawToken)
+                .withNewPassword("new-strong-password")
+                .build();
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.message").value("Password reset token not found or expired"));
+
+        User persisted = userRepository.findByEmailIgnoreCase("recover.user@example.com").orElseThrow();
+        assertThat(passwordEncoder.matches("strong-password", persisted.getPasswordHash())).isTrue();
+        assertThat(passwordResetTokenRepository.findByToken(rawToken)).isPresent();
     }
 
     @Test

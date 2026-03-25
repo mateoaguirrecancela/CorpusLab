@@ -270,6 +270,26 @@ class AuthServiceTest {
     }
 
     @Test
+    void requestPasswordResetShouldReuseExistingTokenForUser() {
+        User user = UserTestBuilder.validUser().withEmail("new.user@example.com").build();
+        setId(user, 15L);
+
+        PasswordResetToken existingToken = new PasswordResetToken();
+        existingToken.setToken("old-token");
+        existingToken.setUser(user);
+        existingToken.setExpiryDate(LocalDateTime.now().plusMinutes(1));
+
+        when(userRepository.findByEmailIgnoreCase("new.user@example.com")).thenReturn(Optional.of(user));
+        when(passwordResetTokenRepository.findByUserId(15L)).thenReturn(Optional.of(existingToken));
+
+        authService.requestPasswordReset("new.user@example.com");
+
+        verify(passwordResetTokenRepository).save(existingToken);
+        assertThat(existingToken.getToken()).isNotEqualTo("old-token");
+        assertThat(existingToken.getExpiryDate()).isAfter(LocalDateTime.now());
+    }
+
+    @Test
     void requestPasswordResetShouldThrowWhenUserDoesNotExist() {
         when(userRepository.findByEmailIgnoreCase("missing.user@example.com")).thenReturn(Optional.empty());
 
@@ -322,6 +342,24 @@ class AuthServiceTest {
         when(passwordResetTokenRepository.findByToken("invalid-token")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.resetPassword("invalid-token", "new-password"))
+                .isInstanceOf(PasswordResetTokenNotFoundException.class)
+                .hasMessage("Password reset token not found or expired");
+
+        verify(userRepository, never()).save(any(User.class));
+        verify(passwordResetTokenRepository, never()).delete(any(PasswordResetToken.class));
+    }
+
+    @Test
+    void resetPasswordShouldThrowWhenTokenIsExpired() {
+        User user = UserTestBuilder.validUser().build();
+        PasswordResetToken token = new PasswordResetToken();
+        token.setToken("expired-token-example");
+        token.setUser(user);
+        token.setExpiryDate(LocalDateTime.now().minusMinutes(1));
+
+        when(passwordResetTokenRepository.findByToken("expired-token-example")).thenReturn(Optional.of(token));
+
+        assertThatThrownBy(() -> authService.resetPassword("expired-token-example", "new-password"))
                 .isInstanceOf(PasswordResetTokenNotFoundException.class)
                 .hasMessage("Password reset token not found or expired");
 

@@ -39,4 +39,22 @@ class PasswordResetTokenRepositoryTest {
                 .extracting(PasswordResetToken::getToken)
                 .isEqualTo("known-token");
     }
+
+    @Test
+    void findByUserIdShouldReturnTokenWhenExists() {
+        User user = UserTestBuilder.validUser().withEmail("reset.user.byid@example.com").build();
+        userRepository.save(user);
+
+        PasswordResetToken token = new PasswordResetToken();
+        token.setToken("known-token-by-user-id");
+        token.setUser(user);
+        token.setExpiryDate(LocalDateTime.now().plusMinutes(15));
+        passwordResetTokenRepository.save(token);
+
+        assertThat(passwordResetTokenRepository.findByUserId(user.getId()))
+                .isPresent()
+                .get()
+                .extracting(PasswordResetToken::getToken)
+                .isEqualTo("known-token-by-user-id");
+    }
 }
