@@ -3,12 +3,15 @@ package es.udc.fic.corpuslab.modules.auth.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import jakarta.servlet.http.HttpSession;
@@ -29,13 +32,19 @@ import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLogoutResponseDto;
+import es.udc.fic.corpuslab.modules.auth.entities.PasswordResetToken;
 import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.exceptions.EmailAlreadyRegisteredException;
+import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.InvalidCredentialsException;
+import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetEmailDeliveryException;
+import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetTokenNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserLoginRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserRegisterRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
+import es.udc.fic.corpuslab.modules.auth.repositories.PasswordResetTokenRepository;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
+import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -48,11 +57,17 @@ class AuthServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Mock
+    private EmailService emailService;
+
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, passwordEncoder);
+        authService = new AuthServiceImpl(userRepository, passwordEncoder, passwordResetTokenRepository, emailService);
     }
 
     @AfterEach
@@ -70,13 +85,6 @@ class AuthServiceTest {
                 .withCity("  A Coruna  ")
                 .build();
 
-        User saved = UserTestBuilder.validUser()
-                .withEmail("new.user@example.com")
-                .withFirstName("New")
-                .withLastName("User")
-                .withCountryCode("ES")
-                .withCity("A Coruna")
-                .build();
         Instant createdAt = Instant.parse("2026-03-25T10:15:30Z");
 
         when(userRepository.existsByEmailIgnoreCase("new.user@example.com")).thenReturn(false);
@@ -239,6 +247,86 @@ class AuthServiceTest {
         assertThat(response.message()).isEqualTo("Logged out successfully");
         assertThat(httpRequest.getSession(false)).isNull();
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    @Test
+    void requestPasswordResetShouldStoreTokenAndSendEmailForExistingUser() {
+        User user = UserTestBuilder.validUser().withEmail("new.user@example.com").build();
+        setId(user, 15L);
+
+        when(userRepository.findByEmailIgnoreCase("new.user@example.com")).thenReturn(Optional.of(user));
+        when(passwordResetTokenRepository.findByUserId(15L)).thenReturn(Optional.empty());
+
+        authService.requestPasswordReset(" NEW.USER@EXAMPLE.COM ");
+
+        ArgumentCaptor<PasswordResetToken> tokenCaptor = ArgumentCaptor.forClass(PasswordResetToken.class);
+        verify(passwordResetTokenRepository).save(tokenCaptor.capture());
+        PasswordResetToken savedToken = tokenCaptor.getValue();
+
+        assertThat(savedToken.getUser()).isEqualTo(user);
+        assertThat(savedToken.getToken()).isNotBlank();
+        assertThat(savedToken.getExpiryDate()).isAfter(LocalDateTime.now());
+        verify(emailService).sendPasswordResetEmail(eq("new.user@example.com"), any(String.class));
+    }
+
+    @Test
+    void requestPasswordResetShouldThrowWhenUserDoesNotExist() {
+        when(userRepository.findByEmailIgnoreCase("missing.user@example.com")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.requestPasswordReset("missing.user@example.com"))
+                .isInstanceOf(EmailNotFoundException.class)
+                .hasMessage("No account found for email: missing.user@example.com");
+
+        verify(passwordResetTokenRepository, never()).save(any(PasswordResetToken.class));
+        verify(emailService, never()).sendPasswordResetEmail(any(), any());
+    }
+
+    @Test
+    void requestPasswordResetShouldThrowWhenEmailDeliveryFails() {
+        User user = UserTestBuilder.validUser().withEmail("new.user@example.com").build();
+        setId(user, 15L);
+
+        when(userRepository.findByEmailIgnoreCase("new.user@example.com")).thenReturn(Optional.of(user));
+        when(passwordResetTokenRepository.findByUserId(15L)).thenReturn(Optional.empty());
+        doThrow(new RuntimeException("smtp down"))
+            .when(emailService)
+            .sendPasswordResetEmail(eq("new.user@example.com"), any(String.class));
+
+        assertThatThrownBy(() -> authService.requestPasswordReset("new.user@example.com"))
+                .isInstanceOf(PasswordResetEmailDeliveryException.class)
+                .hasMessage("Unable to send reset email at this time");
+
+        verify(passwordResetTokenRepository).save(any(PasswordResetToken.class));
+    }
+
+    @Test
+    void resetPasswordShouldUpdatePasswordAndDeleteTokenWhenTokenIsValid() {
+        User user = UserTestBuilder.validUser().build();
+        PasswordResetToken token = new PasswordResetToken();
+        token.setToken("valid-token-example");
+        token.setUser(user);
+        token.setExpiryDate(LocalDateTime.now().plusMinutes(10));
+
+        when(passwordResetTokenRepository.findByToken("valid-token-example")).thenReturn(Optional.of(token));
+        when(passwordEncoder.encode("my-new-password")).thenReturn("encoded-new-password");
+
+        authService.resetPassword("valid-token-example", "my-new-password");
+
+        assertThat(user.getPasswordHash()).isEqualTo("encoded-new-password");
+        verify(userRepository).save(user);
+        verify(passwordResetTokenRepository).delete(token);
+    }
+
+    @Test
+    void resetPasswordShouldThrowWhenTokenIsInvalid() {
+        when(passwordResetTokenRepository.findByToken("invalid-token")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.resetPassword("invalid-token", "new-password"))
+                .isInstanceOf(PasswordResetTokenNotFoundException.class)
+                .hasMessage("Password reset token not found or expired");
+
+        verify(userRepository, never()).save(any(User.class));
+        verify(passwordResetTokenRepository, never()).delete(any(PasswordResetToken.class));
     }
 
     private static void setId(User user, Long id) {

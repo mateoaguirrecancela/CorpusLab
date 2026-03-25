@@ -36,4 +36,5 @@ class UserRepositoryTest {
                 .extracting(User::getEmail)
                 .isEqualTo("find.me@example.com");
     }
+
 }
