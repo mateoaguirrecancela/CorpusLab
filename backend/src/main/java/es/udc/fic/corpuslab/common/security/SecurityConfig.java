@@ -15,7 +15,14 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/logout").permitAll()
+                    .requestMatchers(
+                        "/api/auth/**",
+                        "/api/auth/signup",
+                        "/api/auth/login",
+                        "/api/auth/logout",
+                        "/api/auth/forgot-password",
+                        "/api/auth/reset-password"
+                    ).permitAll()
                     .anyRequest().authenticated())
             .httpBasic(AbstractHttpConfigurer::disable);
 

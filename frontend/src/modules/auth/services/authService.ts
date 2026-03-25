@@ -1,5 +1,7 @@
 import { api } from '@/lib/api'
 import { type LoginFormState, type LoginResponse, type LogoutResponse } from '@/modules/auth/types/login'
+import { type ForgotPasswordFormState, type ForgotPasswordResponse } from '@/modules/auth/types/forgotPassword'
+import { type ResetPasswordPayload, type ResetPasswordResponse } from '@/modules/auth/types/resetPassword'
 import { type RegisterFormState, type RegisterResponse } from '@/modules/auth/types/signup'
 
 export async function signup(form: RegisterFormState): Promise<RegisterResponse> {
@@ -33,29 +35,50 @@ export async function logout(): Promise<LogoutResponse> {
   return response.data
 }
 
-export function getLoginErrorMessage(error: unknown): string {
-  if (typeof error === 'object' && error !== null && 'response' in error) {
-    const response = (error as { response?: { data?: { message?: string; error?: string } } }).response
-    return response?.data?.message ?? response?.data?.error ?? 'The log in request could not be completed.'
+export async function requestPasswordReset(form: ForgotPasswordFormState): Promise<ForgotPasswordResponse> {
+  const payload = {
+    email: form.email.trim().toLowerCase(),
   }
 
-  return 'Unexpected error during log in. Please try again.'
+  const response = await api.post<ForgotPasswordResponse>('/auth/forgot-password', payload)
+  return response.data
+}
+
+export async function resetPassword(payload: ResetPasswordPayload): Promise<ResetPasswordResponse> {
+  const body = {
+    token: payload.token.trim(),
+    newPassword: payload.newPassword,
+  }
+
+  const response = await api.post<ResetPasswordResponse>('/auth/reset-password', body)
+  return response.data
+}
+
+function extractApiErrorMessage(error: unknown, fallbackMessage: string): string {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = (error as { response?: { data?: { message?: string; error?: string } } }).response
+    return response?.data?.message ?? response?.data?.error ?? fallbackMessage
+  }
+
+  return fallbackMessage
+}
+
+export function getLoginErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'Unexpected error during log in. Please try again.')
 }
 
 export function getRegisterErrorMessage(error: unknown): string {
-  if (typeof error === 'object' && error !== null && 'response' in error) {
-    const response = (error as { response?: { data?: { message?: string; error?: string } } }).response
-    return response?.data?.message ?? response?.data?.error ?? 'The sign up request could not be completed.'
-  }
-
-  return 'Unexpected error during sign up. Please try again.'
+  return extractApiErrorMessage(error, 'Unexpected error during sign up. Please try again.')
 }
 
 export function getLogoutErrorMessage(error: unknown): string {
-  if (typeof error === 'object' && error !== null && 'response' in error) {
-    const response = (error as { response?: { data?: { message?: string; error?: string } } }).response
-    return response?.data?.message ?? response?.data?.error ?? 'Could not close the current session.'
-  }
+  return extractApiErrorMessage(error, 'Unexpected error during sign out. Please try again.')
+}
 
-  return 'Unexpected error during sign out. Please try again.'
+export function getForgotPasswordErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'Unexpected error requesting a password reset. Please try again.')
+}
+
+export function getResetPasswordErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'Unexpected error resetting your password. Please try again.')
 }

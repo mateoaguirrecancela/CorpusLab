@@ -14,6 +14,10 @@ import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLogoutResponseDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.ForgotPasswordRequestDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.ForgotPasswordResponseDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.ResetPasswordRequestDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.ResetPasswordResponseDto;
 import es.udc.fic.corpuslab.modules.auth.services.AuthService;
 
 @RestController
@@ -40,5 +44,17 @@ public class AuthController {
     @PostMapping("/logout")
     public UserLogoutResponseDto logout(HttpServletRequest httpRequest) {
         return authService.logout(httpRequest);
+    }
+
+    @PostMapping("/forgot-password")
+    public ForgotPasswordResponseDto forgotPassword(@Valid @RequestBody ForgotPasswordRequestDto request) {
+        authService.requestPasswordReset(request.email());
+        return new ForgotPasswordResponseDto("If the account exists, a reset link has been sent");
+    }
+
+    @PostMapping("/reset-password")
+    public ResetPasswordResponseDto resetPassword(@Valid @RequestBody ResetPasswordRequestDto request) {
+        authService.resetPassword(request.token(), request.newPassword());
+        return new ResetPasswordResponseDto("If the token is valid, password has been reset");
     }
 }
