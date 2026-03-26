@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginResponseDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.UserProfileResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLogoutResponseDto;
@@ -111,6 +112,25 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getFirstName(),
                 user.getLastName()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserProfileResponseDto getProfile(String authenticatedEmail) {
+        String normalizedEmail = authenticatedEmail.trim().toLowerCase(Locale.ROOT);
+
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+            .orElseThrow(() -> new EmailNotFoundException(normalizedEmail));
+
+        return new UserProfileResponseDto(
+            user.getEmail(),
+            user.getFirstName(),
+            user.getLastName(),
+            user.getBirth(),
+            user.getGender(),
+            user.getCountryCode(),
+            user.getCity()
         );
     }
 

@@ -3,6 +3,8 @@ package es.udc.fic.corpuslab.modules.auth.controllers;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginResponseDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.UserProfileResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLogoutResponseDto;
@@ -39,6 +42,11 @@ public class AuthController {
     @PostMapping("/login")
     public UserLoginResponseDto login(@Valid @RequestBody UserLoginRequestDto request, HttpServletRequest httpRequest) {
         return authService.login(request, httpRequest);
+    }
+
+    @GetMapping("/profile")
+    public UserProfileResponseDto profile(Authentication authentication) {
+        return authService.getProfile(authentication.getName());
     }
 
     @PostMapping("/logout")

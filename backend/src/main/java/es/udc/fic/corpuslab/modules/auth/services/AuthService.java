@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginResponseDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.UserProfileResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLogoutResponseDto;
@@ -13,6 +14,8 @@ public interface AuthService {
     UserRegisterResponseDto signup(UserRegisterRequestDto request);
 
     UserLoginResponseDto login(UserLoginRequestDto request, HttpServletRequest httpRequest);
+
+    UserProfileResponseDto getProfile(String authenticatedEmail);
 
     UserLogoutResponseDto logout(HttpServletRequest httpRequest);
 
