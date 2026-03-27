@@ -33,6 +33,7 @@ import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetEmailDeliveryEx
 import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetTokenNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.repositories.PasswordResetTokenRepository;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
+import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 
 @Service
@@ -58,7 +59,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public UserRegisterResponseDto signup(UserRegisterRequestDto request) {
-        String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+        String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(request.email());
         if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
             throw new EmailAlreadyRegisteredException(normalizedEmail);
         }
@@ -86,7 +87,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public UserLoginResponseDto login(UserLoginRequestDto request, HttpServletRequest httpRequest) {
-        String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+        String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(request.email());
 
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
                 .orElseThrow(InvalidCredentialsException::new);
@@ -119,7 +120,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public UserProfileResponseDto getProfile(String authenticatedEmail) {
-        String normalizedEmail = authenticatedEmail.trim().toLowerCase(Locale.ROOT);
+        String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(authenticatedEmail);
 
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
             .orElseThrow(() -> new EmailNotFoundException(normalizedEmail));
@@ -130,7 +131,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public UserProfileResponseDto updateProfile(String authenticatedEmail, UserUpdateProfileRequestDto request) {
-        String normalizedEmail = authenticatedEmail.trim().toLowerCase(Locale.ROOT);
+        String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(authenticatedEmail);
 
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
                 .orElseThrow(() -> new EmailNotFoundException(normalizedEmail));
@@ -176,7 +177,7 @@ public class AuthServiceImpl implements AuthService {
             return;
         }
 
-        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+        String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(email);
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
                 .orElseThrow(() -> new EmailNotFoundException(normalizedEmail));
 

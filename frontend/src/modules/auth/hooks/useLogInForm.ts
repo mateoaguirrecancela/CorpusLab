@@ -1,8 +1,8 @@
 import { type FormEvent, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { INITIAL_LOGIN_STATE } from '@/modules/auth/constants/login'
-import { SESSION_USER_STORAGE_KEY } from '@/modules/auth/constants/session'
-import { getLoginErrorMessage, getLogoutErrorMessage, login, logout } from '@/modules/auth/services/authService'
+import { type OAuthProvider, SESSION_AUTH_TOKEN_STORAGE_KEY, SESSION_USER_STORAGE_KEY } from '@/modules/auth/constants/session'
+import { getLoginErrorMessage, getLogoutErrorMessage, login, logout, redirectToOAuthAuthorization } from '@/modules/auth/services/authService'
 import { type LoginFormState } from '@/modules/auth/types/login'
 
 export function useSignInForm() {
@@ -37,6 +37,7 @@ export function useSignInForm() {
 
     try {
       const response = await login(form)
+      localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY)
       localStorage.setItem(SESSION_USER_STORAGE_KEY, JSON.stringify({
         firstName: response.firstName,
         lastName: response.lastName,
@@ -61,6 +62,7 @@ export function useSignInForm() {
     try {
       const response = await logout()
       localStorage.removeItem(SESSION_USER_STORAGE_KEY)
+      localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY)
       setIsLoggedIn(false)
       setSuccessMessage(response.message)
     } catch (error) {
@@ -68,6 +70,14 @@ export function useSignInForm() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleOAuthClick = (provider: OAuthProvider) => {
+    if (isSubmitting) {
+      return
+    }
+
+    redirectToOAuthAuthorization(provider)
   }
 
   return {
@@ -80,5 +90,6 @@ export function useSignInForm() {
     updateField,
     handleSubmit,
     handleLogout,
+    handleOAuthClick,
   }
 }

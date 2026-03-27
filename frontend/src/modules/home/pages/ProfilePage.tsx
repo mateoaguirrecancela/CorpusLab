@@ -7,6 +7,7 @@ import { AuthCombobox } from '@/modules/auth/components/CountryCombobox'
 import { AuthFormField } from '@/modules/auth/components/AuthFormField'
 import { AuthSelectField } from '@/modules/auth/components/AuthSelectField'
 import { COUNTRY_OPTIONS, GENDER_OPTIONS } from '@/modules/auth/constants/signup'
+import { SESSION_USER_STORAGE_KEY } from '@/modules/auth/constants/session'
 import {
   getProfile,
   getProfileErrorMessage,
@@ -170,6 +171,12 @@ export default function ProfilePage() {
 
       setProfile(updatedProfile)
       syncFormWithProfile(updatedProfile)
+      localStorage.setItem(SESSION_USER_STORAGE_KEY, JSON.stringify({
+        firstName: updatedProfile.firstName,
+        lastName: updatedProfile.lastName,
+        email: updatedProfile.email,
+      }))
+      window.dispatchEvent(new Event('session-user-updated'))
       setIsEditing(false)
       setSuccessMessage('Profile updated successfully.')
     } catch (error) {

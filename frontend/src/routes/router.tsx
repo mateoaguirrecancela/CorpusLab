@@ -3,6 +3,7 @@ import RootLayout from '@/layouts/RootLayout'
 import AuthLayout from '@/modules/auth/layouts/AuthLayout'
 import ForgotPasswordPage from '@/modules/auth/pages/ForgotPasswordPage'
 import LogInPage from '@/modules/auth/pages/LogInPage'
+import OAuthRedirectPage from '@/modules/auth/pages/OAuthRedirectPage'
 import ResetPasswordPage from '@/modules/auth/pages/ResetPasswordPage'
 import SignUpPage from '@/modules/auth/pages/SignUpPage'
 import HomeLayout from '@/modules/home/layouts/HomeLayout'
@@ -44,6 +45,10 @@ export const router = createBrowserRouter([
             element: <ResetPasswordPage />,
           },
         ],
+      },
+      {
+        path: 'oauth2/redirect',
+        element: <OAuthRedirectPage />,
       },
       {
         path: 'home',

@@ -3,6 +3,7 @@ import { Github, Lock, Mail } from 'lucide-react'
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { AuthFormField } from '@/modules/auth/components/AuthFormField'
+import { type OAuthProvider } from '@/modules/auth/constants/session'
 import { type LoginFormState } from '@/modules/auth/types/login'
 
 type LogInFormProps = {
@@ -12,6 +13,7 @@ type LogInFormProps = {
   errorMessage: string
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>
   onFieldChange: <K extends keyof LoginFormState>(field: K, value: LoginFormState[K]) => void
+  onOAuthClick: (provider: OAuthProvider) => void
 }
 
 export function LogInForm({
@@ -21,6 +23,7 @@ export function LogInForm({
   errorMessage,
   onSubmit,
   onFieldChange,
+  onOAuthClick,
 }: LogInFormProps) {
   return (
     <form className="mt-8 space-y-4" onSubmit={onSubmit}>
@@ -74,6 +77,8 @@ export function LogInForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <Button
           className="h-10 rounded-md border border-[color:var(--cl-line)] bg-white text-sm font-semibold text-[color:var(--cl-neutral)] hover:bg-[color:var(--cl-primary-soft)] cursor-pointer"
+          disabled={isSubmitting}
+          onClick={() => onOAuthClick('google')}
           type="button"
           variant="outline"
         >
@@ -82,6 +87,8 @@ export function LogInForm({
         </Button>
         <Button
           className="h-10 rounded-md border border-[color:var(--cl-line)] bg-white text-sm font-semibold text-[color:var(--cl-neutral)] hover:bg-[color:var(--cl-primary-soft)] cursor-pointer"
+          disabled={isSubmitting}
+          onClick={() => onOAuthClick('github')}
           type="button"
           variant="outline"
         >

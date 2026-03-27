@@ -9,6 +9,7 @@ export default function LogInPage() {
     errorMessage,
     updateField,
     handleSubmit,
+    handleOAuthClick,
   } = useSignInForm()
 
   return (
@@ -21,6 +22,7 @@ export default function LogInPage() {
         form={form}
         isSubmitting={isSubmitting}
         onFieldChange={updateField}
+        onOAuthClick={handleOAuthClick}
         onSubmit={handleSubmit}
       />
     </section>

@@ -1,8 +1,14 @@
 import { type FormEvent, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { INITIAL_REGISTER_STATE } from '@/modules/auth/constants/signup'
-import { SESSION_USER_STORAGE_KEY } from '@/modules/auth/constants/session'
-import { getRegisterErrorMessage, signup } from '@/modules/auth/services/authService'
+import { type OAuthProvider, SESSION_AUTH_TOKEN_STORAGE_KEY, SESSION_USER_STORAGE_KEY } from '@/modules/auth/constants/session'
+import {
+  getLoginErrorMessage,
+  getRegisterErrorMessage,
+  login,
+  redirectToOAuthAuthorization,
+  signup,
+} from '@/modules/auth/services/authService'
 import { type RegisterFormState } from '@/modules/auth/types/signup'
 
 export function useSignUpForm() {
@@ -43,20 +49,37 @@ export function useSignUpForm() {
     setSuccessMessage('')
 
     try {
-      const response = await signup(form)
+      await signup(form)
+      const loginResponse = await login({
+        email: form.email,
+        password: form.password,
+      })
+
+      localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY)
       localStorage.setItem(SESSION_USER_STORAGE_KEY, JSON.stringify({
-        firstName: response.firstName,
-        lastName: response.lastName,
-        email: response.email,
+        firstName: loginResponse.firstName,
+        lastName: loginResponse.lastName,
+        email: loginResponse.email,
       }))
-      setSuccessMessage(`Account created for ${response.firstName}. You can now sign in.`)
+      setSuccessMessage(`Account created for ${loginResponse.firstName}.`)
       setForm(INITIAL_REGISTER_STATE)
       navigate('/home')
     } catch (error) {
-      setErrorMessage(getRegisterErrorMessage(error))
+      const registerErrorMessage = getRegisterErrorMessage(error)
+      const loginErrorMessage = getLoginErrorMessage(error)
+      const isRegisterError = registerErrorMessage !== 'Unexpected error during sign up. Please try again.'
+      setErrorMessage(isRegisterError ? registerErrorMessage : loginErrorMessage)
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleOAuthClick = (provider: OAuthProvider) => {
+    if (isSubmitting) {
+      return
+    }
+
+    redirectToOAuthAuthorization(provider)
   }
 
   return {
@@ -67,6 +90,7 @@ export function useSignUpForm() {
     successMessage,
     updateField,
     handleSubmit,
+    handleOAuthClick,
   }
 }
 

@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Bell, FlaskConical, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { getUserInitials } from '@/lib/user'
-import { SESSION_USER_STORAGE_KEY } from '@/modules/auth/constants/session'
+import { SESSION_AUTH_TOKEN_STORAGE_KEY, SESSION_USER_STORAGE_KEY } from '@/modules/auth/constants/session'
 import { getLogoutErrorMessage, logout } from '@/modules/auth/services/authService'
 
 type AppTopbarProps = {
@@ -14,8 +14,13 @@ type AppTopbarProps = {
 export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProps) {
   const navigate = useNavigate()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [sessionUser, setSessionUser] = useState<{
+    firstName?: string
+    lastName?: string
+    email?: string
+  } | null>(null)
 
-  const sessionUser = useMemo(() => {
+  const readSessionUser = () => {
     try {
       const storedValue = localStorage.getItem(SESSION_USER_STORAGE_KEY)
 
@@ -32,6 +37,19 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
       return parsedValue
     } catch {
       return null
+    }
+  }
+
+  useEffect(() => {
+    const syncSessionUser = () => {
+      setSessionUser(readSessionUser())
+    }
+
+    syncSessionUser()
+    window.addEventListener('session-user-updated', syncSessionUser)
+
+    return () => {
+      window.removeEventListener('session-user-updated', syncSessionUser)
     }
   }, [])
 
@@ -60,6 +78,8 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
       console.error(getLogoutErrorMessage(error))
     } finally {
       localStorage.removeItem(SESSION_USER_STORAGE_KEY)
+      localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY)
+      window.dispatchEvent(new Event('session-user-updated'))
       navigate('/auth/login', { replace: true })
       setIsLoggingOut(false)
     }

@@ -4,22 +4,28 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Locale;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -27,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
+import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
 
 @Component
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
@@ -76,16 +83,36 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             return;
         }
 
-        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+        String normalizedEmail = EmailNormalizer.normalize(email);
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
-                .orElseGet(() -> createUserFromOAuthAttributes(normalizedEmail, oAuth2User.getAttributes()));
+            .orElseGet(() -> createUserFromOAuthAttributes(normalizedEmail, oAuth2User.getAttributes()));
+
+        establishApplicationSession(request, user);
 
         String token = jwtTokenService.generateToken(user.getEmail());
         String encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
         response.sendRedirect(successRedirectUrl + "?token=" + encodedToken);
     }
 
-    private User createUserFromOAuthAttributes(String email, Map<String, Object> attributes) {
+    private void establishApplicationSession(HttpServletRequest request, User user) {
+        UsernamePasswordAuthenticationToken appAuthentication = UsernamePasswordAuthenticationToken.authenticated(
+                user.getEmail(),
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(appAuthentication);
+        SecurityContextHolder.setContext(context);
+
+        HttpSession session = request.getSession(true);
+        session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
+    }
+
+    private User createUserFromOAuthAttributes(
+            String email,
+            Map<String, Object> attributes
+    ) {
         User user = new User();
         user.setEmail(email);
         user.setFirstName(resolveFirstName(attributes));
