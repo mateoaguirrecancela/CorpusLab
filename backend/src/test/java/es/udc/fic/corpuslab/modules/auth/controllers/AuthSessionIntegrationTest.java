@@ -179,6 +179,32 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                                 .andExpect(status().isForbidden());
     }
 
+            @Test
+            void profileShouldReturnNotFoundWhenSessionExistsButUserIsDeleted() throws Exception {
+                User user = UserTestBuilder.validUser()
+                        .withEmail("deleted.profile.user@example.com")
+                        .withPasswordHash(passwordEncoder.encode("strong-password"))
+                        .build();
+                userRepository.save(user);
+
+                UserLoginRequestDto loginRequest = UserLoginRequestTestBuilder.validRequest()
+                        .withEmail("deleted.profile.user@example.com")
+                        .build();
+
+                MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(loginRequest)))
+                        .andExpect(status().isOk())
+                        .andReturn();
+
+                userRepository.deleteAll();
+
+                mockMvc.perform(get("/api/auth/profile").session((MockHttpSession) loginResult.getRequest().getSession(false)))
+                        .andExpect(status().isNotFound())
+                        .andExpect(jsonPath("$.status").value(404))
+                        .andExpect(jsonPath("$.message").value("No account found for email: deleted.profile.user@example.com"));
+            }
+
         @Test
         void logoutShouldSucceedWhenSessionDoesNotExist() throws Exception {
                 mockMvc.perform(post("/api/auth/logout"))

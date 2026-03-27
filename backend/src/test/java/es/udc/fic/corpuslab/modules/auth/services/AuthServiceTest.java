@@ -29,6 +29,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginResponseDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.UserProfileResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLogoutResponseDto;
@@ -210,6 +211,38 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.login(request, httpRequest))
                 .isInstanceOf(InvalidCredentialsException.class)
                 .hasMessage("Invalid email or password");
+    }
+
+    @Test
+    void getProfileShouldReturnMappedProfileForExistingUser() {
+        User user = UserTestBuilder.validUser()
+                .withEmail("new.user@example.com")
+                .withFirstName("New")
+                .withLastName("User")
+                .withCountryCode("ES")
+                .withCity("A Coruna")
+                .build();
+
+        when(userRepository.findByEmailIgnoreCase("new.user@example.com")).thenReturn(Optional.of(user));
+
+        UserProfileResponseDto response = authService.getProfile(" NEW.USER@EXAMPLE.COM ");
+
+        assertThat(response.email()).isEqualTo("new.user@example.com");
+        assertThat(response.firstName()).isEqualTo("New");
+        assertThat(response.lastName()).isEqualTo("User");
+        assertThat(response.birth()).isEqualTo(user.getBirth());
+        assertThat(response.gender()).isEqualTo(user.getGender());
+        assertThat(response.countryCode()).isEqualTo("ES");
+        assertThat(response.city()).isEqualTo("A Coruna");
+    }
+
+    @Test
+    void getProfileShouldThrowWhenUserDoesNotExist() {
+        when(userRepository.findByEmailIgnoreCase("missing.user@example.com")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.getProfile(" MISSING.USER@EXAMPLE.COM "))
+                .isInstanceOf(EmailNotFoundException.class)
+                .hasMessage("No account found for email: missing.user@example.com");
     }
 
     @Test
