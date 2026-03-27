@@ -1,6 +1,6 @@
 import { api } from '@/lib/api'
 import { type LoginFormState, type LoginResponse, type LogoutResponse } from '@/modules/auth/types/login'
-import { type ProfileResponse } from '@/modules/auth/types/profile'
+import { type ProfileResponse, type UpdateProfilePayload } from '@/modules/auth/types/profile'
 import { type ForgotPasswordFormState, type ForgotPasswordResponse } from '@/modules/auth/types/forgotPassword'
 import { type ResetPasswordPayload, type ResetPasswordResponse } from '@/modules/auth/types/resetPassword'
 import { type RegisterFormState, type RegisterResponse } from '@/modules/auth/types/signup'
@@ -38,6 +38,20 @@ export async function logout(): Promise<LogoutResponse> {
 
 export async function getProfile(): Promise<ProfileResponse> {
   const response = await api.get<ProfileResponse>('/auth/profile')
+  return response.data
+}
+
+export async function updateProfile(payload: UpdateProfilePayload): Promise<ProfileResponse> {
+  const body = {
+    firstName: payload.firstName.trim(),
+    lastName: payload.lastName.trim(),
+    birth: payload.birth,
+    gender: payload.gender,
+    countryCode: payload.countryCode,
+    city: payload.city,
+  }
+
+  const response = await api.put<ProfileResponse>('/auth/profile', body)
   return response.data
 }
 
@@ -91,4 +105,8 @@ export function getResetPasswordErrorMessage(error: unknown): string {
 
 export function getProfileErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, 'Unexpected error loading your profile. Please try again.')
+}
+
+export function getUpdateProfileErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'Unexpected error updating your profile. Please try again.')
 }
