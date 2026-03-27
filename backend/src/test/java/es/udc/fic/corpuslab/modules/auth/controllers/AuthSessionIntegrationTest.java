@@ -3,6 +3,7 @@ package es.udc.fic.corpuslab.modules.auth.controllers;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -10,9 +11,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import es.udc.fic.corpuslab.AbstractIntegrationTest;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginRequestDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.UserUpdateProfileRequestDto;
 import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserLoginRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
+import es.udc.fic.corpuslab.modules.auth.fixtures.UserUpdateProfileRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +30,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.mock.web.MockHttpSession;
+
+import java.time.LocalDate;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -171,6 +176,162 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.id").doesNotExist())
                 .andExpect(jsonPath("$.createdAt").doesNotExist())
                 .andExpect(jsonPath("$.updatedAt").doesNotExist());
+    }
+
+    @Test
+    void updateProfileShouldPersistAllowedFieldsForAuthenticatedUser() throws Exception {
+        User user = UserTestBuilder.validUser()
+                .withEmail("edit.profile.user@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .withFirstName("Before")
+                .withLastName("Edit")
+                .build();
+        userRepository.save(user);
+
+        UserLoginRequestDto loginRequest = UserLoginRequestTestBuilder.validRequest()
+                .withEmail("edit.profile.user@example.com")
+                .build();
+
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        UserUpdateProfileRequestDto updateRequest = UserUpdateProfileRequestTestBuilder.validRequest()
+                .withFirstName("  Alice  ")
+                .withLastName("  Smith  ")
+                .withCountryCode("pt")
+                .withCity("  ")
+                .build();
+
+        mockMvc.perform(put("/api/auth/profile")
+                        .session((MockHttpSession) loginResult.getRequest().getSession(false))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("edit.profile.user@example.com"))
+                .andExpect(jsonPath("$.firstName").value("Alice"))
+                .andExpect(jsonPath("$.lastName").value("Smith"))
+                .andExpect(jsonPath("$.birth").value("1999-06-15"))
+                .andExpect(jsonPath("$.gender").value("FEMALE"))
+                .andExpect(jsonPath("$.countryCode").value("PT"))
+                .andExpect(jsonPath("$.city").isEmpty());
+
+        mockMvc.perform(get("/api/auth/profile").session((MockHttpSession) loginResult.getRequest().getSession(false)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.firstName").value("Alice"))
+                .andExpect(jsonPath("$.lastName").value("Smith"))
+                .andExpect(jsonPath("$.countryCode").value("PT"))
+                .andExpect(jsonPath("$.city").isEmpty());
+    }
+
+    @Test
+    void updateProfileShouldReturnForbiddenWhenSessionDoesNotExist() throws Exception {
+        UserUpdateProfileRequestDto updateRequest = UserUpdateProfileRequestTestBuilder.validRequest().build();
+
+        mockMvc.perform(put("/api/auth/profile")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void updateProfileShouldReturnBadRequestWhenPayloadIsInvalid() throws Exception {
+        User user = UserTestBuilder.validUser()
+                .withEmail("validation.profile.user@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        userRepository.save(user);
+
+        UserLoginRequestDto loginRequest = UserLoginRequestTestBuilder.validRequest()
+                .withEmail("validation.profile.user@example.com")
+                .build();
+
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        UserUpdateProfileRequestDto invalidRequest = UserUpdateProfileRequestTestBuilder.validRequest()
+                .withFirstName("   ")
+                .withCountryCode("XXXX")
+                .build();
+
+        mockMvc.perform(put("/api/auth/profile")
+                        .session((MockHttpSession) loginResult.getRequest().getSession(false))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.details.firstName").exists())
+                .andExpect(jsonPath("$.details.countryCode").exists());
+    }
+
+    @Test
+    void updateProfileShouldReturnBadRequestWhenBirthDateIsInFuture() throws Exception {
+        User user = UserTestBuilder.validUser()
+                .withEmail("future.birth.profile.user@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        userRepository.save(user);
+
+        UserLoginRequestDto loginRequest = UserLoginRequestTestBuilder.validRequest()
+                .withEmail("future.birth.profile.user@example.com")
+                .build();
+
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        UserUpdateProfileRequestDto invalidRequest = UserUpdateProfileRequestTestBuilder.validRequest()
+                .withBirth(LocalDate.now().plusDays(1))
+                .build();
+
+        mockMvc.perform(put("/api/auth/profile")
+                        .session((MockHttpSession) loginResult.getRequest().getSession(false))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.details.birth").exists());
+    }
+
+    @Test
+    void updateProfileShouldReturnBadRequestWhenLastNameIsBlank() throws Exception {
+        User user = UserTestBuilder.validUser()
+                .withEmail("blank.lastname.profile.user@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        userRepository.save(user);
+
+        UserLoginRequestDto loginRequest = UserLoginRequestTestBuilder.validRequest()
+                .withEmail("blank.lastname.profile.user@example.com")
+                .build();
+
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        UserUpdateProfileRequestDto invalidRequest = UserUpdateProfileRequestTestBuilder.validRequest()
+                .withLastName("   ")
+                .build();
+
+        mockMvc.perform(put("/api/auth/profile")
+                        .session((MockHttpSession) loginResult.getRequest().getSession(false))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.details.lastName").exists());
     }
 
     @Test

@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserProfileResponseDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.UserUpdateProfileRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLogoutResponseDto;
@@ -123,14 +124,38 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
             .orElseThrow(() -> new EmailNotFoundException(normalizedEmail));
 
+        return toProfileResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public UserProfileResponseDto updateProfile(String authenticatedEmail, UserUpdateProfileRequestDto request) {
+        String normalizedEmail = authenticatedEmail.trim().toLowerCase(Locale.ROOT);
+
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+                .orElseThrow(() -> new EmailNotFoundException(normalizedEmail));
+
+        user.setFirstName(request.firstName().trim());
+        user.setLastName(request.lastName().trim());
+        user.setBirth(request.birth());
+        user.setGender(request.gender());
+        user.setCountryCode(normalizeCountryCode(request.countryCode()));
+        user.setCity(trimToNull(request.city()));
+
+        User saved = userRepository.save(user);
+
+        return toProfileResponse(saved);
+    }
+
+    private UserProfileResponseDto toProfileResponse(User user) {
         return new UserProfileResponseDto(
-            user.getEmail(),
-            user.getFirstName(),
-            user.getLastName(),
-            user.getBirth(),
-            user.getGender(),
-            user.getCountryCode(),
-            user.getCity()
+                user.getEmail(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getBirth(),
+                user.getGender(),
+                user.getCountryCode(),
+                user.getCity()
         );
     }
 

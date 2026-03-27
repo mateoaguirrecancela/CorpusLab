@@ -30,6 +30,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserProfileResponseDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.UserUpdateProfileRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLogoutResponseDto;
@@ -43,6 +44,7 @@ import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetTokenNotFoundEx
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserLoginRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserRegisterRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
+import es.udc.fic.corpuslab.modules.auth.fixtures.UserUpdateProfileRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.PasswordResetTokenRepository;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
@@ -243,6 +245,63 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.getProfile(" MISSING.USER@EXAMPLE.COM "))
                 .isInstanceOf(EmailNotFoundException.class)
                 .hasMessage("No account found for email: missing.user@example.com");
+    }
+
+    @Test
+    void updateProfileShouldPersistAllowedFieldsAndReturnResponse() {
+        User existingUser = UserTestBuilder.validUser()
+                .withEmail("new.user@example.com")
+                .withFirstName("New")
+                .withLastName("User")
+                .withBirth(java.time.LocalDate.of(1997, 5, 20))
+                .withGender(es.udc.fic.corpuslab.modules.auth.enums.GenderType.OTHER)
+                .withCountryCode("ES")
+                .withCity("A Coruna")
+                .build();
+
+        UserUpdateProfileRequestDto request = UserUpdateProfileRequestTestBuilder.validRequest()
+                .withFirstName("  Alice  ")
+                .withLastName("  Smith  ")
+                .withCountryCode("pt")
+                .withCity("  ")
+                .build();
+
+        when(userRepository.findByEmailIgnoreCase("new.user@example.com")).thenReturn(Optional.of(existingUser));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UserProfileResponseDto response = authService.updateProfile(" NEW.USER@EXAMPLE.COM ", request);
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+
+        User savedUser = userCaptor.getValue();
+        assertThat(savedUser.getFirstName()).isEqualTo("Alice");
+        assertThat(savedUser.getLastName()).isEqualTo("Smith");
+        assertThat(savedUser.getBirth()).isEqualTo(request.birth());
+        assertThat(savedUser.getGender()).isEqualTo(request.gender());
+        assertThat(savedUser.getCountryCode()).isEqualTo("PT");
+        assertThat(savedUser.getCity()).isNull();
+
+        assertThat(response.email()).isEqualTo("new.user@example.com");
+        assertThat(response.firstName()).isEqualTo("Alice");
+        assertThat(response.lastName()).isEqualTo("Smith");
+        assertThat(response.birth()).isEqualTo(request.birth());
+        assertThat(response.gender()).isEqualTo(request.gender());
+        assertThat(response.countryCode()).isEqualTo("PT");
+        assertThat(response.city()).isNull();
+    }
+
+    @Test
+    void updateProfileShouldThrowWhenUserDoesNotExist() {
+        UserUpdateProfileRequestDto request = UserUpdateProfileRequestTestBuilder.validRequest().build();
+
+        when(userRepository.findByEmailIgnoreCase("missing.user@example.com")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.updateProfile(" MISSING.USER@EXAMPLE.COM ", request))
+                .isInstanceOf(EmailNotFoundException.class)
+                .hasMessage("No account found for email: missing.user@example.com");
+
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test

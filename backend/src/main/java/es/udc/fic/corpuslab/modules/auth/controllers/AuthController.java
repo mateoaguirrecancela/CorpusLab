@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserProfileResponseDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.UserUpdateProfileRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLogoutResponseDto;
@@ -47,6 +49,14 @@ public class AuthController {
     @GetMapping("/profile")
     public UserProfileResponseDto profile(Authentication authentication) {
         return authService.getProfile(authentication.getName());
+    }
+
+    @PutMapping("/profile")
+    public UserProfileResponseDto updateProfile(
+            Authentication authentication,
+            @Valid @RequestBody UserUpdateProfileRequestDto request
+    ) {
+        return authService.updateProfile(authentication.getName(), request);
     }
 
     @PostMapping("/logout")
