@@ -1,9 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { CalendarDays, Flag, MapPin, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getCountryLabelByCode } from '@/lib/countries'
 import { getUserInitials } from '@/lib/user'
-import { getProfile, getProfileErrorMessage } from '@/modules/auth/services/authService'
-import { type ProfileResponse } from '@/modules/auth/types/profile'
+import { AuthCombobox } from '@/modules/auth/components/CountryCombobox'
+import { AuthFormField } from '@/modules/auth/components/AuthFormField'
+import { AuthSelectField } from '@/modules/auth/components/AuthSelectField'
+import { COUNTRY_OPTIONS, GENDER_OPTIONS } from '@/modules/auth/constants/signup'
+import {
+  getProfile,
+  getProfileErrorMessage,
+  getUpdateProfileErrorMessage,
+  updateProfile,
+} from '@/modules/auth/services/authService'
+import { type ProfileFormState, type ProfileResponse } from '@/modules/auth/types/profile'
 
 function formatValue(value: string | null) {
   if (value === null) {
@@ -56,26 +66,53 @@ function ProfileRow({ label, value }: ProfileRowProps) {
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileResponse | null>(null)
+  const [form, setForm] = useState<ProfileFormState>({
+    firstName: '',
+    lastName: '',
+    birth: '',
+    gender: '',
+    countryCode: '',
+    city: '',
+  })
   const [isLoading, setIsLoading] = useState(true)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
 
-  const loadProfile = async () => {
+  const syncFormWithProfile = useCallback((currentProfile: ProfileResponse) => {
+    setForm({
+      firstName: currentProfile.firstName,
+      lastName: currentProfile.lastName,
+      birth: currentProfile.birth ?? '',
+      gender: currentProfile.gender ?? '',
+      countryCode: currentProfile.countryCode ?? '',
+      city: currentProfile.city ?? '',
+    })
+  }, [])
+
+  const loadProfile = useCallback(async () => {
     setIsLoading(true)
     setErrorMessage('')
 
     try {
       const response = await getProfile()
       setProfile(response)
+      syncFormWithProfile(response)
     } catch (error) {
       setErrorMessage(getProfileErrorMessage(error))
     } finally {
       setIsLoading(false)
     }
+  }, [syncFormWithProfile])
+
+  const setField = <K extends keyof ProfileFormState>(field: K, value: ProfileFormState[K]) => {
+    setForm((current) => ({ ...current, [field]: value }))
   }
 
   useEffect(() => {
     void loadProfile()
-  }, [])
+  }, [loadProfile])
 
   const userInitials = useMemo(() => {
     if (!profile) {
@@ -84,6 +121,63 @@ export default function ProfilePage() {
 
     return getUserInitials(profile)
   }, [profile])
+
+  const canSave = useMemo(() => {
+    const hasRequiredNames = form.firstName.trim().length > 0 && form.lastName.trim().length > 0
+    return hasRequiredNames && !isSaving
+  }, [form.firstName, form.lastName, isSaving])
+
+  const handleStartEditing = () => {
+    if (!profile) {
+      return
+    }
+
+    syncFormWithProfile(profile)
+    setSuccessMessage('')
+    setErrorMessage('')
+    setIsEditing(true)
+  }
+
+  const handleCancelEditing = () => {
+    if (profile) {
+      syncFormWithProfile(profile)
+    }
+
+    setErrorMessage('')
+    setSuccessMessage('')
+    setIsEditing(false)
+  }
+
+  const handleSaveProfile = async () => {
+    if (!canSave) {
+      setErrorMessage('Please complete first name and last name before saving.')
+      return
+    }
+
+    setIsSaving(true)
+    setErrorMessage('')
+    setSuccessMessage('')
+
+    try {
+      const updatedProfile = await updateProfile({
+        firstName: form.firstName,
+        lastName: form.lastName,
+        birth: form.birth.trim() ? form.birth : undefined,
+        gender: form.gender.trim() ? form.gender : undefined,
+        countryCode: form.countryCode.trim() ? form.countryCode : undefined,
+        city: form.city.trim() ? form.city : undefined,
+      })
+
+      setProfile(updatedProfile)
+      syncFormWithProfile(updatedProfile)
+      setIsEditing(false)
+      setSuccessMessage('Profile updated successfully.')
+    } catch (error) {
+      setErrorMessage(getUpdateProfileErrorMessage(error))
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   return (
     <section className="px-6 py-6 sm:px-8 sm:py-8">
@@ -99,13 +193,21 @@ export default function ProfilePage() {
         {!isLoading && errorMessage.length > 0 && (
           <div className="space-y-3">
             <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</div>
-            <Button className="cursor-pointer" onClick={() => void loadProfile()} type="button" variant="outline">
-              Retry
-            </Button>
+            {!isEditing && (
+              <Button className="cursor-pointer" onClick={() => void loadProfile()} type="button" variant="outline">
+                Retry
+              </Button>
+            )}
           </div>
         )}
 
-        {!isLoading && !errorMessage && profile && (
+        {!isLoading && successMessage.length > 0 && (
+          <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            {successMessage}
+          </div>
+        )}
+
+        {!isLoading && profile && (
           <div>
             <div className="mb-4 flex items-center gap-4 rounded-xl border border-[color:var(--cl-line)] bg-white px-4 py-3">
               <div className="flex size-16 items-center justify-center rounded-full border border-[color:var(--cl-line)] bg-[color:var(--cl-primary-soft)] text-lg font-bold text-[color:var(--cl-primary)]">
@@ -118,14 +220,94 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <ProfileRow label="First Name" value={formatValue(profile.firstName)} />
-              <ProfileRow label="Last Name" value={formatValue(profile.lastName)} />
-              <ProfileRow label="Birth Date" value={formatBirth(profile.birth)} />
-              <ProfileRow label="Gender" value={formatGender(profile.gender)} />
-              <ProfileRow label="Country" value={getCountryLabelByCode(profile.countryCode)} />
-              <ProfileRow label="City" value={formatValue(profile.city)} />
-            </div>
+            {!isEditing && (
+              <div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <ProfileRow label="First Name" value={formatValue(profile.firstName)} />
+                  <ProfileRow label="Last Name" value={formatValue(profile.lastName)} />
+                  <ProfileRow label="Birth Date" value={formatBirth(profile.birth)} />
+                  <ProfileRow label="Gender" value={formatGender(profile.gender)} />
+                  <ProfileRow label="Country" value={getCountryLabelByCode(profile.countryCode)} />
+                  <ProfileRow label="City" value={formatValue(profile.city)} />
+                </div>
+
+                <div className="mt-5 flex justify-center">
+                  <Button className="h-11 min-w-32 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white hover:bg-[color:var(--cl-primary-deep)] cursor-pointer" onClick={handleStartEditing} type="button">
+                    Edit profile
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {isEditing && (
+              <div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <AuthFormField
+                    icon={<UserRound className="size-3" />}
+                    id="firstName"
+                    label="First Name"
+                    onChange={(value) => setField('firstName', value)}
+                    placeholder="Your first name"
+                    value={form.firstName}
+                  />
+
+                  <AuthFormField
+                    icon={<UserRound className="size-3" />}
+                    id="lastName"
+                    label="Last Name"
+                    onChange={(value) => setField('lastName', value)}
+                    placeholder="Your last name"
+                    value={form.lastName}
+                  />
+
+                  <AuthFormField
+                    icon={<CalendarDays className="size-3" />}
+                    id="birth"
+                    label="Birth Date"
+                    onChange={(value) => setField('birth', value)}
+                    type="date"
+                    value={form.birth}
+                  />
+
+                  <AuthSelectField
+                    icon={<UserRound className="size-3" />}
+                    id="gender"
+                    label="Gender"
+                    onChange={(value) => setField('gender', value)}
+                    options={GENDER_OPTIONS}
+                    value={form.gender}
+                  />
+
+                  <AuthCombobox
+                    icon={<Flag className="size-3" />}
+                    id="countryCode"
+                    label="Country"
+                    onChange={(value) => setField('countryCode', value)}
+                    options={COUNTRY_OPTIONS}
+                    placeholder="Search country"
+                    value={form.countryCode}
+                  />
+
+                  <AuthFormField
+                    icon={<MapPin className="size-3" />}
+                    id="city"
+                    label="City"
+                    onChange={(value) => setField('city', value)}
+                    placeholder="Your city"
+                    value={form.city}
+                  />
+                </div>
+
+                <div className="mt-5 flex flex-wrap justify-center gap-3">
+                  <Button className="h-11 min-w-32 rounded-md border border-[color:var(--cl-secondary)] bg-transparent text-sm font-semibold text-[color:var(--cl-secondary)] transition-colors hover:bg-white hover:text-[color:var(--cl-primary)] cursor-pointer" onClick={handleCancelEditing} type="button">
+                    Cancel
+                  </Button>
+                  <Button className="h-11 min-w-32 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white transition-colors hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer" disabled={!canSave} onClick={() => void handleSaveProfile()} type="button">
+                    {isSaving ? 'Saving...' : 'Save changes'}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

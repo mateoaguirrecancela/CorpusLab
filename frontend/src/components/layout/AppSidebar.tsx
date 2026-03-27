@@ -22,7 +22,7 @@ export function AppSidebar({ isCollapsed }: AppSidebarProps) {
                 isCollapsed ? 'justify-center gap-0' : 'gap-3',
                 isActive
                   ? 'bg-[color:var(--cl-primary-soft)] text-[color:var(--cl-primary)]'
-                  : 'text-[color:var(--cl-secondary)] hover:bg-white/70 hover:text-[color:var(--cl-primary)]',
+                  : 'text-[color:var(--cl-secondary)] hover:bg-white hover:text-[color:var(--cl-primary)]',
               ].join(' ')}
               key={item.key}
               to={item.to}
@@ -36,7 +36,7 @@ export function AppSidebar({ isCollapsed }: AppSidebarProps) {
 
       <div className="border-t border-[color:var(--cl-line)] px-3 py-3">
         <button className={[
-          'flex h-11 w-full items-center rounded-lg px-3 text-sm font-medium text-[color:var(--cl-secondary)] hover:bg-white/70 hover:text-[color:var(--cl-primary)] cursor-pointer',
+          'flex h-11 w-full items-center rounded-lg px-3 text-sm font-medium text-[color:var(--cl-secondary)] hover:bg-white hover:text-[color:var(--cl-primary)] cursor-pointer',
           isCollapsed ? 'justify-center gap-0' : 'gap-3',
         ].join(' ')} type="button">
           <Settings className="size-4" />
