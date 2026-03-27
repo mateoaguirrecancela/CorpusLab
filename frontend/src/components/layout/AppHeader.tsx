@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Bell, FlaskConical, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { getUserInitials } from '@/lib/user'
 import { SESSION_USER_STORAGE_KEY } from '@/modules/auth/constants/session'
 import { getLogoutErrorMessage, logout } from '@/modules/auth/services/authService'
 
@@ -43,16 +44,7 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
   }, [sessionUser])
 
   const userInitials = useMemo(() => {
-    const firstInitial = sessionUser?.firstName?.trim().charAt(0) ?? ''
-    const lastInitial = sessionUser?.lastName?.trim().charAt(0) ?? ''
-    const initials = `${firstInitial}${lastInitial}`.trim().toUpperCase()
-
-    if (initials.length > 0) {
-      return initials
-    }
-
-    const emailInitial = sessionUser?.email?.trim().charAt(0).toUpperCase()
-    return emailInitial && emailInitial.length > 0 ? emailInitial : 'U'
+    return getUserInitials(sessionUser ?? {})
   }, [sessionUser])
 
   const handleLogout = async () => {
@@ -122,8 +114,17 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
           </PopoverTrigger>
 
           <PopoverContent align="end" className="w-44 rounded-xl border border-[color:var(--cl-line)] bg-white p-1.5">
+            <Link
+              className="flex h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[color:var(--cl-neutral)] transition hover:bg-[color:var(--cl-primary-soft)]"
+              to="/home/profile"
+            >
+              View Profile
+            </Link>
+
+            <hr />
+
             <button
-              className="flex h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70"
+              className="flex h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70 cursor-pointer"
               disabled={isLoggingOut}
               onClick={handleLogout}
               type="button"
