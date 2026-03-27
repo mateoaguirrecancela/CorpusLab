@@ -1,6 +1,7 @@
 package es.udc.fic.corpuslab.modules.auth.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -25,6 +26,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.mock.web.MockHttpSession;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -134,10 +136,74 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        mockMvc.perform(post("/api/auth/logout").session((org.springframework.mock.web.MockHttpSession) loginResult.getRequest().getSession(false)))
+        mockMvc.perform(post("/api/auth/logout").session((MockHttpSession) loginResult.getRequest().getSession(false)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Logged out successfully"));
     }
+
+    @Test
+    void profileShouldReturnAuthenticatedUserData() throws Exception {
+        User user = UserTestBuilder.validUser()
+                .withEmail("profile.user@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        userRepository.save(user);
+
+        UserLoginRequestDto loginRequest = UserLoginRequestTestBuilder.validRequest()
+                .withEmail("profile.user@example.com")
+                .build();
+
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        mockMvc.perform(get("/api/auth/profile").session((MockHttpSession) loginResult.getRequest().getSession(false)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("profile.user@example.com"))
+                .andExpect(jsonPath("$.firstName").value("New"))
+                .andExpect(jsonPath("$.lastName").value("User"))
+                .andExpect(jsonPath("$.birth").value("1997-05-20"))
+                .andExpect(jsonPath("$.gender").value("OTHER"))
+                .andExpect(jsonPath("$.countryCode").value("ES"))
+                .andExpect(jsonPath("$.city").value("A Coruna"))
+                .andExpect(jsonPath("$.id").doesNotExist())
+                .andExpect(jsonPath("$.createdAt").doesNotExist())
+                .andExpect(jsonPath("$.updatedAt").doesNotExist());
+    }
+
+    @Test
+        void profileShouldReturnForbiddenWhenSessionDoesNotExist() throws Exception {
+        mockMvc.perform(get("/api/auth/profile"))
+                                .andExpect(status().isForbidden());
+    }
+
+            @Test
+            void profileShouldReturnNotFoundWhenSessionExistsButUserIsDeleted() throws Exception {
+                User user = UserTestBuilder.validUser()
+                        .withEmail("deleted.profile.user@example.com")
+                        .withPasswordHash(passwordEncoder.encode("strong-password"))
+                        .build();
+                userRepository.save(user);
+
+                UserLoginRequestDto loginRequest = UserLoginRequestTestBuilder.validRequest()
+                        .withEmail("deleted.profile.user@example.com")
+                        .build();
+
+                MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(loginRequest)))
+                        .andExpect(status().isOk())
+                        .andReturn();
+
+                userRepository.deleteAll();
+
+                mockMvc.perform(get("/api/auth/profile").session((MockHttpSession) loginResult.getRequest().getSession(false)))
+                        .andExpect(status().isNotFound())
+                        .andExpect(jsonPath("$.status").value(404))
+                        .andExpect(jsonPath("$.message").value("No account found for email: deleted.profile.user@example.com"));
+            }
 
         @Test
         void logoutShouldSucceedWhenSessionDoesNotExist() throws Exception {

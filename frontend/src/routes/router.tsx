@@ -7,6 +7,7 @@ import ResetPasswordPage from '@/modules/auth/pages/ResetPasswordPage'
 import SignUpPage from '@/modules/auth/pages/SignUpPage'
 import HomeLayout from '@/modules/home/layouts/HomeLayout'
 import HomePage from '@/modules/home/pages/HomePage'
+import ProfilePage from '@/modules/home/pages/ProfilePage'
 import { PublicOnly, RequireSession } from '@/routes/guards'
 
 export const router = createBrowserRouter([
@@ -63,6 +64,10 @@ export const router = createBrowserRouter([
           {
             path: 'laboratories',
             element: <HomePage />,
+          },
+          {
+            path: 'profile',
+            element: <ProfilePage />,
           },
         ],
       },

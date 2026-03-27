@@ -1,5 +1,6 @@
 import { api } from '@/lib/api'
 import { type LoginFormState, type LoginResponse, type LogoutResponse } from '@/modules/auth/types/login'
+import { type ProfileResponse } from '@/modules/auth/types/profile'
 import { type ForgotPasswordFormState, type ForgotPasswordResponse } from '@/modules/auth/types/forgotPassword'
 import { type ResetPasswordPayload, type ResetPasswordResponse } from '@/modules/auth/types/resetPassword'
 import { type RegisterFormState, type RegisterResponse } from '@/modules/auth/types/signup'
@@ -32,6 +33,11 @@ export async function login(form: LoginFormState): Promise<LoginResponse> {
 
 export async function logout(): Promise<LogoutResponse> {
   const response = await api.post<LogoutResponse>('/auth/logout')
+  return response.data
+}
+
+export async function getProfile(): Promise<ProfileResponse> {
+  const response = await api.get<ProfileResponse>('/auth/profile')
   return response.data
 }
 
@@ -81,4 +87,8 @@ export function getForgotPasswordErrorMessage(error: unknown): string {
 
 export function getResetPasswordErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, 'Unexpected error resetting your password. Please try again.')
+}
+
+export function getProfileErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'Unexpected error loading your profile. Please try again.')
 }
