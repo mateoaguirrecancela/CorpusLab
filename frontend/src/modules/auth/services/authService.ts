@@ -1,9 +1,12 @@
 import { api } from '@/lib/api'
+import { type OAuthProvider } from '@/modules/auth/constants/session'
 import { type LoginFormState, type LoginResponse, type LogoutResponse } from '@/modules/auth/types/login'
 import { type ProfileResponse, type UpdateProfilePayload } from '@/modules/auth/types/profile'
 import { type ForgotPasswordFormState, type ForgotPasswordResponse } from '@/modules/auth/types/forgotPassword'
 import { type ResetPasswordPayload, type ResetPasswordResponse } from '@/modules/auth/types/resetPassword'
 import { type RegisterFormState, type RegisterResponse } from '@/modules/auth/types/signup'
+
+const OAUTH_BACKEND_BASE_URL = (import.meta.env.VITE_BACKEND_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:8080'
 
 export async function signup(form: RegisterFormState): Promise<RegisterResponse> {
   const payload = {
@@ -109,4 +112,50 @@ export function getProfileErrorMessage(error: unknown): string {
 
 export function getUpdateProfileErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, 'Unexpected error updating your profile. Please try again.')
+}
+
+export function getOAuthAuthorizationUrl(provider: OAuthProvider): string {
+  return `${OAUTH_BACKEND_BASE_URL}/oauth2/authorization/${provider}`
+}
+
+export function redirectToOAuthAuthorization(provider: OAuthProvider): void {
+  window.location.assign(getOAuthAuthorizationUrl(provider))
+}
+
+function decodeBase64Url(input: string): string | null {
+  try {
+    const normalized = input.replace(/-/g, '+').replace(/_/g, '/')
+    const paddingLength = (4 - (normalized.length % 4)) % 4
+    const padded = normalized + '='.repeat(paddingLength)
+    return atob(padded)
+  } catch {
+    return null
+  }
+}
+
+export function extractEmailFromJwt(token: string): string | null {
+  const parts = token.split('.')
+  if (parts.length < 2) {
+    return null
+  }
+
+  const payloadRaw = decodeBase64Url(parts[1])
+  if (!payloadRaw) {
+    return null
+  }
+
+  try {
+    const payload = JSON.parse(payloadRaw) as { email?: unknown; sub?: unknown }
+    if (typeof payload.email === 'string' && payload.email.trim().length > 0) {
+      return payload.email.trim().toLowerCase()
+    }
+
+    if (typeof payload.sub === 'string' && payload.sub.includes('@')) {
+      return payload.sub.trim().toLowerCase()
+    }
+
+    return null
+  } catch {
+    return null
+  }
 }

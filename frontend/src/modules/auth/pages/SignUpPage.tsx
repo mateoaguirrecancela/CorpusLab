@@ -9,6 +9,7 @@ export default function SignUpPage() {
     errorMessage,
     updateField,
     handleSubmit,
+    handleOAuthClick,
   } = useSignUpForm()
 
   return (
@@ -21,6 +22,7 @@ export default function SignUpPage() {
         form={form}
         isSubmitting={isSubmitting}
         onFieldChange={updateField}
+        onOAuthClick={handleOAuthClick}
         onSubmit={handleSubmit}
       />
     </section>

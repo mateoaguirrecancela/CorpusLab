@@ -15,7 +15,7 @@ export function AuthHeader() {
 
         <nav className="flex items-center gap-3 text-sm font-medium">
           <Link className="rounded-md px-3 py-1 text-[color:var(--cl-primary)] hover:bg-[color:var(--cl-primary-soft)]" to="/auth/login">
-            Sign In
+            Log In
           </Link>
           <Link to="/auth/signup">
             <Button className="h-8 rounded-md bg-[color:var(--cl-primary)] px-4 text-xs font-semibold text-white hover:bg-[color:var(--cl-primary-deep)] cursor-pointer" type="button">
