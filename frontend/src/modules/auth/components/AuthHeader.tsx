@@ -1,5 +1,5 @@
-import { FlaskConical } from 'lucide-react'
 import { Link } from 'react-router'
+import corpusLabLogo from '@/assets/CorpusLab.png'
 import { Button } from '@/components/ui/button'
 
 export function AuthHeader() {
@@ -7,9 +7,7 @@ export function AuthHeader() {
     <header className="border-b border-[color:var(--cl-line)] bg-white/85 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3">
         <Link to="/auth/login" className="group inline-flex items-center gap-2 text-[color:var(--cl-neutral)]">
-          <span className="flex size-7 items-center justify-center rounded-sm border border-[color:var(--cl-primary)] bg-[color:var(--cl-primary)] text-white">
-            <FlaskConical className="size-4" />
-          </span>
+          <img alt="CorpusLab" className="h-10 w-10 rounded-sm object-cover" src={corpusLabLogo} />
           <span className="text-lg font-semibold tracking-tight">CorpusLab</span>
         </Link>
 

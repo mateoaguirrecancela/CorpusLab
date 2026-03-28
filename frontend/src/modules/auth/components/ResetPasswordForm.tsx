@@ -2,6 +2,8 @@ import { type FormEvent } from 'react'
 import { Lock } from 'lucide-react'
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { FeedbackMessage } from '@/components/ui/feedback-message'
+import { Spinner } from '@/components/ui/spinner'
 import { AuthFormField } from '@/modules/auth/components/AuthFormField'
 import { type ResetPasswordFormState } from '@/modules/auth/types/resetPassword'
 
@@ -51,12 +53,17 @@ export function ResetPasswordForm({
         disabled={!canSubmit}
         type="submit"
       >
-        {isSubmitting ? 'Updating password...' : 'Reset password'}
+        {isSubmitting ? (
+          <span className="inline-flex items-center gap-2">
+            <Spinner aria-hidden className="size-4" />
+            Updating password...
+          </span>
+        ) : (
+          'Reset password'
+        )}
       </Button>
 
-      {errorMessage.length > 0 && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
-      )}
+      <FeedbackMessage message={errorMessage} variant="error" />
 
       <p className="mt-8 text-center text-sm text-[color:var(--cl-secondary)]">
         Password already updated?{' '}

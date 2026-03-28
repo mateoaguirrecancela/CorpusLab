@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CalendarDays, Flag, MapPin, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { FeedbackMessage } from '@/components/ui/feedback-message'
+import { Spinner } from '@/components/ui/spinner'
 import { getCountryLabelByCode } from '@/lib/countries'
 import { getUserInitials } from '@/lib/user'
 import { AuthCombobox } from '@/modules/auth/components/CountryCombobox'
 import { AuthFormField } from '@/modules/auth/components/AuthFormField'
 import { AuthSelectField } from '@/modules/auth/components/AuthSelectField'
 import { COUNTRY_OPTIONS, GENDER_OPTIONS } from '@/modules/auth/constants/signup'
-import { SESSION_USER_STORAGE_KEY } from '@/modules/auth/constants/session'
 import {
   getProfile,
   getProfileErrorMessage,
@@ -171,12 +172,6 @@ export default function ProfilePage() {
 
       setProfile(updatedProfile)
       syncFormWithProfile(updatedProfile)
-      localStorage.setItem(SESSION_USER_STORAGE_KEY, JSON.stringify({
-        firstName: updatedProfile.firstName,
-        lastName: updatedProfile.lastName,
-        email: updatedProfile.email,
-      }))
-      window.dispatchEvent(new Event('session-user-updated'))
       setIsEditing(false)
       setSuccessMessage('Profile updated successfully.')
     } catch (error) {
@@ -193,26 +188,16 @@ export default function ProfilePage() {
       <div className="mt-6 rounded-2xl border border-[color:var(--cl-line)] bg-[#eef1fb] p-4 sm:p-6">
         {isLoading && (
           <div className="rounded-lg border border-[color:var(--cl-line)] bg-white px-4 py-6 text-sm text-[color:var(--cl-secondary)]">
-            Loading profile...
+            <span className="inline-flex items-center gap-2">
+              <Spinner aria-hidden className="size-4" />
+              Loading profile...
+            </span>
           </div>
         )}
 
-        {!isLoading && errorMessage.length > 0 && (
-          <div className="space-y-3">
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</div>
-            {!isEditing && (
-              <Button className="cursor-pointer" onClick={() => void loadProfile()} type="button" variant="outline">
-                Retry
-              </Button>
-            )}
-          </div>
-        )}
+        {!isLoading && errorMessage.length > 0 && <FeedbackMessage className="rounded-lg px-4 py-3" message={errorMessage} variant="error" />}
 
-        {!isLoading && successMessage.length > 0 && (
-          <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            {successMessage}
-          </div>
-        )}
+        {!isLoading && <FeedbackMessage className="mb-3 rounded-lg px-4 py-3" message={successMessage} variant="success" />}
 
         {!isLoading && profile && (
           <div>
@@ -239,7 +224,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="mt-5 flex justify-center">
-                  <Button className="h-11 min-w-32 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white hover:bg-[color:var(--cl-primary-deep)] cursor-pointer" onClick={handleStartEditing} type="button">
+                  <Button className="h-10 min-w-32 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white hover:bg-[color:var(--cl-primary-deep)] cursor-pointer" onClick={handleStartEditing} type="button">
                     Edit profile
                   </Button>
                 </div>
@@ -306,11 +291,18 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="mt-5 flex flex-wrap justify-center gap-3">
-                  <Button className="h-11 min-w-32 rounded-md border border-[color:var(--cl-secondary)] bg-transparent text-sm font-semibold text-[color:var(--cl-secondary)] transition-colors hover:bg-white hover:text-[color:var(--cl-primary)] cursor-pointer" onClick={handleCancelEditing} type="button">
+                  <Button className="h-10 min-w-32 rounded-md border border-[color:var(--cl-line)] bg-white text-sm font-semibold text-[color:var(--cl-neutral)] transition-colors hover:bg-[color:var(--cl-primary-soft)] cursor-pointer" onClick={handleCancelEditing} type="button">
                     Cancel
                   </Button>
-                  <Button className="h-11 min-w-32 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white transition-colors hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer" disabled={!canSave} onClick={() => void handleSaveProfile()} type="button">
-                    {isSaving ? 'Saving...' : 'Save changes'}
+                  <Button className="h-10 min-w-32 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white transition-colors hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer" disabled={!canSave} onClick={() => void handleSaveProfile()} type="button">
+                    {isSaving ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Spinner aria-hidden className="size-4" />
+                        Saving...
+                      </span>
+                    ) : (
+                      'Save changes'
+                    )}
                   </Button>
                 </div>
               </div>
