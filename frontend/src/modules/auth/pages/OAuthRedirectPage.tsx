@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
+import { FeedbackMessage } from '@/components/ui/feedback-message'
+import { Spinner } from '@/components/ui/spinner'
 import {
   OAUTH_PROVIDER_LABEL,
   SESSION_AUTH_TOKEN_STORAGE_KEY,
@@ -94,9 +96,12 @@ export default function OAuthRedirectPage() {
       <h1 className="reveal text-3xl font-extrabold tracking-tight text-[color:var(--cl-primary)]">{providerLabel} Sign In</h1>
 
       {errorMessage.length > 0 ? (
-        <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
+        <FeedbackMessage className="mt-4" message={errorMessage} variant="error" />
       ) : (
-        <p className="mt-4 text-sm text-[color:var(--cl-secondary)]">Completing authentication...</p>
+        <p className="mt-4 inline-flex items-center gap-2 text-sm text-[color:var(--cl-secondary)]">
+          <Spinner aria-hidden className="size-4" />
+          Completing authentication...
+        </p>
       )}
     </section>
   )

@@ -5,6 +5,8 @@ import { type OAuthProvider, SESSION_AUTH_TOKEN_STORAGE_KEY, SESSION_USER_STORAG
 import { getLoginErrorMessage, getLogoutErrorMessage, login, logout, redirectToOAuthAuthorization } from '@/modules/auth/services/authService'
 import { type LoginFormState } from '@/modules/auth/types/login'
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 export function useSignInForm() {
   const navigate = useNavigate()
   const [form, setForm] = useState<LoginFormState>(INITIAL_LOGIN_STATE)
@@ -14,7 +16,7 @@ export function useSignInForm() {
   const [successMessage, setSuccessMessage] = useState('')
 
   const canSubmit = useMemo(
-    () => form.email.trim().length > 0 && form.password.length >= 8 && !isSubmitting,
+    () => EMAIL_REGEX.test(form.email.trim()) && form.password.length >= 8 && !isSubmitting,
     [form, isSubmitting],
   )
 

@@ -2,6 +2,8 @@ import { type FormEvent } from 'react'
 import { Mail } from 'lucide-react'
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { FeedbackMessage } from '@/components/ui/feedback-message'
+import { Spinner } from '@/components/ui/spinner'
 import { AuthFormField } from '@/modules/auth/components/AuthFormField'
 import { type ForgotPasswordFormState } from '@/modules/auth/types/forgotPassword'
 
@@ -41,16 +43,18 @@ export function ForgotPasswordForm({
         disabled={!canSubmit}
         type="submit"
       >
-        {isSubmitting ? 'Sending link...' : 'Send reset link'}
+        {isSubmitting ? (
+          <span className="inline-flex items-center gap-2">
+            <Spinner aria-hidden className="size-4" />
+            Sending link...
+          </span>
+        ) : (
+          'Send reset link'
+        )}
       </Button>
 
-      {errorMessage.length > 0 && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
-      )}
-
-      {successMessage.length > 0 && (
-        <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{successMessage}</p>
-      )}
+      <FeedbackMessage message={errorMessage} variant="error" />
+      <FeedbackMessage message={successMessage} variant="success" />
 
       <p className="mt-8 text-center text-sm text-[color:var(--cl-secondary)]">
         Remembered your password?{' '}

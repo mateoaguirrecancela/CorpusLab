@@ -8,7 +8,7 @@ export default function HomeLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   return (
-    <div className="min-h-screen overflow-hidden rounded-xl border border-[color:var(--cl-line)] bg-[#f3f5ff] shadow-[0_24px_50px_-45px_rgba(15,23,42,0.6)]">
+    <div className="min-h-screen overflow-hidden bg-[#f3f5ff]">
       <div className="flex min-h-screen flex-col">
         <AppHeader
           isSidebarCollapsed={isSidebarCollapsed}
@@ -17,6 +17,15 @@ export default function HomeLayout() {
 
         <div className="flex min-h-0 flex-1">
           <AppSidebar isCollapsed={isSidebarCollapsed} />
+
+          {!isSidebarCollapsed && (
+            <button
+              aria-label="Close sidebar"
+              className="fixed inset-0 top-[72px] z-20 bg-slate-900/20 md:hidden"
+              onClick={() => setIsSidebarCollapsed(true)}
+              type="button"
+            />
+          )}
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <main className="min-h-0 flex-1 overflow-auto">

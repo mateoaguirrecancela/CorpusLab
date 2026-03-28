@@ -11,6 +11,34 @@ import {
 } from '@/modules/auth/services/authService'
 import { type RegisterFormState } from '@/modules/auth/types/signup'
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function isAtLeast16YearsOld(birthDate: string): boolean {
+  if (!birthDate) {
+    return false
+  }
+
+  const [yearText, monthText, dayText] = birthDate.split('-')
+  const year = Number(yearText)
+  const month = Number(monthText)
+  const day = Number(dayText)
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return false
+  }
+
+  const today = new Date()
+  let age = today.getFullYear() - year
+  const currentMonth = today.getMonth() + 1
+  const currentDay = today.getDate()
+
+  if (currentMonth < month || (currentMonth === month && currentDay < day)) {
+    age -= 1
+  }
+
+  return age >= 16
+}
+
 export function useSignUpForm() {
   const navigate = useNavigate()
   const [form, setForm] = useState<RegisterFormState>(INITIAL_REGISTER_STATE)
@@ -22,9 +50,10 @@ export function useSignUpForm() {
     () =>
       form.firstName.trim().length > 0
       && form.lastName.trim().length > 0
-      && form.email.trim().length > 0
+      && EMAIL_REGEX.test(form.email.trim())
       && form.password.length >= 8
-      && form.birth.length > 0
+      && isAtLeast16YearsOld(form.birth)
+      && form.gender.trim().length > 0
       && form.countryCode.length === 2
       && form.city.trim().length > 0
       && !isSubmitting,
@@ -37,6 +66,12 @@ export function useSignUpForm() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+
+    if (form.birth.length > 0 && !isAtLeast16YearsOld(form.birth)) {
+      setErrorMessage('You must be at least 16 years old to create an account.')
+      setSuccessMessage('')
+      return
+    }
 
     if (!canSubmit) {
       setErrorMessage('Please complete all required fields before continuing.')

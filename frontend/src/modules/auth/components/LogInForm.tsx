@@ -2,9 +2,13 @@ import { type FormEvent } from 'react'
 import { Github, Lock, Mail } from 'lucide-react'
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { FeedbackMessage } from '@/components/ui/feedback-message'
+import { SubmitButtonWithSpinner } from '@/components/ui/submit-button-with-spinner'
 import { AuthFormField } from '@/modules/auth/components/AuthFormField'
 import { type OAuthProvider } from '@/modules/auth/constants/session'
 import { type LoginFormState } from '@/modules/auth/types/login'
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type LogInFormProps = {
   form: LoginFormState
@@ -25,23 +29,30 @@ export function LogInForm({
   onFieldChange,
   onOAuthClick,
 }: LogInFormProps) {
+  const trimmedEmail = form.email.trim()
+  const isEmailInvalid = trimmedEmail.length > 0 && !EMAIL_REGEX.test(trimmedEmail)
+
   return (
     <form className="mt-8 space-y-4" onSubmit={onSubmit}>
       <AuthFormField
         icon={<Mail className="size-3.5" />}
         id="email"
-        label="Email"
+        label="Email *"
         placeholder="example@email.com"
         type="email"
         value={form.email}
         onChange={(value) => onFieldChange('email', value)}
       />
 
+      {isEmailInvalid && (
+        <p className="-mt-2 text-xs text-red-700">Enter a valid email address.</p>
+      )}
+
       <div className="space-y-1.5">
         <AuthFormField
           icon={<Lock className="size-3.5" />}
           id="password"
-          label="Password"
+          label="Password *"
           placeholder="********"
           minLength={8}
           type="password"
@@ -56,17 +67,15 @@ export function LogInForm({
         </div>
       </div>
 
-      <Button
+      <SubmitButtonWithSpinner
         className="h-11 w-full rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white shadow-[0_8px_16px_-10px_rgba(49,46,129,0.95)] hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer"
         disabled={!canSubmit}
-        type="submit"
-      >
-        {isSubmitting ? 'Logging in...' : 'Log In'}
-      </Button>
+        idleLabel="Log In"
+        isSubmitting={isSubmitting}
+        submittingLabel="Logging in..."
+      />
 
-      {errorMessage.length > 0 && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
-      )}
+      <FeedbackMessage message={errorMessage} variant="error" />
 
       <div className="my-7 flex items-center gap-3 text-[0.67rem] font-bold tracking-[0.12em] text-[color:var(--cl-tertiary)] uppercase">
         <span className="h-px flex-1 bg-[color:var(--cl-line)]" />
