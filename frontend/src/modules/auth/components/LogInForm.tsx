@@ -1,24 +1,25 @@
-import { type FormEvent } from 'react'
-import { Github, Lock, Mail } from 'lucide-react'
-import { Link } from 'react-router'
-import { Button } from '@/components/ui/button'
-import { FeedbackMessage } from '@/components/ui/feedback-message'
-import { SubmitButtonWithSpinner } from '@/components/ui/submit-button-with-spinner'
-import { AuthFormField } from '@/modules/auth/components/AuthFormField'
-import { type OAuthProvider } from '@/modules/auth/constants/session'
-import { type LoginFormState } from '@/modules/auth/types/login'
+import { type FormEvent } from 'react';
+import { Github, Lock, Mail } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
+import { Button } from '@/components/ui/button';
+import { FeedbackMessage } from '@/components/ui/feedback-message';
+import { SubmitButtonWithSpinner } from '@/components/ui/submit-button-with-spinner';
+import { AuthFormField } from '@/modules/auth/components/AuthFormField';
+import { type OAuthProvider } from '@/modules/auth/constants/session';
+import { type LoginFormState } from '@/modules/auth/types/login';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type LogInFormProps = {
-  form: LoginFormState
-  canSubmit: boolean
-  isSubmitting: boolean
-  errorMessage: string
-  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>
-  onFieldChange: <K extends keyof LoginFormState>(field: K, value: LoginFormState[K]) => void
-  onOAuthClick: (provider: OAuthProvider) => void
-}
+  form: LoginFormState;
+  canSubmit: boolean;
+  isSubmitting: boolean;
+  errorMessage: string;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  onFieldChange: <K extends keyof LoginFormState>(field: K, value: LoginFormState[K]) => void;
+  onOAuthClick: (provider: OAuthProvider) => void;
+};
 
 export function LogInForm({
   form,
@@ -29,15 +30,16 @@ export function LogInForm({
   onFieldChange,
   onOAuthClick,
 }: LogInFormProps) {
-  const trimmedEmail = form.email.trim()
-  const isEmailInvalid = trimmedEmail.length > 0 && !EMAIL_REGEX.test(trimmedEmail)
+  const { t } = useTranslation();
+  const trimmedEmail = form.email.trim();
+  const isEmailInvalid = trimmedEmail.length > 0 && !EMAIL_REGEX.test(trimmedEmail);
 
   return (
     <form className="mt-8 space-y-4" onSubmit={onSubmit}>
       <AuthFormField
         icon={<Mail className="size-3.5" />}
         id="email"
-        label="Email *"
+        label={`${t('auth.login.email')} *`}
         placeholder="example@email.com"
         type="email"
         value={form.email}
@@ -45,14 +47,14 @@ export function LogInForm({
       />
 
       {isEmailInvalid && (
-        <p className="-mt-2 text-xs text-red-700">Enter a valid email address.</p>
+        <p className="-mt-2 text-xs text-red-700">{t('auth.login.invalidEmail')}</p>
       )}
 
       <div className="space-y-1.5">
         <AuthFormField
           icon={<Lock className="size-3.5" />}
           id="password"
-          label="Password *"
+          label={`${t('auth.login.password')} *`}
           placeholder="********"
           minLength={8}
           type="password"
@@ -61,8 +63,11 @@ export function LogInForm({
         />
 
         <div className="flex items-end justify-end">
-          <Link className="text-xs font-semibold text-[color:var(--cl-tertiary)] hover:text-[color:var(--cl-primary)]" to="/auth/forgot-password">
-            Forgot password?
+          <Link
+            className="text-xs font-semibold text-[color:var(--cl-tertiary)] hover:text-[color:var(--cl-primary)]"
+            to="/auth/forgot-password"
+          >
+            {t('auth.login.forgotPassword')}
           </Link>
         </div>
       </div>
@@ -70,16 +75,16 @@ export function LogInForm({
       <SubmitButtonWithSpinner
         className="h-11 w-full rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white shadow-[0_8px_16px_-10px_rgba(49,46,129,0.95)] hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer"
         disabled={!canSubmit}
-        idleLabel="Log In"
+        idleLabel={t('auth.login.submit')}
         isSubmitting={isSubmitting}
-        submittingLabel="Logging in..."
+        submittingLabel={t('auth.login.submitting')}
       />
 
       <FeedbackMessage message={errorMessage} variant="error" />
 
       <div className="my-7 flex items-center gap-3 text-[0.67rem] font-bold tracking-[0.12em] text-[color:var(--cl-tertiary)] uppercase">
         <span className="h-px flex-1 bg-[color:var(--cl-line)]" />
-        <span>Or continue with</span>
+        <span>{t('auth.login.orContinueWith')}</span>
         <span className="h-px flex-1 bg-[color:var(--cl-line)]" />
       </div>
 
@@ -107,11 +112,14 @@ export function LogInForm({
       </div>
 
       <p className="mt-8 text-center text-sm text-[color:var(--cl-secondary)]">
-        New to the lab?{' '}
-        <Link className="font-semibold text-[color:var(--cl-primary)] hover:underline" to="/auth/signup">
-          Create an account
+        {t('auth.login.newToLab')}{' '}
+        <Link
+          className="font-semibold text-[color:var(--cl-primary)] hover:underline"
+          to="/auth/signup"
+        >
+          {t('auth.login.createAccount')}
         </Link>
       </p>
     </form>
-  )
+  );
 }

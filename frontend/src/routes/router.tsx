@@ -1,15 +1,15 @@
-import { createBrowserRouter, Navigate } from 'react-router'
-import RootLayout from '@/layouts/RootLayout'
-import AuthLayout from '@/modules/auth/layouts/AuthLayout'
-import ForgotPasswordPage from '@/modules/auth/pages/ForgotPasswordPage'
-import LogInPage from '@/modules/auth/pages/LogInPage'
-import OAuthRedirectPage from '@/modules/auth/pages/OAuthRedirectPage'
-import ResetPasswordPage from '@/modules/auth/pages/ResetPasswordPage'
-import SignUpPage from '@/modules/auth/pages/SignUpPage'
-import HomeLayout from '@/modules/home/layouts/HomeLayout'
-import HomePage from '@/modules/home/pages/HomePage'
-import ProfilePage from '@/modules/home/pages/ProfilePage'
-import { PublicOnly, RequireSession } from '@/routes/guards'
+import { createBrowserRouter, Navigate } from 'react-router';
+import RootLayout from '@/layouts/RootLayout';
+import AuthLayout from '@/modules/auth/layouts/AuthLayout';
+import ForgotPasswordPage from '@/modules/auth/pages/ForgotPasswordPage';
+import LogInPage from '@/modules/auth/pages/LogInPage';
+import OAuthRedirectPage from '@/modules/auth/pages/OAuthRedirectPage';
+import ResetPasswordPage from '@/modules/auth/pages/ResetPasswordPage';
+import SignUpPage from '@/modules/auth/pages/SignUpPage';
+import HomeLayout from '@/modules/home/layouts/HomeLayout';
+import HomePage from '@/modules/home/pages/HomePage';
+import ProfilePage from '@/modules/home/pages/ProfilePage';
+import { PublicOnly, RequireSession } from '@/routes/guards';
 
 export const router = createBrowserRouter([
   {
@@ -78,4 +78,4 @@ export const router = createBrowserRouter([
       },
     ],
   },
-])
+]);

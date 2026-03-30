@@ -1,0 +1,97 @@
+{
+  "auth": {
+    "header": {
+      "login": "Log In",
+      "signup": "Sign Up"
+    },
+    "gender": {
+      "select": "Select gender",
+      "male": "Male",
+      "female": "Female",
+      "other": "Other"
+    },
+    "login": {
+      "title": "Log In",
+      "email": "Email",
+      "password": "Password",
+      "forgotPassword": "Forgot password?",
+      "submit": "Log In",
+      "submitting": "Logging in...",
+      "invalidEmail": "Enter a valid email address.",
+      "orContinueWith": "Or continue with",
+      "newToLab": "New at CorpusLab?",
+      "createAccount": "Create an account",
+      "required": "Please complete email and password before continuing.",
+      "welcome": "Welcome back, {{name}}. Session started successfully."
+    },
+    "signup": {
+      "title": "Sign Up",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email",
+      "password": "Password",
+      "dateOfBirth": "Date Of Birth",
+      "gender": "Gender",
+      "country": "Country",
+      "city": "City",
+      "submit": "Sign Up",
+      "submitting": "Creating account...",
+      "invalidEmail": "Enter a valid email address.",
+      "passwordLength": "Password must contain at least 8 characters.",
+      "underAge": "You must be at least 16 years old.",
+      "required": "Please complete all required fields before continuing.",
+      "orContinueWith": "Or continue with",
+      "alreadyInLab": "Already part of CorpusLab?",
+      "goToLogin": "Log in",
+      "success": "Account created for {{name}}.",
+      "searchCountry": "Search country"
+    },
+    "forgotPassword": {
+      "title": "Forgot Password",
+      "email": "Email",
+      "submit": "Send reset link",
+      "submitting": "Sending link...",
+      "remembered": "Remembered your password?",
+      "backToLogin": "Back to log in",
+      "required": "Please enter a valid email before continuing."
+    },
+    "resetPassword": {
+      "title": "Reset Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "submit": "Reset password",
+      "submitting": "Updating password...",
+      "alreadyUpdated": "Password already updated?",
+      "goToLogin": "Go to log in",
+      "missingToken": "Missing reset token in URL. Open the link sent to your email.",
+      "passwordMismatch": "Password confirmation does not match.",
+      "required": "Please complete all required fields before continuing."
+    },
+    "oauth": {
+      "providerFallback": "OAuth",
+      "title": "{{provider}} Sign In",
+      "completing": "Completing authentication...",
+      "errors": {
+        "default": "OAuth sign-in could not be completed. Please try again.",
+        "missingEmail": "Your OAuth provider did not return an email address. Please use another account.",
+        "authenticationFailed": "OAuth authentication failed. Please try again.",
+        "invalidPrincipal": "Unexpected OAuth response. Please try again.",
+        "withCode": "OAuth sign-in failed ({{code}}). Please try again.",
+        "missingToken": "OAuth sign-in returned without a token. Please try again.",
+        "profileLoad": "OAuth sign-in completed, but we could not load your profile. Please try again."
+      }
+    },
+    "errors": {
+      "emailExists": "Email already registered: {{email}}",
+      "unexpected": {
+        "login": "Unexpected error during log in. Please try again.",
+        "signup": "Unexpected error during sign up. Please try again.",
+        "logout": "Unexpected error during sign out. Please try again.",
+        "forgotPassword": "Unexpected error requesting a password reset. Please try again.",
+        "resetPassword": "Unexpected error resetting your password. Please try again.",
+        "profile": "Unexpected error loading your profile. Please try again.",
+        "updateProfile": "Unexpected error updating your profile. Please try again."
+      }
+    }
+  }
+}

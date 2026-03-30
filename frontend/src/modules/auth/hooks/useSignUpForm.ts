@@ -1,121 +1,133 @@
-import { type FormEvent, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router'
-import { INITIAL_REGISTER_STATE } from '@/modules/auth/constants/signup'
-import { type OAuthProvider, SESSION_AUTH_TOKEN_STORAGE_KEY, SESSION_USER_STORAGE_KEY } from '@/modules/auth/constants/session'
+import { type FormEvent, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
+import { INITIAL_REGISTER_STATE } from '@/modules/auth/constants/signup';
+import {
+  type OAuthProvider,
+  SESSION_AUTH_TOKEN_STORAGE_KEY,
+  SESSION_USER_STORAGE_KEY,
+} from '@/modules/auth/constants/session';
 import {
   getLoginErrorMessage,
   getRegisterErrorMessage,
   login,
   redirectToOAuthAuthorization,
   signup,
-} from '@/modules/auth/services/authService'
-import { type RegisterFormState } from '@/modules/auth/types/signup'
+} from '@/modules/auth/services/authService';
+import { type RegisterFormState } from '@/modules/auth/types/signup';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function isAtLeast16YearsOld(birthDate: string): boolean {
   if (!birthDate) {
-    return false
+    return false;
   }
 
-  const [yearText, monthText, dayText] = birthDate.split('-')
-  const year = Number(yearText)
-  const month = Number(monthText)
-  const day = Number(dayText)
+  const [yearText, monthText, dayText] = birthDate.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
 
   if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
-    return false
+    return false;
   }
 
-  const today = new Date()
-  let age = today.getFullYear() - year
-  const currentMonth = today.getMonth() + 1
-  const currentDay = today.getDate()
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const currentMonth = today.getMonth() + 1;
+  const currentDay = today.getDate();
 
   if (currentMonth < month || (currentMonth === month && currentDay < day)) {
-    age -= 1
+    age -= 1;
   }
 
-  return age >= 16
+  return age >= 16;
 }
 
 export function useSignUpForm() {
-  const navigate = useNavigate()
-  const [form, setForm] = useState<RegisterFormState>(INITIAL_REGISTER_STATE)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [errorMessage, setErrorMessage] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [form, setForm] = useState<RegisterFormState>(INITIAL_REGISTER_STATE);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const canSubmit = useMemo(
     () =>
-      form.firstName.trim().length > 0
-      && form.lastName.trim().length > 0
-      && EMAIL_REGEX.test(form.email.trim())
-      && form.password.length >= 8
-      && isAtLeast16YearsOld(form.birth)
-      && form.gender.trim().length > 0
-      && form.countryCode.length === 2
-      && form.city.trim().length > 0
-      && !isSubmitting,
+      form.firstName.trim().length > 0 &&
+      form.lastName.trim().length > 0 &&
+      EMAIL_REGEX.test(form.email.trim()) &&
+      form.password.length >= 8 &&
+      isAtLeast16YearsOld(form.birth) &&
+      form.gender.trim().length > 0 &&
+      form.countryCode.length === 2 &&
+      form.city.trim().length > 0 &&
+      !isSubmitting,
     [form, isSubmitting],
-  )
+  );
 
-  const updateField = <K extends keyof RegisterFormState>(field: K, value: RegisterFormState[K]) => {
-    setForm((current) => ({ ...current, [field]: value }))
-  }
+  const updateField = <K extends keyof RegisterFormState>(
+    field: K,
+    value: RegisterFormState[K],
+  ) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+    event.preventDefault();
 
     if (form.birth.length > 0 && !isAtLeast16YearsOld(form.birth)) {
-      setErrorMessage('You must be at least 16 years old to create an account.')
-      setSuccessMessage('')
-      return
+      setErrorMessage(t('auth.signup.underAge'));
+      setSuccessMessage('');
+      return;
     }
 
     if (!canSubmit) {
-      setErrorMessage('Please complete all required fields before continuing.')
-      setSuccessMessage('')
-      return
+      setErrorMessage(t('auth.signup.required'));
+      setSuccessMessage('');
+      return;
     }
 
-    setIsSubmitting(true)
-    setErrorMessage('')
-    setSuccessMessage('')
+    setIsSubmitting(true);
+    setErrorMessage('');
+    setSuccessMessage('');
 
     try {
-      await signup(form)
+      await signup(form);
       const loginResponse = await login({
         email: form.email,
         password: form.password,
-      })
+      });
 
-      localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY)
-      localStorage.setItem(SESSION_USER_STORAGE_KEY, JSON.stringify({
-        firstName: loginResponse.firstName,
-        lastName: loginResponse.lastName,
-        email: loginResponse.email,
-      }))
-      setSuccessMessage(`Account created for ${loginResponse.firstName}.`)
-      setForm(INITIAL_REGISTER_STATE)
-      navigate('/home')
+      localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY);
+      localStorage.setItem(
+        SESSION_USER_STORAGE_KEY,
+        JSON.stringify({
+          firstName: loginResponse.firstName,
+          lastName: loginResponse.lastName,
+          email: loginResponse.email,
+        }),
+      );
+      setSuccessMessage(t('auth.signup.success', { name: loginResponse.firstName }));
+      setForm(INITIAL_REGISTER_STATE);
+      navigate('/home');
     } catch (error) {
-      const registerErrorMessage = getRegisterErrorMessage(error)
-      const loginErrorMessage = getLoginErrorMessage(error)
-      const isRegisterError = registerErrorMessage !== 'Unexpected error during sign up. Please try again.'
-      setErrorMessage(isRegisterError ? registerErrorMessage : loginErrorMessage)
+      const registerErrorMessage = getRegisterErrorMessage(error);
+      const loginErrorMessage = getLoginErrorMessage(error);
+      const isRegisterError = registerErrorMessage !== t('auth.errors.unexpected.signup');
+      setErrorMessage(isRegisterError ? registerErrorMessage : loginErrorMessage);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleOAuthClick = (provider: OAuthProvider) => {
     if (isSubmitting) {
-      return
+      return;
     }
 
-    redirectToOAuthAuthorization(provider)
-  }
+    redirectToOAuthAuthorization(provider);
+  };
 
   return {
     form,
@@ -126,6 +138,5 @@ export function useSignUpForm() {
     updateField,
     handleSubmit,
     handleOAuthClick,
-  }
+  };
 }
-

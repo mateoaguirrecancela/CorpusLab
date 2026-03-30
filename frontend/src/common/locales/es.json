@@ -1,0 +1,31 @@
+{
+  "common": {
+    "appName": "CorpusLab",
+    "user": "Usuario",
+    "actions": {
+      "cancel": "Cancelar",
+      "saveChanges": "Guardar cambios",
+      "saving": "Guardando...",
+      "editProfile": "Editar perfil",
+      "viewProfile": "Ver perfil",
+      "logout": "Cerrar sesión",
+      "loggingOut": "Cerrando sesión..."
+    },
+    "aria": {
+      "expandSidebar": "Expandir barra lateral",
+      "collapseSidebar": "Colapsar barra lateral",
+      "closeSidebar": "Cerrar barra lateral",
+      "showPassword": "Mostrar contraseña",
+      "hidePassword": "Ocultar contraseña"
+    },
+    "loading": {
+      "profile": "Cargando perfil..."
+    },
+    "footer": {
+      "copyright": "2026 CorpusLab. Todos los derechos reservados.",
+      "privacy": "Privacidad",
+      "terms": "Términos",
+      "contact": "Contacto"
+    }
+  }
+}

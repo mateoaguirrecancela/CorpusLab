@@ -1,13 +1,13 @@
-import { type ComponentProps } from 'react'
-import { Button } from '@/components/ui/button'
-import { Spinner } from '@/components/ui/spinner'
+import { type ComponentProps } from 'react';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 
 type SubmitButtonWithSpinnerProps = Omit<ComponentProps<typeof Button>, 'children' | 'type'> & {
-  isSubmitting: boolean
-  idleLabel: string
-  submittingLabel: string
-  spinnerClassName?: string
-}
+  isSubmitting: boolean;
+  idleLabel: string;
+  submittingLabel: string;
+  spinnerClassName?: string;
+};
 
 export function SubmitButtonWithSpinner({
   isSubmitting,
@@ -28,5 +28,5 @@ export function SubmitButtonWithSpinner({
         idleLabel
       )}
     </Button>
-  )
+  );
 }

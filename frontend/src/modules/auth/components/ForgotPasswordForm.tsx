@@ -1,21 +1,25 @@
-import { type FormEvent } from 'react'
-import { Mail } from 'lucide-react'
-import { Link } from 'react-router'
-import { Button } from '@/components/ui/button'
-import { FeedbackMessage } from '@/components/ui/feedback-message'
-import { Spinner } from '@/components/ui/spinner'
-import { AuthFormField } from '@/modules/auth/components/AuthFormField'
-import { type ForgotPasswordFormState } from '@/modules/auth/types/forgotPassword'
+import { type FormEvent } from 'react';
+import { Mail } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
+import { Button } from '@/components/ui/button';
+import { FeedbackMessage } from '@/components/ui/feedback-message';
+import { Spinner } from '@/components/ui/spinner';
+import { AuthFormField } from '@/modules/auth/components/AuthFormField';
+import { type ForgotPasswordFormState } from '@/modules/auth/types/forgotPassword';
 
 type ForgotPasswordFormProps = {
-  form: ForgotPasswordFormState
-  canSubmit: boolean
-  isSubmitting: boolean
-  errorMessage: string
-  successMessage: string
-  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>
-  onFieldChange: <K extends keyof ForgotPasswordFormState>(field: K, value: ForgotPasswordFormState[K]) => void
-}
+  form: ForgotPasswordFormState;
+  canSubmit: boolean;
+  isSubmitting: boolean;
+  errorMessage: string;
+  successMessage: string;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  onFieldChange: <K extends keyof ForgotPasswordFormState>(
+    field: K,
+    value: ForgotPasswordFormState[K],
+  ) => void;
+};
 
 export function ForgotPasswordForm({
   form,
@@ -26,12 +30,14 @@ export function ForgotPasswordForm({
   onSubmit,
   onFieldChange,
 }: ForgotPasswordFormProps) {
+  const { t } = useTranslation();
+
   return (
     <form className="mt-8 space-y-4" onSubmit={onSubmit}>
       <AuthFormField
         icon={<Mail className="size-3.5" />}
         id="email"
-        label="Email"
+        label={t('auth.forgotPassword.email')}
         placeholder="example@email.com"
         type="email"
         value={form.email}
@@ -46,10 +52,10 @@ export function ForgotPasswordForm({
         {isSubmitting ? (
           <span className="inline-flex items-center gap-2">
             <Spinner aria-hidden className="size-4" />
-            Sending link...
+            {t('auth.forgotPassword.submitting')}
           </span>
         ) : (
-          'Send reset link'
+          t('auth.forgotPassword.submit')
         )}
       </Button>
 
@@ -57,11 +63,14 @@ export function ForgotPasswordForm({
       <FeedbackMessage message={successMessage} variant="success" />
 
       <p className="mt-8 text-center text-sm text-[color:var(--cl-secondary)]">
-        Remembered your password?{' '}
-        <Link className="font-semibold text-[color:var(--cl-primary)] hover:underline" to="/auth/login">
-          Back to log in
+        {t('auth.forgotPassword.remembered')}{' '}
+        <Link
+          className="font-semibold text-[color:var(--cl-primary)] hover:underline"
+          to="/auth/login"
+        >
+          {t('auth.forgotPassword.backToLogin')}
         </Link>
       </p>
     </form>
-  )
+  );
 }

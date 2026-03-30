@@ -16,7 +16,7 @@ public record UserRegisterRequestDto(
         @NotBlank @Size(max = 100) String lastName,
         @Past LocalDate birth,
         GenderType gender,
-        @Pattern(regexp = "^[A-Za-z]{2}$", message = "invalid countryCode") String countryCode,
+        @Pattern(regexp = "^[A-Za-z]{2}$", message = "{validation.countryCode.invalid}") String countryCode,
         @Size(max = 100) String city,
         @NotBlank @Size(min = 8, max = 255) String password
 ) {

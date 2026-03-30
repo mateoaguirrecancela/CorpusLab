@@ -1,73 +1,77 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CalendarDays, Flag, MapPin, UserRound } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { FeedbackMessage } from '@/components/ui/feedback-message'
-import { Spinner } from '@/components/ui/spinner'
-import { getCountryLabelByCode } from '@/lib/countries'
-import { getUserInitials } from '@/lib/user'
-import { AuthCombobox } from '@/modules/auth/components/CountryCombobox'
-import { AuthFormField } from '@/modules/auth/components/AuthFormField'
-import { AuthSelectField } from '@/modules/auth/components/AuthSelectField'
-import { COUNTRY_OPTIONS, GENDER_OPTIONS } from '@/modules/auth/constants/signup'
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CalendarDays, Flag, MapPin, UserRound } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { FeedbackMessage } from '@/components/ui/feedback-message';
+import { Spinner } from '@/components/ui/spinner';
+import { getCountryLabelByCode } from '@/lib/countries';
+import { getUserInitials } from '@/lib/user';
+import { AuthCombobox } from '@/modules/auth/components/CountryCombobox';
+import { AuthFormField } from '@/modules/auth/components/AuthFormField';
+import { AuthSelectField } from '@/modules/auth/components/AuthSelectField';
+import { getCountryOptions, getGenderOptions } from '@/modules/auth/constants/signup';
 import {
   getProfile,
   getProfileErrorMessage,
   getUpdateProfileErrorMessage,
   updateProfile,
-} from '@/modules/auth/services/authService'
-import { type ProfileFormState, type ProfileResponse } from '@/modules/auth/types/profile'
+} from '@/modules/auth/services/authService';
+import { type ProfileFormState, type ProfileResponse } from '@/modules/auth/types/profile';
 
 function formatValue(value: string | null) {
   if (value === null) {
-    return '-'
+    return '-';
   }
 
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : '-'
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : '-';
 }
 
 function formatGender(value: string | null) {
   if (!value) {
-    return '-'
+    return '-';
   }
 
-  const normalized = value.toLowerCase()
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1)
+  const normalized = value.toLowerCase();
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
-function formatBirth(value: string | null) {
+function formatBirth(value: string | null, language: string) {
   if (!value) {
-    return '-'
+    return '-';
   }
 
-  const parsedDate = new Date(value)
+  const parsedDate = new Date(value);
   if (Number.isNaN(parsedDate.getTime())) {
-    return value
+    return value;
   }
 
-  return new Intl.DateTimeFormat('es-ES', {
+  return new Intl.DateTimeFormat(language, {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
-  }).format(parsedDate)
+  }).format(parsedDate);
 }
 
 type ProfileRowProps = {
-  label: string
-  value: string
-}
+  label: string;
+  value: string;
+};
 
-function ProfileRow({ label, value }: ProfileRowProps) {
+function ProfileRow({ label, value }: Readonly<ProfileRowProps>) {
   return (
     <div className="rounded-lg border border-[color:var(--cl-line)] bg-white/85 px-4 py-3">
-      <p className="text-[0.68rem] font-bold tracking-[0.12em] text-[color:var(--cl-secondary)] uppercase">{label}</p>
+      <p className="text-[0.68rem] font-bold tracking-[0.12em] text-[color:var(--cl-secondary)] uppercase">
+        {label}
+      </p>
       <p className="mt-1 text-sm font-medium text-[color:var(--cl-neutral)]">{value}</p>
     </div>
-  )
+  );
 }
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<ProfileResponse | null>(null)
+  const { t, i18n } = useTranslation();
+  const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [form, setForm] = useState<ProfileFormState>({
     firstName: '',
     lastName: '',
@@ -75,12 +79,17 @@ export default function ProfilePage() {
     gender: '',
     countryCode: '',
     city: '',
-  })
-  const [isLoading, setIsLoading] = useState(true)
-  const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [errorMessage, setErrorMessage] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const genderOptions = getGenderOptions(t);
+  const countryOptions = useMemo(
+    () => getCountryOptions(i18n.resolvedLanguage ?? i18n.language ?? 'en'),
+    [i18n.language, i18n.resolvedLanguage],
+  );
 
   const syncFormWithProfile = useCallback((currentProfile: ProfileResponse) => {
     setForm({
@@ -90,75 +99,75 @@ export default function ProfilePage() {
       gender: currentProfile.gender ?? '',
       countryCode: currentProfile.countryCode ?? '',
       city: currentProfile.city ?? '',
-    })
-  }, [])
+    });
+  }, []);
 
   const loadProfile = useCallback(async () => {
-    setIsLoading(true)
-    setErrorMessage('')
+    setIsLoading(true);
+    setErrorMessage('');
 
     try {
-      const response = await getProfile()
-      setProfile(response)
-      syncFormWithProfile(response)
+      const response = await getProfile();
+      setProfile(response);
+      syncFormWithProfile(response);
     } catch (error) {
-      setErrorMessage(getProfileErrorMessage(error))
+      setErrorMessage(getProfileErrorMessage(error));
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [syncFormWithProfile])
+  }, [syncFormWithProfile]);
 
   const setField = <K extends keyof ProfileFormState>(field: K, value: ProfileFormState[K]) => {
-    setForm((current) => ({ ...current, [field]: value }))
-  }
+    setForm((current) => ({ ...current, [field]: value }));
+  };
 
   useEffect(() => {
-    void loadProfile()
-  }, [loadProfile])
+    void loadProfile();
+  }, [loadProfile]);
 
   const userInitials = useMemo(() => {
     if (!profile) {
-      return 'U'
+      return t('common.user').charAt(0);
     }
 
-    return getUserInitials(profile)
-  }, [profile])
+    return getUserInitials(profile);
+  }, [profile, t]);
 
   const canSave = useMemo(() => {
-    const hasRequiredNames = form.firstName.trim().length > 0 && form.lastName.trim().length > 0
-    return hasRequiredNames && !isSaving
-  }, [form.firstName, form.lastName, isSaving])
+    const hasRequiredNames = form.firstName.trim().length > 0 && form.lastName.trim().length > 0;
+    return hasRequiredNames && !isSaving;
+  }, [form.firstName, form.lastName, isSaving]);
 
   const handleStartEditing = () => {
     if (!profile) {
-      return
+      return;
     }
 
-    syncFormWithProfile(profile)
-    setSuccessMessage('')
-    setErrorMessage('')
-    setIsEditing(true)
-  }
+    syncFormWithProfile(profile);
+    setSuccessMessage('');
+    setErrorMessage('');
+    setIsEditing(true);
+  };
 
   const handleCancelEditing = () => {
     if (profile) {
-      syncFormWithProfile(profile)
+      syncFormWithProfile(profile);
     }
 
-    setErrorMessage('')
-    setSuccessMessage('')
-    setIsEditing(false)
-  }
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsEditing(false);
+  };
 
   const handleSaveProfile = async () => {
     if (!canSave) {
-      setErrorMessage('Please complete first name and last name before saving.')
-      return
+      setErrorMessage(t('home.profile.requiredNames'));
+      return;
     }
 
-    setIsSaving(true)
-    setErrorMessage('')
-    setSuccessMessage('')
+    setIsSaving(true);
+    setErrorMessage('');
+    setSuccessMessage('');
 
     try {
       const updatedProfile = await updateProfile({
@@ -168,36 +177,50 @@ export default function ProfilePage() {
         gender: form.gender.trim() ? form.gender : undefined,
         countryCode: form.countryCode.trim() ? form.countryCode : undefined,
         city: form.city.trim() ? form.city : undefined,
-      })
+      });
 
-      setProfile(updatedProfile)
-      syncFormWithProfile(updatedProfile)
-      setIsEditing(false)
-      setSuccessMessage('Profile updated successfully.')
+      setProfile(updatedProfile);
+      syncFormWithProfile(updatedProfile);
+      setIsEditing(false);
+      setSuccessMessage(t('home.profile.updated'));
     } catch (error) {
-      setErrorMessage(getUpdateProfileErrorMessage(error))
+      setErrorMessage(getUpdateProfileErrorMessage(error));
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   return (
     <section className="px-6 py-6 sm:px-8 sm:py-8">
-      <h1 className="text-4xl font-black tracking-tight text-[color:var(--cl-primary)]">My Profile</h1>
+      <h1 className="text-4xl font-black tracking-tight text-[color:var(--cl-primary)]">
+        {t('home.profile.title')}
+      </h1>
 
       <div className="mt-6 rounded-2xl border border-[color:var(--cl-line)] bg-[#eef1fb] p-4 sm:p-6">
         {isLoading && (
           <div className="rounded-lg border border-[color:var(--cl-line)] bg-white px-4 py-6 text-sm text-[color:var(--cl-secondary)]">
             <span className="inline-flex items-center gap-2">
               <Spinner aria-hidden className="size-4" />
-              Loading profile...
+              {t('common.loading.profile')}
             </span>
           </div>
         )}
 
-        {!isLoading && errorMessage.length > 0 && <FeedbackMessage className="rounded-lg px-4 py-3" message={errorMessage} variant="error" />}
+        {!isLoading && errorMessage.length > 0 && (
+          <FeedbackMessage
+            className="rounded-lg px-4 py-3"
+            message={errorMessage}
+            variant="error"
+          />
+        )}
 
-        {!isLoading && <FeedbackMessage className="mb-3 rounded-lg px-4 py-3" message={successMessage} variant="success" />}
+        {!isLoading && (
+          <FeedbackMessage
+            className="mb-3 rounded-lg px-4 py-3"
+            message={successMessage}
+            variant="success"
+          />
+        )}
 
         {!isLoading && profile && (
           <div>
@@ -207,25 +230,51 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <p className="text-xs font-bold tracking-[0.1em] text-[color:var(--cl-secondary)] uppercase">User</p>
-                <p className="mt-1 text-lg font-semibold text-[color:var(--cl-primary)]">{formatValue(profile.email)}</p>
+                <p className="text-xs font-bold tracking-[0.1em] text-[color:var(--cl-secondary)] uppercase">
+                  {t('common.user')}
+                </p>
+                <p className="mt-1 text-lg font-semibold text-[color:var(--cl-primary)]">
+                  {formatValue(profile.email)}
+                </p>
               </div>
             </div>
 
             {!isEditing && (
               <div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <ProfileRow label="First Name" value={formatValue(profile.firstName)} />
-                  <ProfileRow label="Last Name" value={formatValue(profile.lastName)} />
-                  <ProfileRow label="Birth Date" value={formatBirth(profile.birth)} />
-                  <ProfileRow label="Gender" value={formatGender(profile.gender)} />
-                  <ProfileRow label="Country" value={getCountryLabelByCode(profile.countryCode)} />
-                  <ProfileRow label="City" value={formatValue(profile.city)} />
+                  <ProfileRow
+                    label={t('home.profile.firstName')}
+                    value={formatValue(profile.firstName)}
+                  />
+                  <ProfileRow
+                    label={t('home.profile.lastName')}
+                    value={formatValue(profile.lastName)}
+                  />
+                  <ProfileRow
+                    label={t('home.profile.birthDate')}
+                    value={formatBirth(profile.birth, i18n.resolvedLanguage ?? 'en')}
+                  />
+                  <ProfileRow
+                    label={t('home.profile.gender')}
+                    value={formatGender(profile.gender)}
+                  />
+                  <ProfileRow
+                    label={t('home.profile.country')}
+                    value={getCountryLabelByCode(
+                      profile.countryCode,
+                      i18n.resolvedLanguage ?? i18n.language ?? 'en',
+                    )}
+                  />
+                  <ProfileRow label={t('home.profile.city')} value={formatValue(profile.city)} />
                 </div>
 
                 <div className="mt-5 flex justify-center">
-                  <Button className="h-10 min-w-32 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white hover:bg-[color:var(--cl-primary-deep)] cursor-pointer" onClick={handleStartEditing} type="button">
-                    Edit profile
+                  <Button
+                    className="h-10 min-w-32 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white hover:bg-[color:var(--cl-primary-deep)] cursor-pointer"
+                    onClick={handleStartEditing}
+                    type="button"
+                  >
+                    {t('common.actions.editProfile')}
                   </Button>
                 </div>
               </div>
@@ -237,25 +286,25 @@ export default function ProfilePage() {
                   <AuthFormField
                     icon={<UserRound className="size-3" />}
                     id="firstName"
-                    label="First Name"
+                    label={t('home.profile.firstName')}
                     onChange={(value) => setField('firstName', value)}
-                    placeholder="Your first name"
+                    placeholder={t('home.profile.firstNamePlaceholder')}
                     value={form.firstName}
                   />
 
                   <AuthFormField
                     icon={<UserRound className="size-3" />}
                     id="lastName"
-                    label="Last Name"
+                    label={t('home.profile.lastName')}
                     onChange={(value) => setField('lastName', value)}
-                    placeholder="Your last name"
+                    placeholder={t('home.profile.lastNamePlaceholder')}
                     value={form.lastName}
                   />
 
                   <AuthFormField
                     icon={<CalendarDays className="size-3" />}
                     id="birth"
-                    label="Birth Date"
+                    label={t('home.profile.birthDate')}
                     onChange={(value) => setField('birth', value)}
                     type="date"
                     value={form.birth}
@@ -264,44 +313,53 @@ export default function ProfilePage() {
                   <AuthSelectField
                     icon={<UserRound className="size-3" />}
                     id="gender"
-                    label="Gender"
+                    label={t('home.profile.gender')}
                     onChange={(value) => setField('gender', value)}
-                    options={GENDER_OPTIONS}
+                    options={genderOptions}
                     value={form.gender}
                   />
 
                   <AuthCombobox
                     icon={<Flag className="size-3" />}
                     id="countryCode"
-                    label="Country"
+                    label={t('home.profile.country')}
                     onChange={(value) => setField('countryCode', value)}
-                    options={COUNTRY_OPTIONS}
-                    placeholder="Search country"
+                    options={countryOptions}
+                    placeholder={t('home.profile.searchCountry')}
                     value={form.countryCode}
                   />
 
                   <AuthFormField
                     icon={<MapPin className="size-3" />}
                     id="city"
-                    label="City"
+                    label={t('home.profile.city')}
                     onChange={(value) => setField('city', value)}
-                    placeholder="Your city"
+                    placeholder={t('home.profile.cityPlaceholder')}
                     value={form.city}
                   />
                 </div>
 
                 <div className="mt-5 flex flex-wrap justify-center gap-3">
-                  <Button className="h-10 min-w-32 rounded-md border border-[color:var(--cl-line)] bg-white text-sm font-semibold text-[color:var(--cl-neutral)] transition-colors hover:bg-[color:var(--cl-primary-soft)] cursor-pointer" onClick={handleCancelEditing} type="button">
-                    Cancel
+                  <Button
+                    className="h-10 min-w-32 rounded-md border border-[color:var(--cl-line)] bg-white text-sm font-semibold text-[color:var(--cl-neutral)] transition-colors hover:bg-[color:var(--cl-primary-soft)] cursor-pointer"
+                    onClick={handleCancelEditing}
+                    type="button"
+                  >
+                    {t('common.actions.cancel')}
                   </Button>
-                  <Button className="h-10 min-w-32 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white transition-colors hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer" disabled={!canSave} onClick={() => void handleSaveProfile()} type="button">
+                  <Button
+                    className="h-10 min-w-32 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white transition-colors hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer"
+                    disabled={!canSave}
+                    onClick={() => void handleSaveProfile()}
+                    type="button"
+                  >
                     {isSaving ? (
                       <span className="inline-flex items-center gap-2">
                         <Spinner aria-hidden className="size-4" />
-                        Saving...
+                        {t('common.actions.saving')}
                       </span>
                     ) : (
-                      'Save changes'
+                      t('common.actions.saveChanges')
                     )}
                   </Button>
                 </div>
@@ -311,5 +369,5 @@ export default function ProfilePage() {
         )}
       </div>
     </section>
-  )
+  );
 }

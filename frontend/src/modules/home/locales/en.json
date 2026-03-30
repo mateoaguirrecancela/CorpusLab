@@ -1,0 +1,29 @@
+{
+  "home": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "experiments": "Experiments",
+      "laboratories": "Laboratories",
+      "settings": "Settings"
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "greeting": "Hello"
+    },
+    "profile": {
+      "title": "My Profile",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "birthDate": "Birth Date",
+      "gender": "Gender",
+      "country": "Country",
+      "city": "City",
+      "firstNamePlaceholder": "Your first name",
+      "lastNamePlaceholder": "Your last name",
+      "cityPlaceholder": "Your city",
+      "searchCountry": "Search country",
+      "requiredNames": "Please complete first name and last name before saving.",
+      "updated": "Profile updated successfully."
+    }
+  }
+}

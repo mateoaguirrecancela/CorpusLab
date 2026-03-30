@@ -1,73 +1,78 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
-import { FeedbackMessage } from '@/components/ui/feedback-message'
-import { Spinner } from '@/components/ui/spinner'
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate, useSearchParams } from 'react-router';
+import { FeedbackMessage } from '@/components/ui/feedback-message';
+import { Spinner } from '@/components/ui/spinner';
 import {
   OAUTH_PROVIDER_LABEL,
   SESSION_AUTH_TOKEN_STORAGE_KEY,
   SESSION_USER_STORAGE_KEY,
-} from '@/modules/auth/constants/session'
-import { getProfile } from '@/modules/auth/services/authService'
+} from '@/modules/auth/constants/session';
+import { getProfile } from '@/modules/auth/services/authService';
 
-function mapOAuthError(errorCode: string | null): string {
+function mapOAuthError(
+  errorCode: string | null,
+  t: (key: string, options?: Record<string, string>) => string,
+): string {
   if (!errorCode) {
-    return 'OAuth sign-in could not be completed. Please try again.'
+    return t('auth.oauth.errors.default');
   }
 
   if (errorCode === 'missing_email') {
-    return 'Your OAuth provider did not return an email address. Please use another account.'
+    return t('auth.oauth.errors.missingEmail');
   }
 
   if (errorCode === 'authentication_failed') {
-    return 'OAuth authentication failed. Please try again.'
+    return t('auth.oauth.errors.authenticationFailed');
   }
 
   if (errorCode === 'invalid_principal') {
-    return 'Unexpected OAuth response. Please try again.'
+    return t('auth.oauth.errors.invalidPrincipal');
   }
 
-  return `OAuth sign-in failed (${errorCode}). Please try again.`
+  return t('auth.oauth.errors.withCode', { code: errorCode });
 }
 
 export default function OAuthRedirectPage() {
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const [errorMessage, setErrorMessage] = useState('')
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const token = searchParams.get('token')
-  const oauthError = searchParams.get('oauthError')
-  const provider = searchParams.get('provider')
+  const token = searchParams.get('token');
+  const oauthError = searchParams.get('oauthError');
+  const provider = searchParams.get('provider');
 
   const providerLabel = useMemo(() => {
     if (provider === 'google' || provider === 'github') {
-      return OAUTH_PROVIDER_LABEL[provider]
+      return OAUTH_PROVIDER_LABEL[provider];
     }
 
-    return 'OAuth'
-  }, [provider])
+    return t('auth.oauth.providerFallback');
+  }, [provider, t]);
 
   useEffect(() => {
     const completeOAuthLogin = async () => {
       if (oauthError) {
-        setErrorMessage(mapOAuthError(oauthError))
-        window.setTimeout(() => {
-          navigate('/auth/login', { replace: true })
-        }, 1600)
-        return
+        setErrorMessage(mapOAuthError(oauthError, t));
+        globalThis.setTimeout(() => {
+          navigate('/auth/login', { replace: true });
+        }, 1600);
+        return;
       }
 
       if (!token) {
-        setErrorMessage('OAuth sign-in returned without a token. Please try again.')
-        window.setTimeout(() => {
-          navigate('/auth/login', { replace: true })
-        }, 1600)
-        return
+        setErrorMessage(t('auth.oauth.errors.missingToken'));
+        globalThis.setTimeout(() => {
+          navigate('/auth/login', { replace: true });
+        }, 1600);
+        return;
       }
 
-      localStorage.setItem(SESSION_AUTH_TOKEN_STORAGE_KEY, token)
+      localStorage.setItem(SESSION_AUTH_TOKEN_STORAGE_KEY, token);
 
       try {
-        const profile = await getProfile()
+        const profile = await getProfile();
         localStorage.setItem(
           SESSION_USER_STORAGE_KEY,
           JSON.stringify({
@@ -75,34 +80,36 @@ export default function OAuthRedirectPage() {
             lastName: profile.lastName,
             email: profile.email,
           }),
-        )
+        );
       } catch {
-        localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY)
-        setErrorMessage('OAuth sign-in completed, but we could not load your profile. Please try again.')
-        window.setTimeout(() => {
-          navigate('/auth/login', { replace: true })
-        }, 1600)
-        return
+        localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY);
+        setErrorMessage(t('auth.oauth.errors.profileLoad'));
+        globalThis.setTimeout(() => {
+          navigate('/auth/login', { replace: true });
+        }, 1600);
+        return;
       }
 
-      navigate('/home', { replace: true })
-    }
+      navigate('/home', { replace: true });
+    };
 
-    void completeOAuthLogin()
-  }, [navigate, oauthError, token])
+    void completeOAuthLogin();
+  }, [navigate, oauthError, t, token]);
 
   return (
     <section className="signup-card w-full max-w-md rounded-xl border border-[color:var(--cl-line)] bg-white/80 p-6 text-center shadow-[0_20px_60px_-45px_rgba(15,23,42,0.75)] backdrop-blur sm:p-8">
-      <h1 className="reveal text-3xl font-extrabold tracking-tight text-[color:var(--cl-primary)]">{providerLabel} Sign In</h1>
+      <h1 className="reveal text-3xl font-extrabold tracking-tight text-[color:var(--cl-primary)]">
+        {t('auth.oauth.title', { provider: providerLabel })}
+      </h1>
 
       {errorMessage.length > 0 ? (
         <FeedbackMessage className="mt-4" message={errorMessage} variant="error" />
       ) : (
         <p className="mt-4 inline-flex items-center gap-2 text-sm text-[color:var(--cl-secondary)]">
           <Spinner aria-hidden className="size-4" />
-          Completing authentication...
+          {t('auth.oauth.completing')}
         </p>
       )}
     </section>
-  )
+  );
 }

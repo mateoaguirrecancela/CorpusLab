@@ -1,17 +1,24 @@
-import { type ReactNode } from 'react'
-import { ChevronDown } from 'lucide-react'
-import { type CountryOption } from '@/modules/auth/types/signup'
+import { type ReactNode } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { type CountryOption } from '@/modules/auth/types/signup';
 
 type AuthSelectFieldProps = {
-  id: string
-  label: string
-  value: string
-  onChange: (value: string) => void
-  options: CountryOption[]
-  icon?: ReactNode
-}
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: CountryOption[];
+  icon?: ReactNode;
+};
 
-export function AuthSelectField({ id, label, value, onChange, options, icon }: AuthSelectFieldProps) {
+export function AuthSelectField({
+  id,
+  label,
+  value,
+  onChange,
+  options,
+  icon,
+}: AuthSelectFieldProps) {
   return (
     <label className="stagger block">
       <span className="mb-1.5 inline-flex items-center gap-1.5 text-[0.64rem] font-bold tracking-[0.12em] text-[color:var(--cl-secondary)] uppercase">
@@ -35,5 +42,5 @@ export function AuthSelectField({ id, label, value, onChange, options, icon }: A
         <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-[color:var(--cl-tertiary)]" />
       </div>
     </label>
-  )
+  );
 }
