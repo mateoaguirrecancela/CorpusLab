@@ -1,43 +1,43 @@
-import { type ReactNode } from 'react'
-import { Navigate } from 'react-router'
-import { SESSION_USER_STORAGE_KEY } from '@/modules/auth/constants/session'
+import { type ReactNode } from 'react';
+import { Navigate } from 'react-router';
+import { SESSION_USER_STORAGE_KEY } from '@/modules/auth/constants/session';
 
 function hasSession(): boolean {
   try {
-    const rawValue = localStorage.getItem(SESSION_USER_STORAGE_KEY)
+    const rawValue = localStorage.getItem(SESSION_USER_STORAGE_KEY);
 
     if (!rawValue) {
-      return false
+      return false;
     }
 
     const parsedValue = JSON.parse(rawValue) as {
-      email?: string
-      firstName?: string
-      lastName?: string
-    }
+      email?: string;
+      firstName?: string;
+      lastName?: string;
+    };
 
-    return Boolean(parsedValue.email || parsedValue.firstName || parsedValue.lastName)
+    return Boolean(parsedValue.email || parsedValue.firstName || parsedValue.lastName);
   } catch {
-    return false
+    return false;
   }
 }
 
 type GuardProps = {
-  children: ReactNode
-}
+  children: ReactNode;
+};
 
 export function RequireSession({ children }: GuardProps) {
   if (!hasSession()) {
-    return <Navigate replace to="/auth/login" />
+    return <Navigate replace to="/auth/login" />;
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }
 
 export function PublicOnly({ children }: GuardProps) {
   if (hasSession()) {
-    return <Navigate replace to="/home" />
+    return <Navigate replace to="/home" />;
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }

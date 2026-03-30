@@ -2,6 +2,8 @@ package es.udc.fic.corpuslab.modules.auth.controllers;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,9 +32,11 @@ import es.udc.fic.corpuslab.modules.auth.services.AuthService;
 public class AuthController {
 
     private final AuthService authService;
+    private final MessageSource messageSource;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, MessageSource messageSource) {
         this.authService = authService;
+        this.messageSource = messageSource;
     }
 
     @PostMapping("/signup")
@@ -54,8 +58,7 @@ public class AuthController {
     @PutMapping("/profile")
     public UserProfileResponseDto updateProfile(
             Authentication authentication,
-            @Valid @RequestBody UserUpdateProfileRequestDto request
-    ) {
+            @Valid @RequestBody UserUpdateProfileRequestDto request) {
         return authService.updateProfile(authentication.getName(), request);
     }
 
@@ -67,12 +70,20 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ForgotPasswordResponseDto forgotPassword(@Valid @RequestBody ForgotPasswordRequestDto request) {
         authService.requestPasswordReset(request.email());
-        return new ForgotPasswordResponseDto("If the account exists, a reset link has been sent");
+        String message = messageSource.getMessage(
+                "auth.info.reset.link.sent",
+                null,
+                LocaleContextHolder.getLocale());
+        return new ForgotPasswordResponseDto(message);
     }
 
     @PostMapping("/reset-password")
     public ResetPasswordResponseDto resetPassword(@Valid @RequestBody ResetPasswordRequestDto request) {
         authService.resetPassword(request.token(), request.newPassword());
-        return new ResetPasswordResponseDto("If the token is valid, password has been reset");
+        String message = messageSource.getMessage(
+                "auth.info.reset.password.done",
+                null,
+                LocaleContextHolder.getLocale());
+        return new ResetPasswordResponseDto(message);
     }
 }

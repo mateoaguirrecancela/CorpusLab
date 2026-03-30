@@ -1,6 +1,6 @@
-import { Outlet } from 'react-router'
-import { AppFooter } from '@/components/layout/AppFooter'
-import { AuthHeader } from '@/modules/auth/components/AuthHeader'
+import { Outlet } from 'react-router';
+import { AppFooter } from '@/components/layout/AppFooter';
+import { AuthHeader } from '@/modules/auth/components/AuthHeader';
 
 export default function AuthLayout() {
   return (
@@ -13,5 +13,5 @@ export default function AuthLayout() {
 
       <AppFooter />
     </div>
-  )
+  );
 }

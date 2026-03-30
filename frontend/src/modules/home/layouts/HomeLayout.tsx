@@ -1,11 +1,13 @@
-import { useState } from 'react'
-import { Outlet } from 'react-router'
-import { AppFooter } from '@/components/layout/AppFooter'
-import { AppSidebar } from '@/components/layout/AppSidebar'
-import { AppHeader } from '@/components/layout/AppHeader'
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Outlet } from 'react-router';
+import { AppFooter } from '@/components/layout/AppFooter';
+import { AppSidebar } from '@/components/layout/AppSidebar';
+import { AppHeader } from '@/components/layout/AppHeader';
 
 export default function HomeLayout() {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const { t } = useTranslation();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
     <div className="min-h-screen overflow-hidden bg-[#f3f5ff]">
@@ -20,7 +22,7 @@ export default function HomeLayout() {
 
           {!isSidebarCollapsed && (
             <button
-              aria-label="Close sidebar"
+              aria-label={t('common.aria.closeSidebar')}
               className="fixed inset-0 top-[72px] z-20 bg-slate-900/20 md:hidden"
               onClick={() => setIsSidebarCollapsed(true)}
               type="button"
@@ -37,5 +39,5 @@ export default function HomeLayout() {
         </div>
       </div>
     </div>
-  )
+  );
 }

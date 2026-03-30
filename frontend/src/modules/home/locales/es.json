@@ -1,0 +1,29 @@
+{
+  "home": {
+    "nav": {
+      "dashboard": "Panel",
+      "experiments": "Experimentos",
+      "laboratories": "Laboratorios",
+      "settings": "Configuración"
+    },
+    "dashboard": {
+      "title": "Panel",
+      "greeting": "Hola"
+    },
+    "profile": {
+      "title": "Mi perfil",
+      "firstName": "Nombre",
+      "lastName": "Apellidos",
+      "birthDate": "Fecha de nacimiento",
+      "gender": "Género",
+      "country": "País",
+      "city": "Ciudad",
+      "firstNamePlaceholder": "Tu nombre",
+      "lastNamePlaceholder": "Tus apellidos",
+      "cityPlaceholder": "Tu ciudad",
+      "searchCountry": "Buscar país",
+      "requiredNames": "Completa nombre y apellidos antes de guardar.",
+      "updated": "Perfil actualizado correctamente."
+    }
+  }
+}

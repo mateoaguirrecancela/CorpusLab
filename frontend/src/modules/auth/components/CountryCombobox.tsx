@@ -1,5 +1,5 @@
-import { type ReactNode, useMemo, useState } from 'react'
-import { ChevronsUpDown } from 'lucide-react'
+import { type ReactNode, useMemo, useState } from 'react';
+import { ChevronsUpDown } from 'lucide-react';
 import {
   Command,
   CommandEmpty,
@@ -7,19 +7,19 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/components/ui/command'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { type CountryOption } from '@/modules/auth/types/signup'
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { type CountryOption } from '@/modules/auth/types/signup';
 
 type AuthComboboxProps = {
-  id: string
-  label: string
-  value: string
-  options: CountryOption[]
-  placeholder?: string
-  icon?: ReactNode
-  onChange: (value: string) => void
-}
+  id: string;
+  label: string;
+  value: string;
+  options: CountryOption[];
+  placeholder?: string;
+  icon?: ReactNode;
+  onChange: (value: string) => void;
+};
 
 export function AuthCombobox({
   id,
@@ -30,17 +30,17 @@ export function AuthCombobox({
   icon,
   onChange,
 }: AuthComboboxProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
 
   const selectedOption = useMemo(
     () => options.find((option) => option.value === value),
     [options, value],
-  )
+  );
 
   const selectOption = (option: CountryOption) => {
-    onChange(option.value)
-    setIsOpen(false)
-  }
+    onChange(option.value);
+    setIsOpen(false);
+  };
 
   return (
     <label className="stagger relative block">
@@ -94,5 +94,5 @@ export function AuthCombobox({
 
       <input name={id} type="hidden" value={value} />
     </label>
-  )
+  );
 }
