@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
+import { CreateResearchGroupDialog } from '@/modules/researchgroup/components/CreateResearchGroupDialog';
 import { ResearchGroupCard } from '@/modules/researchgroup/components/ResearchGroupCard';
 import {
   getMyResearchGroups,
@@ -35,6 +36,10 @@ export default function ResearchGroupsPage() {
     void loadGroups();
   }, [loadGroups]);
 
+  const handleGroupCreated = (newGroup: ResearchGroupSummary) => {
+    setGroups((current) => [newGroup, ...current]);
+  };
+
   return (
     <section className="px-6 py-6 sm:px-8 sm:py-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -51,13 +56,18 @@ export default function ResearchGroupsPage() {
             {t('researchGroup.invitations')}
           </Button>
 
-          <Button
-            className="h-10 px-4 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white transition-colors hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer"
-            type="button"
-          >
-            <Plus className="size-4" />
-            {t('researchGroup.newGroup')}
-          </Button>
+          <CreateResearchGroupDialog
+            onCreated={handleGroupCreated}
+            trigger={
+              <Button
+                className="h-10 px-4 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white transition-colors hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer"
+                type="button"
+              >
+                <Plus className="size-4" />
+                {t('researchGroup.newGroup')}
+              </Button>
+            }
+          />
         </div>
       </div>
 
@@ -96,3 +106,4 @@ export default function ResearchGroupsPage() {
     </section>
   );
 }
+

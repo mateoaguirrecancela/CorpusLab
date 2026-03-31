@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Flag, MapPin, UserRound } from 'lucide-react';
+import { CalendarDays, ChevronDown, Flag, Globe, MapPin, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { Spinner } from '@/components/ui/spinner';
+import { Input } from '@/components/ui/input';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { getCountryLabelByCode } from '@/lib/countries';
 import { getUserInitials } from '@/lib/user';
-import { AuthCombobox } from '@/modules/auth/components/CountryCombobox';
-import { AuthFormField } from '@/modules/auth/components/AuthFormField';
-import { AuthSelectField } from '@/modules/auth/components/AuthSelectField';
+import { CountryCombobox } from '@/modules/auth/components/CountryCombobox';
 import { getCountryOptions, getGenderOptions } from '@/modules/auth/constants/signup';
 import {
   getProfile,
@@ -283,60 +283,101 @@ export default function ProfilePage() {
             {isEditing && (
               <div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <AuthFormField
-                    icon={<UserRound className="size-3" />}
-                    id="firstName"
-                    label={t('home.profile.firstName')}
-                    onChange={(value) => setField('firstName', value)}
-                    placeholder={t('home.profile.firstNamePlaceholder')}
-                    value={form.firstName}
-                  />
+                  <Field>
+                    <FieldLabel htmlFor="firstName">
+                      <UserRound className="size-4" />
+                      {t('home.profile.firstName')}
+                    </FieldLabel>
+                    <Input
+                      autoComplete="off"
+                      id="firstName"
+                      className="bg-white"
+                      onChange={(e) => setField('firstName', e.currentTarget.value)}
+                      placeholder={t('home.profile.firstNamePlaceholder')}
+                      value={form.firstName}
+                    />
+                  </Field>
 
-                  <AuthFormField
-                    icon={<UserRound className="size-3" />}
-                    id="lastName"
-                    label={t('home.profile.lastName')}
-                    onChange={(value) => setField('lastName', value)}
-                    placeholder={t('home.profile.lastNamePlaceholder')}
-                    value={form.lastName}
-                  />
+                  <Field>
+                    <FieldLabel htmlFor="lastName">
+                      <UserRound className="size-4" />
+                      {t('home.profile.lastName')}
+                    </FieldLabel>
+                    <Input
+                      autoComplete="off"
+                      id="lastName"
+                      className="bg-white"
+                      onChange={(e) => setField('lastName', e.currentTarget.value)}
+                      placeholder={t('home.profile.lastNamePlaceholder')}
+                      value={form.lastName}
+                    />
+                  </Field>
 
-                  <AuthFormField
-                    icon={<CalendarDays className="size-3" />}
-                    id="birth"
-                    label={t('home.profile.birthDate')}
-                    onChange={(value) => setField('birth', value)}
-                    type="date"
-                    value={form.birth}
-                  />
+                  <Field>
+                    <FieldLabel htmlFor="birth">
+                      <CalendarDays className="size-4" />
+                      {t('home.profile.birthDate')}
+                    </FieldLabel>
+                    <Input
+                      autoComplete="off"
+                      id="birth"
+                      className="bg-white"
+                      onChange={(e) => setField('birth', e.currentTarget.value)}
+                      type="date"
+                      value={form.birth}
+                    />
+                  </Field>
 
-                  <AuthSelectField
-                    icon={<UserRound className="size-3" />}
-                    id="gender"
-                    label={t('home.profile.gender')}
-                    onChange={(value) => setField('gender', value)}
-                    options={genderOptions}
-                    value={form.gender}
-                  />
+                  <Field>
+                    <FieldLabel htmlFor="gender">
+                      <UserRound className="size-4" />
+                      {t('home.profile.gender')}
+                    </FieldLabel>
+                    <div className="relative">
+                      <select
+                        className="h-10 w-full appearance-none rounded-md border border-input bg-white px-3 pr-10 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+                        id="gender"
+                        onChange={(e) => setField('gender', e.currentTarget.value)}
+                        value={form.gender}
+                      >
+                        {genderOptions.map((option) => (
+                          <option key={option.label} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-[color:var(--cl-tertiary)]" />
+                    </div>
+                  </Field>
 
-                  <AuthCombobox
-                    icon={<Flag className="size-3" />}
-                    id="countryCode"
-                    label={t('home.profile.country')}
-                    onChange={(value) => setField('countryCode', value)}
-                    options={countryOptions}
-                    placeholder={t('home.profile.searchCountry')}
-                    value={form.countryCode}
-                  />
+                  <Field>
+                    <FieldLabel htmlFor="countryCode">
+                      <Globe className="size-4" />
+                      {t('home.profile.country')}
+                    </FieldLabel>
+                    <CountryCombobox
+                      id="countryCode"
+                      options={countryOptions}
+                      placeholder={t('home.profile.searchCountry')}
+                      value={form.countryCode}
+                      onChange={(value) => setField('countryCode', value)}
+                    />
+                  </Field>
 
-                  <AuthFormField
-                    icon={<MapPin className="size-3" />}
-                    id="city"
-                    label={t('home.profile.city')}
-                    onChange={(value) => setField('city', value)}
-                    placeholder={t('home.profile.cityPlaceholder')}
-                    value={form.city}
-                  />
+                  <Field>
+                    <FieldLabel htmlFor="city">
+                      <MapPin className="size-4" />
+                      {t('home.profile.city')}
+                    </FieldLabel>
+                    <Input
+                      autoComplete="off"
+                      id="city"
+                      className="bg-white"
+                      onChange={(e) => setField('city', e.currentTarget.value)}
+                      placeholder={t('home.profile.cityPlaceholder')}
+                      value={form.city}
+                    />
+                  </Field>
                 </div>
 
                 <div className="mt-5 flex flex-wrap justify-center gap-3">

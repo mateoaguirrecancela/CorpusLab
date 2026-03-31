@@ -15,7 +15,7 @@ export default function SignUpPage() {
   } = useSignUpForm();
 
   return (
-    <section className="signup-card w-full max-w-xl rounded-xl border border-[color:var(--cl-line)] bg-white/80 p-6 shadow-[0_20px_60px_-45px_rgba(15,23,42,0.75)] backdrop-blur">
+    <section className="signup-card w-full max-w-lg rounded-xl border border-[color:var(--cl-line)] bg-white/80 p-6 shadow-[0_20px_60px_-45px_rgba(15,23,42,0.75)] backdrop-blur">
       <h1 className="reveal text-center text-4xl font-extrabold tracking-tight text-[color:var(--cl-primary)]">
         {t('auth.signup.title')}
       </h1>

@@ -8,13 +8,22 @@
     "invitations": "Invitations",
     "newGroup": "New Research Group",
     "errors": {
-      "loadFailed": "Could not load research groups. Please try again later."
+      "loadFailed": "Could not load research groups. Please try again later.",
+      "createFailed": "Could not create the research group. Please try again."
     },
     "loading": "Loading research groups...",
     "roles": {
       "OWNER": "Owner",
       "ADMIN": "Admin",
       "ANNOTATOR": "Annotator"
+    },
+    "create": {
+      "title": "New Research Group",
+      "nameLabel": "Name",
+      "namePlaceholder": "Name of the Research Group",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Briefly describe the group's purpose...",
+      "submit": "Create Research Group"
     }
   }
 }

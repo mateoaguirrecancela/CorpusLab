@@ -8,13 +8,22 @@
     "invitations": "Invitacións",
     "newGroup": "Novo Grupo de Investigación",
     "errors": {
-      "loadFailed": "Non se puideron cargar os grupos de investigación. Téntao máis tarde."
+      "loadFailed": "Non se puideron cargar os grupos de investigación. Téntao máis tarde.",
+      "createFailed": "Non se puido crear o grupo de investigación. Téntao de novo."
     },
     "loading": "Cargando grupos de investigación...",
     "roles": {
       "OWNER": "Propietario",
       "ADMIN": "Administrador",
       "ANNOTATOR": "Anotador"
+    },
+    "create": {
+      "title": "Novo Grupo de Investigación",
+      "nameLabel": "Nome",
+      "namePlaceholder": "Nome do Grupo de Investigación",
+      "descriptionLabel": "Descrición",
+      "descriptionPlaceholder": "Describe brevemente o propósito do grupo...",
+      "submit": "Crear Grupo de Investigación"
     }
   }
 }
