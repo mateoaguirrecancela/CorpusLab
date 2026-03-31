@@ -9,7 +9,9 @@
     "newGroup": "Nuevo Grupo de Investigación",
     "errors": {
       "loadFailed": "No se pudieron cargar los grupos de investigación. Inténtalo más tarde.",
-      "createFailed": "No se pudo crear el grupo de investigación. Inténtalo de nuevo."
+      "createFailed": "No se pudo crear el grupo de investigación. Inténtalo de nuevo.",
+      "detailLoadFailed": "No se pudo cargar el detalle del grupo de investigación.",
+      "invalidGroupId": "El identificador del grupo no es válido."
     },
     "loading": "Cargando grupos de investigación...",
     "roles": {
@@ -24,6 +26,24 @@
       "descriptionLabel": "Descripción",
       "descriptionPlaceholder": "Describe brevemente el propósito del grupo...",
       "submit": "Crear Grupo de Investigación"
+    },
+    "detail": {
+      "backToGroups": "Volver a grupos",
+      "loading": "Cargando detalle del grupo...",
+      "totalMembers": "Total Miembros",
+      "activeProjects": "Proyectos Activos",
+      "experiments": "Experimentos",
+      "newExperiment": "Nuevo Experimento",
+      "experimentsDeferred": "La gestión de experimentos se implementará en una fase posterior.",
+      "researchers": "Investigadores",
+      "inviteMember": "Invitar Miembro",
+      "memberActions": "Acciones del investigador",
+      "columns": {
+        "name": "Nombre",
+        "role": "Rol",
+        "projects": "Proyectos",
+        "action": "Acción"
+      }
     }
   }
 }

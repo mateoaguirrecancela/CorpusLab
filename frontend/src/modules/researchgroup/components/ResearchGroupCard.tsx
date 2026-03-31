@@ -1,6 +1,10 @@
 import { ArrowRight, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { type ResearchGroupSummary, type ResearchGroupMemberRole } from '@/modules/researchgroup/types/researchGroup';
+import { useNavigate } from 'react-router';
+import {
+  type ResearchGroupSummary,
+  type ResearchGroupMemberRole,
+} from '@/modules/researchgroup/types/researchGroup';
 
 const ROLE_BADGE_STYLES: Record<ResearchGroupMemberRole, string> = {
   OWNER: 'bg-[color:var(--cl-primary)] text-white',
@@ -14,18 +18,16 @@ type ResearchGroupCardProps = {
 
 export function ResearchGroupCard({ group }: Readonly<ResearchGroupCardProps>) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   return (
     <div className="stagger flex flex-col justify-between rounded-2xl border border-[color:var(--cl-line)] bg-white p-5 transition-shadow hover:shadow-md">
       <div>
         <div className="flex items-start justify-between gap-2">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-[color:var(--cl-primary-soft)] text-[color:var(--cl-primary)]">
-            <Users className="size-5" />
-          </div>
-
+          <h3 className="text-base font-bold text-[color:var(--cl-primary)]">{group.name}</h3>
           <span
             className={[
-              'rounded-md px-2.5 py-1 text-[0.65rem] font-bold tracking-wider uppercase',
+              'rounded-md px-2.5 py-1 text-xs font-bold tracking-wider uppercase',
               ROLE_BADGE_STYLES[group.role],
             ].join(' ')}
           >
@@ -33,12 +35,8 @@ export function ResearchGroupCard({ group }: Readonly<ResearchGroupCardProps>) {
           </span>
         </div>
 
-        <h3 className="mt-4 text-base font-bold text-[color:var(--cl-primary)]">
-          {group.name}
-        </h3>
-
         {group.description && (
-          <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-[color:var(--cl-secondary)]">
+          <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-[color:var(--cl-secondary)]">
             {group.description}
           </p>
         )}
@@ -52,6 +50,7 @@ export function ResearchGroupCard({ group }: Readonly<ResearchGroupCardProps>) {
 
         <button
           className="group inline-flex cursor-pointer items-center gap-1 text-sm font-semibold text-[color:var(--cl-primary)] transition-colors hover:text-[color:var(--cl-primary-deep)]"
+          onClick={() => navigate(`/home/research-groups/${group.id}`)}
           type="button"
         >
           {t('researchGroup.enter')}

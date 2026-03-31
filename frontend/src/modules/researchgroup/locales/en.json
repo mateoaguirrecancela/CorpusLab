@@ -9,7 +9,9 @@
     "newGroup": "New Research Group",
     "errors": {
       "loadFailed": "Could not load research groups. Please try again later.",
-      "createFailed": "Could not create the research group. Please try again."
+      "createFailed": "Could not create the research group. Please try again.",
+      "detailLoadFailed": "Could not load research group details.",
+      "invalidGroupId": "The research group identifier is not valid."
     },
     "loading": "Loading research groups...",
     "roles": {
@@ -24,6 +26,24 @@
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "Briefly describe the group's purpose...",
       "submit": "Create Research Group"
+    },
+    "detail": {
+      "backToGroups": "Back to groups",
+      "loading": "Loading group details...",
+      "totalMembers": "Total Members",
+      "activeProjects": "Active Projects",
+      "experiments": "Experiments",
+      "newExperiment": "New Experiment",
+      "experimentsDeferred": "Experiment management will be implemented in a future phase.",
+      "researchers": "Researchers",
+      "inviteMember": "Invite Member",
+      "memberActions": "Researcher actions",
+      "columns": {
+        "name": "Name",
+        "role": "Role",
+        "projects": "Projects",
+        "action": "Action"
+      }
     }
   }
 }
