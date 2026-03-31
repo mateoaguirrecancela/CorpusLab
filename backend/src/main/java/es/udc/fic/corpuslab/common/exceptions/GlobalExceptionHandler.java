@@ -14,6 +14,7 @@ import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.InvalidCredentialsException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetEmailDeliveryException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetTokenNotFoundException;
+import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupNotFoundException;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -31,90 +32,96 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(EmailAlreadyRegisteredException.class)
     public ResponseEntity<ApiErrorResponse> handleEmailAlreadyRegistered(EmailAlreadyRegisteredException ex) {
         String translatedMessage = messageSource.getMessage(
-            "auth.error.email.exists",
-            new Object[]{ex.getEmail()},
-                LocaleContextHolder.getLocale()
-        );
+                "auth.error.email.exists",
+                new Object[] { ex.getEmail() },
+                LocaleContextHolder.getLocale());
 
         ApiErrorResponse response = new ApiErrorResponse(
                 Instant.now(),
                 HttpStatus.CONFLICT.value(),
                 HttpStatus.CONFLICT.getReasonPhrase(),
                 translatedMessage,
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ApiErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex) {
         String translatedMessage = messageSource.getMessage(
-            "auth.error.invalid.credentials",
-            null,
-            LocaleContextHolder.getLocale()
-        );
+                "auth.error.invalid.credentials",
+                null,
+                LocaleContextHolder.getLocale());
 
         ApiErrorResponse response = new ApiErrorResponse(
                 Instant.now(),
                 HttpStatus.UNAUTHORIZED.value(),
                 HttpStatus.UNAUTHORIZED.getReasonPhrase(),
-            translatedMessage,
-                null
-        );
+                translatedMessage,
+                null);
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
     @ExceptionHandler(PasswordResetEmailDeliveryException.class)
     public ResponseEntity<ApiErrorResponse> handlePasswordResetEmailDelivery(PasswordResetEmailDeliveryException ex) {
         String translatedMessage = messageSource.getMessage(
-            "auth.error.reset.email.delivery",
-            null,
-            LocaleContextHolder.getLocale()
-        );
+                "auth.error.reset.email.delivery",
+                null,
+                LocaleContextHolder.getLocale());
 
         ApiErrorResponse response = new ApiErrorResponse(
                 Instant.now(),
                 HttpStatus.SERVICE_UNAVAILABLE.value(),
                 HttpStatus.SERVICE_UNAVAILABLE.getReasonPhrase(),
-            translatedMessage,
-                null
-        );
+                translatedMessage,
+                null);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
     }
 
     @ExceptionHandler(EmailNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleEmailNotFound(EmailNotFoundException ex) {
         String translatedMessage = messageSource.getMessage(
-            "auth.error.email.notfound",
-            new Object[]{ex.getEmail()},
-            LocaleContextHolder.getLocale()
-        );
+                "auth.error.email.notfound",
+                new Object[] { ex.getEmail() },
+                LocaleContextHolder.getLocale());
 
         ApiErrorResponse response = new ApiErrorResponse(
                 Instant.now(),
                 HttpStatus.NOT_FOUND.value(),
                 HttpStatus.NOT_FOUND.getReasonPhrase(),
-            translatedMessage,
-                null
-        );
+                translatedMessage,
+                null);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
     @ExceptionHandler(PasswordResetTokenNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handlePasswordResetTokenNotFound(PasswordResetTokenNotFoundException ex) {
         String translatedMessage = messageSource.getMessage(
-            "auth.error.reset.token.notfound",
-            null,
-            LocaleContextHolder.getLocale()
-        );
+                "auth.error.reset.token.notfound",
+                null,
+                LocaleContextHolder.getLocale());
 
         ApiErrorResponse response = new ApiErrorResponse(
                 Instant.now(),
                 HttpStatus.NOT_FOUND.value(),
                 HttpStatus.NOT_FOUND.getReasonPhrase(),
-            translatedMessage,
-                null
-        );
+                translatedMessage,
+                null);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(ResearchGroupNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleResearchGroupNotFound(ResearchGroupNotFoundException ex) {
+        String translatedMessage = messageSource.getMessage(
+                "researchgroup.error.notfound",
+                new Object[] { ex.getId() },
+                LocaleContextHolder.getLocale());
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                Instant.now(),
+                HttpStatus.NOT_FOUND.value(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                translatedMessage,
+                null);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
@@ -129,9 +136,8 @@ public class GlobalExceptionHandler {
                 Instant.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
-            messageSource.getMessage("common.error.validation", null, LocaleContextHolder.getLocale()),
-                details
-        );
+                messageSource.getMessage("common.error.validation", null, LocaleContextHolder.getLocale()),
+                details);
         return ResponseEntity.badRequest().body(response);
     }
 }
