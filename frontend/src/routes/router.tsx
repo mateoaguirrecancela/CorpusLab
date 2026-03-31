@@ -9,6 +9,7 @@ import SignUpPage from '@/modules/auth/pages/SignUpPage';
 import HomeLayout from '@/modules/home/layouts/HomeLayout';
 import HomePage from '@/modules/home/pages/HomePage';
 import ProfilePage from '@/modules/home/pages/ProfilePage';
+import ResearchGroupsPage from '@/modules/researchgroup/pages/ResearchGroupsPage';
 import { PublicOnly, RequireSession } from '@/routes/guards';
 
 export const router = createBrowserRouter([
@@ -63,6 +64,10 @@ export const router = createBrowserRouter([
             element: <HomePage />,
           },
           {
+            path: 'research-groups',
+            element: <ResearchGroupsPage />,
+          },
+          {
             path: 'experiments',
             element: <HomePage />,
           },
@@ -79,3 +84,4 @@ export const router = createBrowserRouter([
     ],
   },
 ]);
+
