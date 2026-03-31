@@ -2,6 +2,7 @@
   "home": {
     "nav": {
       "dashboard": "Dashboard",
+      "researchGroups": "Research Groups",
       "experiments": "Experiments",
       "laboratories": "Laboratories",
       "settings": "Settings"

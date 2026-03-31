@@ -1,0 +1,20 @@
+{
+  "researchGroup": {
+    "title": "Research Groups",
+    "noGroups": "You don't belong to any research group yet.",
+    "memberCount_one": "{{count}} Member",
+    "memberCount_other": "{{count}} Members",
+    "enter": "Enter",
+    "invitations": "Invitations",
+    "newGroup": "New Research Group",
+    "errors": {
+      "loadFailed": "Could not load research groups. Please try again later."
+    },
+    "loading": "Loading research groups...",
+    "roles": {
+      "OWNER": "Owner",
+      "ADMIN": "Admin",
+      "ANNOTATOR": "Annotator"
+    }
+  }
+}

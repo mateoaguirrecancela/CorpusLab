@@ -1,0 +1,20 @@
+{
+  "researchGroup": {
+    "title": "Grupos de Investigación",
+    "noGroups": "Aínda non pertences a ningún grupo de investigación.",
+    "memberCount_one": "{{count}} Membro",
+    "memberCount_other": "{{count}} Membros",
+    "enter": "Entrar",
+    "invitations": "Invitacións",
+    "newGroup": "Novo Grupo de Investigación",
+    "errors": {
+      "loadFailed": "Non se puideron cargar os grupos de investigación. Téntao máis tarde."
+    },
+    "loading": "Cargando grupos de investigación...",
+    "roles": {
+      "OWNER": "Propietario",
+      "ADMIN": "Administrador",
+      "ANNOTATOR": "Anotador"
+    }
+  }
+}
