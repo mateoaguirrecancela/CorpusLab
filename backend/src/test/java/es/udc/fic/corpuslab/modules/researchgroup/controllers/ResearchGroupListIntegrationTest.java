@@ -221,4 +221,59 @@ class ResearchGroupListIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/research-groups"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    void shouldNotCountSoftDeletedMembersInMemberCount() throws Exception {
+        User owner = UserTestBuilder.validUser()
+                .withEmail("owner.count@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        owner = userRepository.save(owner);
+
+        User activeAnnotator = UserTestBuilder.validUser()
+                .withEmail("active.annotator@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        activeAnnotator = userRepository.save(activeAnnotator);
+
+        User removedAnnotator = UserTestBuilder.validUser()
+                .withEmail("removed.annotator@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        removedAnnotator = userRepository.save(removedAnnotator);
+
+        ResearchGroup group = ResearchGroupTestBuilder.validGroup()
+                .withName("Count Test Group")
+                .build();
+        group = researchGroupRepository.save(group);
+
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(owner)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.OWNER)
+                .build());
+
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(activeAnnotator)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.ANNOTATOR)
+                .build());
+
+        ResearchGroupMember removed = ResearchGroupMemberTestBuilder.validMember()
+                .withUser(removedAnnotator)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.ANNOTATOR)
+                .build();
+        removed = memberRepository.save(removed);
+        removed.setDeletedAt(Instant.now());
+        memberRepository.save(removed);
+
+        MockHttpSession session = loginAs("owner.count@example.com");
+
+        mockMvc.perform(get("/api/research-groups").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].name").value("Count Test Group"))
+                .andExpect(jsonPath("$[0].memberCount").value(2));
+    }
 }
