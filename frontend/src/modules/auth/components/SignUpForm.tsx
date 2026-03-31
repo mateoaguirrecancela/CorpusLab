@@ -1,14 +1,14 @@
-import { type FormEvent, useMemo } from 'react';
-import { CalendarDays, Github, Globe, Lock, Mail, MapPin, User } from 'lucide-react';
+import { type FormEvent, useMemo, useState } from 'react';
+import { CalendarDays, ChevronDown, Eye, EyeOff, Github, Globe, Lock, Mail, MapPin, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { FeedbackMessage } from '@/components/ui/feedback-message';
+import { Input } from '@/components/ui/input';
 import { SubmitButtonWithSpinner } from '@/components/ui/submit-button-with-spinner';
 import { getCountryOptions, getGenderOptions } from '@/modules/auth/constants/signup';
-import { AuthCombobox } from '@/modules/auth/components/CountryCombobox';
-import { AuthFormField } from '@/modules/auth/components/AuthFormField';
-import { AuthSelectField } from '@/modules/auth/components/AuthSelectField';
+import { CountryCombobox } from '@/modules/auth/components/CountryCombobox';
 import { type OAuthProvider } from '@/modules/auth/constants/session';
 import { type RegisterFormState } from '@/modules/auth/types/signup';
 
@@ -64,100 +64,157 @@ export function SignUpForm({
   const isEmailInvalid = trimmedEmail.length > 0 && !EMAIL_REGEX.test(trimmedEmail);
   const isUnderage = form.birth.length > 0 && !isAtLeast16YearsOld(form.birth);
   const genderOptions = getGenderOptions(t);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const countryOptions = useMemo(
     () => getCountryOptions(i18n.resolvedLanguage ?? i18n.language ?? 'en'),
     [i18n.language, i18n.resolvedLanguage],
   );
 
   return (
-    <form className="mt-8 space-y-4" onSubmit={onSubmit}>
+    <form className="mt-8 space-y-3" onSubmit={onSubmit}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <AuthFormField
-          icon={<User className="size-3.5" />}
-          id="firstName"
-          label={`${t('auth.signup.firstName')} *`}
-          placeholder="David"
-          value={form.firstName}
-          onChange={(value) => onFieldChange('firstName', value)}
-        />
-        <AuthFormField
-          icon={<User aria-hidden className="size-3.5" />}
-          id="lastName"
-          label={`${t('auth.signup.lastName')} *`}
-          placeholder="García Fernández"
-          value={form.lastName}
-          onChange={(value) => onFieldChange('lastName', value)}
-        />
+        <Field>
+          <FieldLabel htmlFor="firstName">
+            <User className="size-4" />
+            {`${t('auth.signup.firstName')} *`}
+          </FieldLabel>
+          <Input
+            id="firstName"
+            name="firstName"
+            onChange={(e) => onFieldChange('firstName', e.currentTarget.value)}
+            placeholder="David"
+            value={form.firstName}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="lastName">
+            <User aria-hidden className="size-4" />
+            {`${t('auth.signup.lastName')} *`}
+          </FieldLabel>
+          <Input
+            id="lastName"
+            name="lastName"
+            onChange={(e) => onFieldChange('lastName', e.currentTarget.value)}
+            placeholder="García Fernández"
+            value={form.lastName}
+          />
+        </Field>
       </div>
 
-      <AuthFormField
-        icon={<Mail className="size-3.5" />}
-        id="email"
-        label={`${t('auth.signup.email')} *`}
-        placeholder="example@email.com"
-        type="email"
-        value={form.email}
-        onChange={(value) => onFieldChange('email', value)}
-      />
+      <Field>
+        <FieldLabel htmlFor="email">
+          <Mail className="size-4" />
+          {`${t('auth.signup.email')} *`}
+        </FieldLabel>
+        <Input
+          id="email"
+          onChange={(e) => onFieldChange('email', e.currentTarget.value)}
+          placeholder="example@email.com"
+          type="email"
+          value={form.email}
+        />
+      </Field>
 
       {isEmailInvalid && (
         <p className="-mt-2 text-xs text-red-700">{t('auth.signup.invalidEmail')}</p>
       )}
 
-      <AuthFormField
-        icon={<Lock className="size-3.5" />}
-        id="password"
-        label={`${t('auth.signup.password')} *`}
-        placeholder="********"
-        minLength={8}
-        type="password"
-        value={form.password}
-        onChange={(value) => onFieldChange('password', value)}
-      />
+      <Field>
+        <FieldLabel htmlFor="password">
+          <Lock className="size-4" />
+          {`${t('auth.signup.password')} *`}
+        </FieldLabel>
+        <div className="relative">
+          <Input
+            id="password"
+            minLength={8}
+            onChange={(e) => onFieldChange('password', e.currentTarget.value)}
+            placeholder="********"
+            type={isPasswordVisible ? 'text' : 'password'}
+            value={form.password}
+          />
+          <button
+            aria-label={
+              isPasswordVisible ? t('common.aria.hidePassword') : t('common.aria.showPassword')
+            }
+            className="absolute top-1/2 right-3 -translate-y-1/2 text-[color:var(--cl-tertiary)] transition hover:text-[color:var(--cl-primary)]"
+            onClick={() => setIsPasswordVisible((current) => !current)}
+            type="button"
+          >
+            {isPasswordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
+      </Field>
 
       {form.password.length > 0 && form.password.length < 8 && (
         <p className="-mt-2 text-xs text-red-700">{t('auth.signup.passwordLength')}</p>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <AuthFormField
-          icon={<CalendarDays className="size-3.5" />}
-          id="birth"
-          label={`${t('auth.signup.dateOfBirth')} *`}
-          type="date"
-          value={form.birth}
-          onChange={(value) => onFieldChange('birth', value)}
-        />
-        <AuthSelectField
-          icon={<User className="size-3.5" />}
-          id="gender"
-          label={`${t('auth.signup.gender')} *`}
-          options={genderOptions}
-          value={form.gender}
-          onChange={(value) => onFieldChange('gender', value as RegisterFormState['gender'])}
-        />
+        <Field>
+          <FieldLabel htmlFor="birth">
+            <CalendarDays className="size-4" />
+            {`${t('auth.signup.dateOfBirth')} *`}
+          </FieldLabel>
+          <Input
+            id="birth"
+            onChange={(e) => onFieldChange('birth', e.currentTarget.value)}
+            type="date"
+            value={form.birth}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="gender">
+            <User className="size-4" />
+            {`${t('auth.signup.gender')} *`}
+          </FieldLabel>
+          <div className="relative">
+            <select
+              id="gender"
+              className="h-10 w-full appearance-none rounded-md border border-input bg-white px-3 pr-10 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+              onChange={(e) => onFieldChange('gender', e.currentTarget.value as RegisterFormState['gender'])}
+              value={form.gender}
+            >
+              {genderOptions.map((option) => (
+                <option key={option.label} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-[color:var(--cl-tertiary)]" />
+          </div>
+        </Field>
       </div>
 
       {isUnderage && <p className="-mt-2 text-xs text-red-700">{t('auth.signup.underAge')}</p>}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <AuthCombobox
-          icon={<Globe className="size-3.5" />}
-          id="countryCode"
-          label={`${t('auth.signup.country')} *`}
-          options={countryOptions}
-          placeholder={t('auth.signup.searchCountry')}
-          value={form.countryCode}
-          onChange={(value) => onFieldChange('countryCode', value)}
-        />
-        <AuthFormField
-          icon={<MapPin className="size-3.5" />}
-          id="city"
-          label={`${t('auth.signup.city')} *`}
-          placeholder="Madrid"
-          value={form.city}
-          onChange={(value) => onFieldChange('city', value)}
-        />
+        <Field>
+          <FieldLabel htmlFor="countryCode">
+            <Globe className="size-4" />
+            {`${t('auth.signup.country')} *`}
+          </FieldLabel>
+          <CountryCombobox
+            id="countryCode"
+            options={countryOptions}
+            placeholder={t('auth.signup.searchCountry')}
+            value={form.countryCode}
+            onChange={(value) => onFieldChange('countryCode', value)}
+          />
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="city">
+            <MapPin className="size-4" />
+            {`${t('auth.signup.city')} *`}
+          </FieldLabel>
+          <Input
+            id="city"
+            onChange={(e) => onFieldChange('city', e.currentTarget.value)}
+            placeholder="Madrid"
+            value={form.city}
+          />
+        </Field>
       </div>
 
       <SubmitButtonWithSpinner
@@ -211,3 +268,4 @@ export function SignUpForm({
     </form>
   );
 }
+

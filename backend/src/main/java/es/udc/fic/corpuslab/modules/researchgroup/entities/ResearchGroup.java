@@ -18,10 +18,10 @@ public class ResearchGroup {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 256)
     private String name;
 
-    @Column
+    @Column(length = 2048)
     private String description;
 
     @Column(name = "created_at", nullable = false)
