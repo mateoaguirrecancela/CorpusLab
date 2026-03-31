@@ -193,4 +193,20 @@ class ResearchGroupCreateIntegrationTest extends AbstractIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    void shouldRejectDescriptionTooLong() throws Exception {
+        createUser("longdesc@example.com");
+        MockHttpSession session = loginAs("longdesc@example.com");
+
+        String tooLongDescription = "a".repeat(2049);
+        CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
+                "Group With Long Desc", tooLongDescription);
+
+        mockMvc.perform(post("/api/research-groups")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
 }
