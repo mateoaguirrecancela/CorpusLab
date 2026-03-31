@@ -13,7 +13,7 @@ export function AppSidebar({ isCollapsed }: AppSidebarProps) {
   return (
     <aside
       className={[
-        'z-30 flex shrink-0 flex-col bg-[#eef1fb]',
+        'z-30 flex shrink-0 flex-col bg-sidebar',
         'fixed top-[72px] bottom-0 left-0 md:relative md:top-auto md:bottom-auto md:left-auto',
         isCollapsed
           ? '-translate-x-full w-0 overflow-hidden border-r-0 pointer-events-none md:translate-x-0 md:w-[84px] md:border-r md:border-[color:var(--cl-line)] md:pointer-events-auto'
