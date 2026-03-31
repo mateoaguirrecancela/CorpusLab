@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.CreateResearchGroupRequestDto;
+import es.udc.fic.corpuslab.modules.researchgroup.dtos.CreateResearchGroupInvitationRequestDto;
+import es.udc.fic.corpuslab.modules.researchgroup.dtos.JoinResearchGroupByCodeRequestDto;
+import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupInvitationDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupDetailDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupSummaryDto;
 import es.udc.fic.corpuslab.modules.researchgroup.services.ResearchGroupService;
@@ -47,5 +50,31 @@ public class ResearchGroupController {
             Authentication authentication,
             @PathVariable Long id) {
         return researchGroupService.getResearchGroupDetail(authentication.getName(), id);
+    }
+
+    @PostMapping("/{id}/invitations")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResearchGroupInvitationDto inviteResearcher(
+            Authentication authentication,
+            @PathVariable Long id,
+            @Valid @RequestBody CreateResearchGroupInvitationRequestDto request) {
+        return researchGroupService.inviteResearcherByEmail(
+                authentication.getName(),
+                id,
+                request.email(),
+                request.role(),
+                request.expiresAt());
+    }
+
+    @GetMapping("/my-invitations")
+    public List<ResearchGroupInvitationDto> myInvitations(Authentication authentication) {
+        return researchGroupService.findMyPendingInvitations(authentication.getName());
+    }
+
+    @PostMapping("/join-by-code")
+    public ResearchGroupSummaryDto joinByCode(
+            Authentication authentication,
+            @Valid @RequestBody JoinResearchGroupByCodeRequestDto request) {
+        return researchGroupService.joinResearchGroupByCode(authentication.getName(), request.code());
     }
 }

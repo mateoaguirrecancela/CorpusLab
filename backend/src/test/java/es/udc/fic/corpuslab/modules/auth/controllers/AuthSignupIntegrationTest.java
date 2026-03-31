@@ -8,6 +8,7 @@ import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserRegisterRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
+import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupInvitationRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,8 +39,12 @@ class AuthSignupIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private ResearchGroupInvitationRepository invitationRepository;
+
     @BeforeEach
     void cleanData() {
+        invitationRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -63,28 +68,28 @@ class AuthSignupIntegrationTest extends AbstractIntegrationTest {
         assertThat(saved.getCountryCode()).isEqualTo("ES");
     }
 
-        @Test
-        void signupNormalizesInputFields() throws Exception {
+    @Test
+    void signupNormalizesInputFields() throws Exception {
         UserRegisterRequestDto request = UserRegisterRequestTestBuilder.validRequest()
-            .withEmail("NEW.USER@EXAMPLE.COM")
-            .withFirstName("  New  ")
-            .withLastName("  User  ")
-            .withCountryCode("es")
-            .withCity("  A Coruna  ")
-            .build();
+                .withEmail("NEW.USER@EXAMPLE.COM")
+                .withFirstName("  New  ")
+                .withLastName("  User  ")
+                .withCountryCode("es")
+                .withCity("  A Coruna  ")
+                .build();
 
         mockMvc.perform(post("/api/auth/signup")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.email").value("new.user@example.com"))
-            .andExpect(jsonPath("$.firstName").value("New"))
-            .andExpect(jsonPath("$.lastName").value("User"));
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value("new.user@example.com"))
+                .andExpect(jsonPath("$.firstName").value("New"))
+                .andExpect(jsonPath("$.lastName").value("User"));
 
         User saved = userRepository.findByEmailIgnoreCase("new.user@example.com").orElseThrow();
         assertThat(saved.getCountryCode()).isEqualTo("ES");
         assertThat(saved.getCity()).isEqualTo("A Coruna");
-        }
+    }
 
     @Test
     void signupReturnsConflictWhenEmailAlreadyExists() throws Exception {
@@ -92,46 +97,46 @@ class AuthSignupIntegrationTest extends AbstractIntegrationTest {
         userRepository.save(existing);
 
         UserRegisterRequestDto request = UserRegisterRequestTestBuilder.validRequest()
-            .withEmail("existing@example.com")
-            .withFirstName("Another")
-            .withLastName("Person")
-            .withBirth(null)
-            .withGender(null)
-            .withCountryCode(null)
-            .withCity(null)
-            .withPassword("another-password")
-            .build();
+                .withEmail("existing@example.com")
+                .withFirstName("Another")
+                .withLastName("Person")
+                .withBirth(null)
+                .withGender(null)
+                .withCountryCode(null)
+                .withCity(null)
+                .withPassword("another-password")
+                .build();
 
         mockMvc.perform(post("/api/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.status").value(409))
-            .andExpect(jsonPath("$.message").value("Email already registered: existing@example.com"));
-        }
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.message").value("Email already registered: existing@example.com"));
+    }
 
-        @Test
-        void signupReturnsBadRequestWhenValidationFails() throws Exception {
+    @Test
+    void signupReturnsBadRequestWhenValidationFails() throws Exception {
         UserRegisterRequestDto request = UserRegisterRequestTestBuilder.validRequest()
-            .withEmail("bad-email")
-            .withFirstName("   ")
-            .withLastName("   ")
-            .withBirth(LocalDate.now().plusDays(1))
-            .withCountryCode("ESP")
-            .withPassword("123")
-            .build();
+                .withEmail("bad-email")
+                .withFirstName("   ")
+                .withLastName("   ")
+                .withBirth(LocalDate.now().plusDays(1))
+                .withCountryCode("ESP")
+                .withPassword("123")
+                .build();
 
         mockMvc.perform(post("/api/auth/signup")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.message").value("Validation failed"))
-            .andExpect(jsonPath("$.details.email").exists())
-            .andExpect(jsonPath("$.details.firstName").exists())
-            .andExpect(jsonPath("$.details.lastName").exists())
-            .andExpect(jsonPath("$.details.birth").exists())
-            .andExpect(jsonPath("$.details.countryCode").exists())
-            .andExpect(jsonPath("$.details.password").exists());
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.details.email").exists())
+                .andExpect(jsonPath("$.details.firstName").exists())
+                .andExpect(jsonPath("$.details.lastName").exists())
+                .andExpect(jsonPath("$.details.birth").exists())
+                .andExpect(jsonPath("$.details.countryCode").exists())
+                .andExpect(jsonPath("$.details.password").exists());
     }
 }

@@ -14,6 +14,11 @@ import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.InvalidCredentialsException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetEmailDeliveryException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetTokenNotFoundException;
+import es.udc.fic.corpuslab.modules.researchgroup.exceptions.InvalidResearchGroupInvitationRoleException;
+import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationAlreadyExistsException;
+import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationCodeNotFoundException;
+import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationEmailDeliveryException;
+import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupMemberAlreadyExistsException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupNotFoundException;
 
 import java.time.Instant;
@@ -123,6 +128,91 @@ public class GlobalExceptionHandler {
                 translatedMessage,
                 null);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(ResearchGroupInvitationAlreadyExistsException.class)
+    public ResponseEntity<ApiErrorResponse> handleResearchGroupInvitationAlreadyExists(
+            ResearchGroupInvitationAlreadyExistsException ex) {
+        String translatedMessage = messageSource.getMessage(
+                "researchgroup.invitation.error.already.exists",
+                new Object[] { ex.getEmail(), ex.getGroupId() },
+                LocaleContextHolder.getLocale());
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                Instant.now(),
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                translatedMessage,
+                null);
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(ResearchGroupMemberAlreadyExistsException.class)
+    public ResponseEntity<ApiErrorResponse> handleResearchGroupMemberAlreadyExists(
+            ResearchGroupMemberAlreadyExistsException ex) {
+        String translatedMessage = messageSource.getMessage(
+                "researchgroup.invitation.error.already.member",
+                new Object[] { ex.getEmail(), ex.getGroupId() },
+                LocaleContextHolder.getLocale());
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                Instant.now(),
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                translatedMessage,
+                null);
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(ResearchGroupInvitationEmailDeliveryException.class)
+    public ResponseEntity<ApiErrorResponse> handleResearchGroupInvitationEmailDelivery(
+            ResearchGroupInvitationEmailDeliveryException ex) {
+        String translatedMessage = messageSource.getMessage(
+                "researchgroup.invitation.error.email.delivery",
+                null,
+                LocaleContextHolder.getLocale());
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                Instant.now(),
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                HttpStatus.SERVICE_UNAVAILABLE.getReasonPhrase(),
+                translatedMessage,
+                null);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+    }
+
+    @ExceptionHandler(ResearchGroupInvitationCodeNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleResearchGroupInvitationCodeNotFound(
+            ResearchGroupInvitationCodeNotFoundException ex) {
+        String translatedMessage = messageSource.getMessage(
+                "researchgroup.invitation.code.notfound",
+                new Object[] { ex.getCode() },
+                LocaleContextHolder.getLocale());
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                Instant.now(),
+                HttpStatus.NOT_FOUND.value(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                translatedMessage,
+                null);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(InvalidResearchGroupInvitationRoleException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidResearchGroupInvitationRole(
+            InvalidResearchGroupInvitationRoleException ex) {
+        String translatedMessage = messageSource.getMessage(
+                "researchgroup.invitation.role.invalid",
+                new Object[] { ex.getRole().name() },
+                LocaleContextHolder.getLocale());
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                Instant.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                translatedMessage,
+                null);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

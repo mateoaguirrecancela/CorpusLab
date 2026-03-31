@@ -1,6 +1,7 @@
 package es.udc.fic.corpuslab.modules.researchgroup.repositories;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -11,6 +12,26 @@ import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupSummaryDto;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroupMember;
 
 public interface ResearchGroupMemberRepository extends JpaRepository<ResearchGroupMember, Long> {
+
+    @Query("""
+            SELECT m
+            FROM ResearchGroupMember m
+            WHERE m.researchGroup.id = :groupId
+              AND m.user.id = :userId
+              AND m.deletedAt IS NULL
+            """)
+    Optional<ResearchGroupMember> findActiveMemberByGroupIdAndUserId(
+            @Param("groupId") Long groupId,
+            @Param("userId") Long userId);
+
+    @Query("""
+            SELECT LOWER(u.email)
+            FROM ResearchGroupMember m
+            JOIN m.user u
+            WHERE m.researchGroup.id = :groupId
+              AND m.deletedAt IS NULL
+            """)
+    List<String> findActiveMemberEmailsByGroupId(@Param("groupId") Long groupId);
 
     @Query("""
             SELECT new es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto(

@@ -9,6 +9,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "research_groups")
@@ -24,12 +25,18 @@ public class ResearchGroup {
     @Column(length = 2048)
     private String description;
 
+    @Column(name = "invitation_code", nullable = false, unique = true, length = 16, updatable = false)
+    private String invitationCode;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     @PrePersist
     void onCreate() {
         this.createdAt = Instant.now();
+        if (this.invitationCode == null || this.invitationCode.isBlank()) {
+            this.invitationCode = UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+        }
     }
 
     public Long getId() {
@@ -54,5 +61,9 @@ public class ResearchGroup {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public String getInvitationCode() {
+        return invitationCode;
     }
 }

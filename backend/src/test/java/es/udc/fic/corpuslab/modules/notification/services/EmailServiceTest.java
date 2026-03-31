@@ -15,4 +15,24 @@ public class EmailServiceTest implements EmailService {
     public void sendPasswordResetEmail(String to, String resetUrl) {
         LOGGER.info("[TEST] Simulated email to {} with reset URL: {}", to, resetUrl);
     }
+
+    @Override
+    public void sendResearchGroupInvitationToExistingUser(
+            String to,
+            String groupName,
+            String inviterFullName,
+            String invitationUrl) {
+        LOGGER.info("[TEST] Simulated existing-user invitation email to {} for group {} by {}. URL: {}",
+                to, groupName, inviterFullName, invitationUrl);
+    }
+
+    @Override
+    public void sendResearchGroupInvitationToNewUser(
+            String to,
+            String groupName,
+            String inviterFullName,
+            String signupUrl) {
+        LOGGER.info("[TEST] Simulated new-user invitation email to {} for group {} by {}. Signup URL: {}",
+                to, groupName, inviterFullName, signupUrl);
+    }
 }
