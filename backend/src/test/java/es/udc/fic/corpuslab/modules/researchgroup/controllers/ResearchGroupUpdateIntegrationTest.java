@@ -245,6 +245,91 @@ class ResearchGroupUpdateIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void shouldRejectMissingNameOnUpdate() throws Exception {
+        User owner = UserTestBuilder.validUser()
+                .withEmail("owner.missingname@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        owner = userRepository.save(owner);
+
+        ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+        group = researchGroupRepository.save(group);
+
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(owner)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.OWNER)
+                .build());
+
+        MockHttpSession ownerSession = loginAs("owner.missingname@example.com");
+
+        mockMvc.perform(put("/api/research-groups/" + group.getId())
+                .session(ownerSession)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"description\":\"Updated Description\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectDescriptionTooLongOnUpdate() throws Exception {
+        User owner = UserTestBuilder.validUser()
+                .withEmail("owner.longdesc@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        owner = userRepository.save(owner);
+
+        ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+        group = researchGroupRepository.save(group);
+
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(owner)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.OWNER)
+                .build());
+
+        MockHttpSession ownerSession = loginAs("owner.longdesc@example.com");
+        String tooLongDescription = "a".repeat(2049);
+
+        mockMvc.perform(put("/api/research-groups/" + group.getId())
+                .session(ownerSession)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Updated Name\",\"description\":\"" + tooLongDescription + "\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnForbiddenWhenRequesterIsNotMember() throws Exception {
+        User owner = UserTestBuilder.validUser()
+                .withEmail("owner.membercheck@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        owner = userRepository.save(owner);
+
+        User outsider = UserTestBuilder.validUser()
+                .withEmail("outsider.membercheck@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        outsider = userRepository.save(outsider);
+
+        ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+        group = researchGroupRepository.save(group);
+
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(owner)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.OWNER)
+                .build());
+
+        MockHttpSession outsiderSession = loginAs("outsider.membercheck@example.com");
+
+        mockMvc.perform(put("/api/research-groups/" + group.getId())
+                .session(outsiderSession)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Updated Name\",\"description\":\"Updated Description\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void shouldReturnForbiddenWhenNotAuthenticated() throws Exception {
         mockMvc.perform(put("/api/research-groups/1")
                 .contentType(MediaType.APPLICATION_JSON)

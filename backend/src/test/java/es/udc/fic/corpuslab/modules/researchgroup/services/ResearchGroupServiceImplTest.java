@@ -250,6 +250,36 @@ class ResearchGroupServiceImplTest {
         }
 
         @Test
+        void updateResearchGroupShouldThrowWhenRequesterIsNotMember() {
+                User requester = UserTestBuilder.validUser().withEmail("outsider@example.com").build();
+                setId(requester, 7L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+
+                when(userRepository.findByEmailIgnoreCase("outsider@example.com")).thenReturn(Optional.of(requester));
+                when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 7L)).thenReturn(Optional.empty());
+
+                assertThatThrownBy(() -> researchGroupService.updateResearchGroup(
+                                "outsider@example.com",
+                                10L,
+                                new UpdateResearchGroupRequestDto("Updated Name", "Updated Description")))
+                                .isInstanceOf(AccessDeniedException.class);
+        }
+
+        @Test
+        void updateResearchGroupShouldThrowWhenRequesterEmailNotFound() {
+                when(userRepository.findByEmailIgnoreCase("missing@example.com")).thenReturn(Optional.empty());
+
+                assertThatThrownBy(() -> researchGroupService.updateResearchGroup(
+                                "missing@example.com",
+                                10L,
+                                new UpdateResearchGroupRequestDto("Updated Name", "Updated Description")))
+                                .isInstanceOf(EmailNotFoundException.class);
+        }
+
+        @Test
         void inviteResearcherByEmailShouldCreateInvitationWithRoleAndExpiration() {
                 User inviter = UserTestBuilder.validUser()
                                 .withEmail("admin@example.com")
