@@ -34,10 +34,12 @@ import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroupMember;
 import es.udc.fic.corpuslab.modules.researchgroup.enums.ResearchGroupInvitationStatus;
 import es.udc.fic.corpuslab.modules.researchgroup.enums.ResearchGroupMemberRole;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.InvalidResearchGroupInvitationRoleException;
+import es.udc.fic.corpuslab.modules.researchgroup.exceptions.InvalidResearchGroupMemberRoleException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationAlreadyExistsException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationCodeNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupMemberAlreadyExistsException;
+import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupMemberNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.fixtures.ResearchGroupMemberTestBuilder;
 import es.udc.fic.corpuslab.modules.researchgroup.fixtures.ResearchGroupTestBuilder;
@@ -378,6 +380,137 @@ class ResearchGroupServiceImplTest {
                 assertThatThrownBy(() -> researchGroupService.joinResearchGroupByCode("member@example.com",
                                 "EXISTCODE123"))
                                 .isInstanceOf(ResearchGroupMemberAlreadyExistsException.class);
+        }
+
+        @Test
+        void updateMemberRoleShouldSucceedWhenRequesterIsOwner() {
+                User owner = UserTestBuilder.validUser().withEmail("owner@example.com").build();
+                setId(owner, 1L);
+
+                User target = UserTestBuilder.validUser().withEmail("member@example.com").build();
+                setId(target, 2L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+
+                ResearchGroupMember ownerMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build();
+
+                ResearchGroupMember targetMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(target)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ANNOTATOR)
+                                .build();
+
+                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(researchGroupRepository.existsById(10L)).thenReturn(true);
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
+                                .thenReturn(Optional.of(ownerMembership));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 2L))
+                                .thenReturn(Optional.of(targetMembership));
+                when(memberRepository.save(any(ResearchGroupMember.class)))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
+
+                ResearchGroupMemberDto result = researchGroupService.updateMemberRole(
+                                "owner@example.com", 10L, 2L, ResearchGroupMemberRole.ADMIN);
+
+                assertThat(result.userId()).isEqualTo(2L);
+                assertThat(result.role()).isEqualTo(ResearchGroupMemberRole.ADMIN);
+        }
+
+        @Test
+        void updateMemberRoleShouldThrowWhenRequesterIsNotOwner() {
+                User admin = UserTestBuilder.validUser().withEmail("admin@example.com").build();
+                setId(admin, 1L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+
+                ResearchGroupMember adminMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(admin)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ADMIN)
+                                .build();
+
+                when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(admin));
+                when(researchGroupRepository.existsById(10L)).thenReturn(true);
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
+                                .thenReturn(Optional.of(adminMembership));
+
+                assertThatThrownBy(() -> researchGroupService.updateMemberRole(
+                                "admin@example.com", 10L, 2L, ResearchGroupMemberRole.ANNOTATOR))
+                                .isInstanceOf(AccessDeniedException.class);
+        }
+
+        @Test
+        void updateMemberRoleShouldThrowWhenTargetMemberIsMissing() {
+                User owner = UserTestBuilder.validUser().withEmail("owner@example.com").build();
+                setId(owner, 1L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+
+                ResearchGroupMember ownerMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build();
+
+                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(researchGroupRepository.existsById(10L)).thenReturn(true);
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
+                                .thenReturn(Optional.of(ownerMembership));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 99L)).thenReturn(Optional.empty());
+
+                assertThatThrownBy(() -> researchGroupService.updateMemberRole(
+                                "owner@example.com", 10L, 99L, ResearchGroupMemberRole.ADMIN))
+                                .isInstanceOf(ResearchGroupMemberNotFoundException.class);
+        }
+
+        @Test
+        void removeMemberShouldSoftDeleteWhenRequesterIsOwner() {
+                User owner = UserTestBuilder.validUser().withEmail("owner@example.com").build();
+                setId(owner, 1L);
+
+                User target = UserTestBuilder.validUser().withEmail("member@example.com").build();
+                setId(target, 2L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+
+                ResearchGroupMember ownerMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build();
+
+                ResearchGroupMember targetMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(target)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ANNOTATOR)
+                                .build();
+
+                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(researchGroupRepository.existsById(10L)).thenReturn(true);
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
+                                .thenReturn(Optional.of(ownerMembership));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 2L))
+                                .thenReturn(Optional.of(targetMembership));
+
+                researchGroupService.removeMember("owner@example.com", 10L, 2L);
+
+                assertThat(targetMembership.getDeletedAt()).isNotNull();
+                verify(memberRepository).save(targetMembership);
+        }
+
+        @Test
+        void manageMembersShouldRejectOwnerRoleOperations() {
+                assertThatThrownBy(() -> researchGroupService.updateMemberRole(
+                                "owner@example.com", 10L, 2L, ResearchGroupMemberRole.OWNER))
+                                .isInstanceOf(InvalidResearchGroupMemberRoleException.class);
         }
 
         @Test
