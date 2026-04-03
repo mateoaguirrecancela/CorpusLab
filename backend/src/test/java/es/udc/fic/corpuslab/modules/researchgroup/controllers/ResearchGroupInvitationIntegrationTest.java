@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -417,6 +418,176 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"code\":\"DOESNOTEXIST\"}"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldAcceptInvitationAndRemoveItFromPendingList() throws Exception {
+        User owner = UserTestBuilder.validUser()
+                .withEmail("owner6@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        owner = userRepository.save(owner);
+
+        User invitee = UserTestBuilder.validUser()
+                .withEmail("invitee.accept@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        invitee = userRepository.save(invitee);
+
+        ResearchGroup group = ResearchGroupTestBuilder.validGroup()
+                .withName("Accept Group")
+                .build();
+        group = researchGroupRepository.save(group);
+
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(owner)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.OWNER)
+                .build());
+
+        ResearchGroupInvitation invitation = new ResearchGroupInvitation();
+        invitation.setResearchGroup(group);
+        invitation.setInviterUser(owner);
+        invitation.setInvitedUser(invitee);
+        invitation.setInvitedEmail("invitee.accept@example.com");
+        invitation.setToken("accept-token");
+        invitation.setRole(ResearchGroupMemberRole.ADMIN);
+        invitation.setStatus(ResearchGroupInvitationStatus.PENDING);
+        invitation.setExpiresAt(Instant.now().plusSeconds(86400));
+        invitation = invitationRepository.save(invitation);
+
+        MockHttpSession inviteeSession = loginAs("invitee.accept@example.com");
+
+        mockMvc.perform(post("/api/research-groups/my-invitations/" + invitation.getId() + "/accept")
+                .session(inviteeSession)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(group.getId()))
+                .andExpect(jsonPath("$.role").value("ADMIN"));
+
+        mockMvc.perform(get("/api/research-groups/my-invitations").session(inviteeSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        assertThat(memberRepository.findActiveMemberByGroupIdAndUserId(group.getId(), invitee.getId())).isPresent();
+    }
+
+    @Test
+    void shouldDeclineInvitationAndRemoveItFromPendingList() throws Exception {
+        User owner = UserTestBuilder.validUser()
+                .withEmail("owner7@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        owner = userRepository.save(owner);
+
+        User invitee = UserTestBuilder.validUser()
+                .withEmail("invitee.decline@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        invitee = userRepository.save(invitee);
+
+        ResearchGroup group = ResearchGroupTestBuilder.validGroup()
+                .withName("Decline Group")
+                .build();
+        group = researchGroupRepository.save(group);
+
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(owner)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.OWNER)
+                .build());
+
+        ResearchGroupInvitation invitation = new ResearchGroupInvitation();
+        invitation.setResearchGroup(group);
+        invitation.setInviterUser(owner);
+        invitation.setInvitedUser(invitee);
+        invitation.setInvitedEmail("invitee.decline@example.com");
+        invitation.setToken("decline-token");
+        invitation.setRole(ResearchGroupMemberRole.ANNOTATOR);
+        invitation.setStatus(ResearchGroupInvitationStatus.PENDING);
+        invitation.setExpiresAt(Instant.now().plusSeconds(86400));
+        invitation = invitationRepository.save(invitation);
+
+        MockHttpSession inviteeSession = loginAs("invitee.decline@example.com");
+
+        mockMvc.perform(post("/api/research-groups/my-invitations/" + invitation.getId() + "/decline")
+                .session(inviteeSession)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/research-groups/my-invitations").session(inviteeSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        assertThat(memberRepository.findActiveMemberByGroupIdAndUserId(group.getId(), invitee.getId())).isEmpty();
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenAcceptingUnknownInvitationId() throws Exception {
+        User invitee = UserTestBuilder.validUser()
+                .withEmail("invitee.notfound@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        userRepository.save(invitee);
+
+        MockHttpSession inviteeSession = loginAs("invitee.notfound@example.com");
+
+        mockMvc.perform(post("/api/research-groups/my-invitations/999999/accept")
+                .session(inviteeSession)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldResolvePendingInvitationWhenJoiningByCode() throws Exception {
+        User owner = UserTestBuilder.validUser()
+                .withEmail("owner8@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        owner = userRepository.save(owner);
+
+        User joiner = UserTestBuilder.validUser()
+                .withEmail("joiner.pending@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        joiner = userRepository.save(joiner);
+
+        ResearchGroup group = ResearchGroupTestBuilder.validGroup()
+                .withName("Join Clears Invitation Group")
+                .build();
+        group = researchGroupRepository.save(group);
+
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(owner)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.OWNER)
+                .build());
+
+        ResearchGroupInvitation invitation = new ResearchGroupInvitation();
+        invitation.setResearchGroup(group);
+        invitation.setInviterUser(owner);
+        invitation.setInvitedUser(joiner);
+        invitation.setInvitedEmail("joiner.pending@example.com");
+        invitation.setToken("join-pending-token");
+        invitation.setRole(ResearchGroupMemberRole.ADMIN);
+        invitation.setStatus(ResearchGroupInvitationStatus.PENDING);
+        invitation.setExpiresAt(Instant.now().plusSeconds(86400));
+        invitation = invitationRepository.save(invitation);
+
+        MockHttpSession joinerSession = loginAs("joiner.pending@example.com");
+
+        mockMvc.perform(post("/api/research-groups/join-by-code")
+                .session(joinerSession)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"code\":\"" + group.getInvitationCode() + "\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/research-groups/my-invitations").session(joinerSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        ResearchGroupInvitation updatedInvitation = invitationRepository.findById(invitation.getId()).orElseThrow();
+        assertThat(updatedInvitation.getStatus()).isEqualTo(ResearchGroupInvitationStatus.ACCEPTED);
     }
 
     @Test

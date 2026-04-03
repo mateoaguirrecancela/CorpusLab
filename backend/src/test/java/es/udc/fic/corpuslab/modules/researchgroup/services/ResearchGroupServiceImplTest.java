@@ -36,6 +36,7 @@ import es.udc.fic.corpuslab.modules.researchgroup.enums.ResearchGroupMemberRole;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.InvalidResearchGroupInvitationRoleException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationAlreadyExistsException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationCodeNotFoundException;
+import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupMemberAlreadyExistsException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.fixtures.ResearchGroupMemberTestBuilder;
@@ -377,6 +378,85 @@ class ResearchGroupServiceImplTest {
                 assertThatThrownBy(() -> researchGroupService.joinResearchGroupByCode("member@example.com",
                                 "EXISTCODE123"))
                                 .isInstanceOf(ResearchGroupMemberAlreadyExistsException.class);
+        }
+
+        @Test
+        void acceptMyInvitationShouldCreateMembershipAndMarkInvitationAsAccepted() {
+                User user = UserTestBuilder.validUser().withEmail("invitee@example.com").build();
+                setId(user, 50L);
+
+                User inviter = UserTestBuilder.validUser().withEmail("owner@example.com").build();
+                setId(inviter, 1L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("NLP Group").build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+
+                ResearchGroupInvitation invitation = new ResearchGroupInvitation();
+                invitation.setResearchGroup(group);
+                invitation.setInviterUser(inviter);
+                invitation.setInvitedEmail("invitee@example.com");
+                invitation.setRole(ResearchGroupMemberRole.ADMIN);
+                invitation.setStatus(ResearchGroupInvitationStatus.PENDING);
+                invitation.setExpiresAt(Instant.now().plusSeconds(86400));
+
+                when(userRepository.findByEmailIgnoreCase("invitee@example.com")).thenReturn(Optional.of(user));
+                when(invitationRepository.findActivePendingInvitationByIdAndInvitedEmail(
+                                eq(100L),
+                                eq("invitee@example.com"),
+                                any(Instant.class)))
+                                .thenReturn(Optional.of(invitation));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 50L)).thenReturn(Optional.empty());
+                when(memberRepository.findActiveMemberEmailsByGroupId(10L))
+                                .thenReturn(List.of("owner@example.com", "invitee@example.com"));
+
+                ResearchGroupSummaryDto result = researchGroupService.acceptMyInvitation("invitee@example.com", 100L);
+
+                assertThat(result.id()).isEqualTo(10L);
+                assertThat(result.role()).isEqualTo(ResearchGroupMemberRole.ADMIN);
+                assertThat(result.memberCount()).isEqualTo(2L);
+                assertThat(invitation.getStatus()).isEqualTo(ResearchGroupInvitationStatus.ACCEPTED);
+                assertThat(invitation.getInvitedUser()).isEqualTo(user);
+                verify(memberRepository).save(any(ResearchGroupMember.class));
+                verify(invitationRepository).save(invitation);
+        }
+
+        @Test
+        void declineMyInvitationShouldMarkInvitationAsDeclined() {
+                User user = UserTestBuilder.validUser().withEmail("invitee@example.com").build();
+                setId(user, 50L);
+
+                ResearchGroupInvitation invitation = new ResearchGroupInvitation();
+                invitation.setInvitedEmail("invitee@example.com");
+                invitation.setStatus(ResearchGroupInvitationStatus.PENDING);
+                invitation.setExpiresAt(Instant.now().plusSeconds(86400));
+
+                when(userRepository.findByEmailIgnoreCase("invitee@example.com")).thenReturn(Optional.of(user));
+                when(invitationRepository.findActivePendingInvitationByIdAndInvitedEmail(
+                                eq(101L),
+                                eq("invitee@example.com"),
+                                any(Instant.class)))
+                                .thenReturn(Optional.of(invitation));
+
+                researchGroupService.declineMyInvitation("invitee@example.com", 101L);
+
+                assertThat(invitation.getStatus()).isEqualTo(ResearchGroupInvitationStatus.DECLINED);
+                verify(invitationRepository).save(invitation);
+        }
+
+        @Test
+        void acceptMyInvitationShouldThrowWhenInvitationIsNotFound() {
+                User user = UserTestBuilder.validUser().withEmail("invitee@example.com").build();
+                setId(user, 50L);
+
+                when(userRepository.findByEmailIgnoreCase("invitee@example.com")).thenReturn(Optional.of(user));
+                when(invitationRepository.findActivePendingInvitationByIdAndInvitedEmail(
+                                eq(999L),
+                                eq("invitee@example.com"),
+                                any(Instant.class)))
+                                .thenReturn(Optional.empty());
+
+                assertThatThrownBy(() -> researchGroupService.acceptMyInvitation("invitee@example.com", 999L))
+                                .isInstanceOf(ResearchGroupInvitationNotFoundException.class);
         }
 
         private void setId(User user, Long id) {
