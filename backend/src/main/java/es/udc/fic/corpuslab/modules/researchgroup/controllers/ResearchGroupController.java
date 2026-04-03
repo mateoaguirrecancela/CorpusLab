@@ -71,6 +71,21 @@ public class ResearchGroupController {
         return researchGroupService.findMyPendingInvitations(authentication.getName());
     }
 
+    @PostMapping("/my-invitations/{invitationId}/accept")
+    public ResearchGroupSummaryDto acceptInvitation(
+            Authentication authentication,
+            @PathVariable Long invitationId) {
+        return researchGroupService.acceptMyInvitation(authentication.getName(), invitationId);
+    }
+
+    @PostMapping("/my-invitations/{invitationId}/decline")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void declineInvitation(
+            Authentication authentication,
+            @PathVariable Long invitationId) {
+        researchGroupService.declineMyInvitation(authentication.getName(), invitationId);
+    }
+
     @PostMapping("/join-by-code")
     public ResearchGroupSummaryDto joinByCode(
             Authentication authentication,

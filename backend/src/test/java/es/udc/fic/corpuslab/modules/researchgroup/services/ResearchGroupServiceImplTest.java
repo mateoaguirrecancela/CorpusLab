@@ -14,6 +14,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
@@ -46,333 +47,378 @@ import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupRepo
 @ExtendWith(MockitoExtension.class)
 class ResearchGroupServiceImplTest {
 
-    @Mock
-    private UserRepository userRepository;
+        @Mock
+        private UserRepository userRepository;
 
-    @Mock
-    private ResearchGroupRepository researchGroupRepository;
+        @Mock
+        private ResearchGroupRepository researchGroupRepository;
 
-    @Mock
-    private ResearchGroupMemberRepository memberRepository;
+        @Mock
+        private ResearchGroupMemberRepository memberRepository;
 
-    @Mock
-    private ResearchGroupInvitationRepository invitationRepository;
+        @Mock
+        private ResearchGroupInvitationRepository invitationRepository;
 
-    @Mock
-    private EmailService emailService;
+        @Mock
+        private EmailService emailService;
 
-    private ResearchGroupService researchGroupService;
+        private ResearchGroupService researchGroupService;
 
-    @BeforeEach
-    void setUp() {
-        researchGroupService = new ResearchGroupServiceImpl(
-                userRepository,
-                researchGroupRepository,
-                memberRepository,
-                invitationRepository,
-                emailService,
-                "http://localhost:5173");
-    }
-
-    @Test
-    void getResearchGroupDetailShouldReturnDetailWhenRequesterIsMember() {
-        User requester = UserTestBuilder.validUser().withEmail("member@example.com").build();
-        setId(requester, 10L);
-
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup()
-                .withName("CITIC - NLP UDC")
-                .withDescription("Computational Linguistics Research Group")
-                .build();
-        setGroupFields(group, 99L, Instant.parse("2026-03-31T12:00:00Z"), "ABC123XYZ789");
-
-        ResearchGroupMemberDto owner = new ResearchGroupMemberDto(
-                10L,
-                "Elena",
-                "Alvarez",
-                "member@example.com",
-                ResearchGroupMemberRole.OWNER);
-
-        when(userRepository.findByEmailIgnoreCase("member@example.com")).thenReturn(Optional.of(requester));
-        when(researchGroupRepository.findById(99L)).thenReturn(Optional.of(group));
-        when(memberRepository.findMembersByGroupId(99L)).thenReturn(List.of(owner));
-
-        ResearchGroupDetailDto detail = researchGroupService.getResearchGroupDetail("member@example.com", 99L);
-
-        assertThat(detail.id()).isEqualTo(99L);
-        assertThat(detail.invitationCode()).isEqualTo("ABC123XYZ789");
-        assertThat(detail.totalMembers()).isEqualTo(1L);
-    }
-
-    @Test
-    void getResearchGroupDetailShouldThrowWhenUserDoesNotExist() {
-        when(userRepository.findByEmailIgnoreCase("missing@example.com")).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> researchGroupService.getResearchGroupDetail("missing@example.com", 1L))
-                .isInstanceOf(EmailNotFoundException.class)
-                .hasMessage("No account found for email: missing@example.com");
-    }
-
-    @Test
-    void getResearchGroupDetailShouldThrowWhenGroupDoesNotExist() {
-        User requester = UserTestBuilder.validUser().withEmail("member@example.com").build();
-        setId(requester, 10L);
-
-        when(userRepository.findByEmailIgnoreCase("member@example.com")).thenReturn(Optional.of(requester));
-        when(researchGroupRepository.findById(404L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> researchGroupService.getResearchGroupDetail("member@example.com", 404L))
-                .isInstanceOf(ResearchGroupNotFoundException.class)
-                .hasMessage("Research group not found with id: 404");
-    }
-
-    @Test
-    void inviteResearcherByEmailShouldCreateInvitationWithRoleAndExpiration() {
-        User inviter = UserTestBuilder.validUser()
-                .withEmail("admin@example.com")
-                .withFirstName("Admin")
-                .withLastName("User")
-                .build();
-        setId(inviter, 1L);
-
-        User invitedUser = UserTestBuilder.validUser().withEmail("invitee@example.com").build();
-        setId(invitedUser, 2L);
-
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("NLP Group").build();
-        setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
-
-        ResearchGroupMember inviterMember = ResearchGroupMemberTestBuilder.validMember()
-                .withUser(inviter)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.ADMIN)
-                .build();
-
-        Instant expiresAt = Instant.parse("2026-04-10T12:00:00Z");
-
-        when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(inviter));
-        when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
-        when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L)).thenReturn(Optional.of(inviterMember));
-        when(memberRepository.findActiveMemberEmailsByGroupId(10L)).thenReturn(List.of("admin@example.com"));
-        when(invitationRepository.existsActivePendingInvitation(
-                eq(10L),
-                eq("invitee@example.com"),
-                eq(ResearchGroupInvitationStatus.PENDING),
-                any(Instant.class)))
-                .thenReturn(false);
-        when(userRepository.findByEmailIgnoreCase("invitee@example.com")).thenReturn(Optional.of(invitedUser));
-        when(invitationRepository.save(any(ResearchGroupInvitation.class))).thenAnswer(invocation -> {
-            ResearchGroupInvitation invitation = invocation.getArgument(0);
-            setInvitationFields(invitation, 100L, Instant.parse("2026-03-31T13:00:00Z"));
-            return invitation;
-        });
-
-        ResearchGroupInvitationDto result = researchGroupService.inviteResearcherByEmail(
-                "admin@example.com",
-                10L,
-                "invitee@example.com",
-                ResearchGroupMemberRole.ADMIN,
-                expiresAt);
-
-        assertThat(result.id()).isEqualTo(100L);
-        assertThat(result.role()).isEqualTo(ResearchGroupMemberRole.ADMIN);
-        assertThat(result.expiresAt()).isEqualTo(expiresAt);
-        verify(emailService).sendResearchGroupInvitationToExistingUser(
-                eq("invitee@example.com"),
-                eq("NLP Group"),
-                eq("Admin User"),
-                any(String.class));
-    }
-
-    @Test
-    void inviteResearcherByEmailShouldThrowWhenRoleIsOwner() {
-        assertThatThrownBy(() -> researchGroupService.inviteResearcherByEmail(
-                "owner@example.com",
-                10L,
-                "invitee@example.com",
-                ResearchGroupMemberRole.OWNER,
-                Instant.parse("2026-04-10T12:00:00Z")))
-                .isInstanceOf(InvalidResearchGroupInvitationRoleException.class);
-    }
-
-    @Test
-    void inviteResearcherByEmailShouldThrowWhenInvitationAlreadyExists() {
-        User inviter = UserTestBuilder.validUser().withEmail("admin@example.com").build();
-        setId(inviter, 1L);
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
-        setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
-        ResearchGroupMember inviterMember = ResearchGroupMemberTestBuilder.validMember()
-                .withUser(inviter)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.ADMIN)
-                .build();
-
-        when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(inviter));
-        when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
-        when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L)).thenReturn(Optional.of(inviterMember));
-        when(memberRepository.findActiveMemberEmailsByGroupId(10L)).thenReturn(List.of("admin@example.com"));
-        when(invitationRepository.existsActivePendingInvitation(
-                eq(10L),
-                eq("invitee@example.com"),
-                eq(ResearchGroupInvitationStatus.PENDING),
-                any(Instant.class)))
-                .thenReturn(true);
-
-        assertThatThrownBy(() -> researchGroupService.inviteResearcherByEmail(
-                "admin@example.com",
-                10L,
-                "invitee@example.com",
-                ResearchGroupMemberRole.ANNOTATOR,
-                Instant.parse("2026-04-10T12:00:00Z")))
-                .isInstanceOf(ResearchGroupInvitationAlreadyExistsException.class);
-    }
-
-    @Test
-    void inviteResearcherByEmailShouldThrowWhenEmailAlreadyBelongsToActiveMember() {
-        User inviter = UserTestBuilder.validUser().withEmail("owner@example.com").build();
-        setId(inviter, 1L);
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
-        setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
-        ResearchGroupMember inviterMember = ResearchGroupMemberTestBuilder.validMember()
-                .withUser(inviter)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.OWNER)
-                .build();
-
-        when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(inviter));
-        when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
-        when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L)).thenReturn(Optional.of(inviterMember));
-        when(memberRepository.findActiveMemberEmailsByGroupId(10L)).thenReturn(List.of("existing@example.com"));
-
-        assertThatThrownBy(() -> researchGroupService.inviteResearcherByEmail(
-                "owner@example.com",
-                10L,
-                "existing@example.com",
-                ResearchGroupMemberRole.ANNOTATOR,
-                Instant.parse("2026-04-10T12:00:00Z")))
-                .isInstanceOf(ResearchGroupMemberAlreadyExistsException.class);
-    }
-
-    @Test
-    void findMyPendingInvitationsShouldReturnPendingInvitationsForUserEmail() {
-        User invitedUser = UserTestBuilder.validUser().withEmail("invited@example.com").build();
-        setId(invitedUser, 15L);
-
-        ResearchGroupInvitationDto dto = new ResearchGroupInvitationDto(
-                1L,
-                10L,
-                "NLP Group",
-                "invited@example.com",
-                "Admin User",
-                ResearchGroupMemberRole.ANNOTATOR,
-                ResearchGroupInvitationStatus.PENDING,
-                Instant.parse("2026-03-31T12:00:00Z"),
-                Instant.parse("2026-04-10T12:00:00Z"));
-
-        when(userRepository.findByEmailIgnoreCase("invited@example.com")).thenReturn(Optional.of(invitedUser));
-        when(invitationRepository.findPendingInvitationsByInvitedEmail(eq("invited@example.com"), any(Instant.class)))
-                .thenReturn(List.of(dto));
-
-        List<ResearchGroupInvitationDto> invitations = researchGroupService
-                .findMyPendingInvitations("invited@example.com");
-
-        assertThat(invitations).hasSize(1);
-        assertThat(invitations.get(0).role()).isEqualTo(ResearchGroupMemberRole.ANNOTATOR);
-    }
-
-    @Test
-    void joinResearchGroupByCodeShouldCreateAnnotatorMembership() {
-        User user = UserTestBuilder.validUser().withEmail("joiner@example.com").build();
-        setId(user, 21L);
-
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("Joinable Group").build();
-        setGroupFields(group, 44L, Instant.parse("2026-03-31T12:00:00Z"), "JOINCODE12345");
-
-        when(userRepository.findByEmailIgnoreCase("joiner@example.com")).thenReturn(Optional.of(user));
-        when(researchGroupRepository.findByInvitationCodeIgnoreCase("JOINCODE12345")).thenReturn(Optional.of(group));
-        when(memberRepository.findActiveMemberByGroupIdAndUserId(44L, 21L)).thenReturn(Optional.empty());
-        when(memberRepository.findActiveMemberEmailsByGroupId(44L))
-                .thenReturn(List.of("owner@example.com", "joiner@example.com"));
-
-        ResearchGroupSummaryDto result = researchGroupService.joinResearchGroupByCode("joiner@example.com",
-                "JOINCODE12345");
-
-        assertThat(result.id()).isEqualTo(44L);
-        assertThat(result.role()).isEqualTo(ResearchGroupMemberRole.ANNOTATOR);
-        assertThat(result.memberCount()).isEqualTo(2L);
-    }
-
-    @Test
-    void joinResearchGroupByCodeShouldThrowWhenCodeDoesNotExist() {
-        User user = UserTestBuilder.validUser().withEmail("joiner@example.com").build();
-        setId(user, 21L);
-
-        when(userRepository.findByEmailIgnoreCase("joiner@example.com")).thenReturn(Optional.of(user));
-        when(researchGroupRepository.findByInvitationCodeIgnoreCase("UNKNOWNCODE")).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> researchGroupService.joinResearchGroupByCode("joiner@example.com", "UNKNOWNCODE"))
-                .isInstanceOf(ResearchGroupInvitationCodeNotFoundException.class);
-    }
-
-    @Test
-    void joinResearchGroupByCodeShouldThrowWhenUserIsAlreadyMember() {
-        User user = UserTestBuilder.validUser().withEmail("member@example.com").build();
-        setId(user, 31L);
-
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
-        setGroupFields(group, 77L, Instant.parse("2026-03-31T12:00:00Z"), "EXISTCODE123");
-
-        ResearchGroupMember existingMember = ResearchGroupMemberTestBuilder.validMember()
-                .withUser(user)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.ADMIN)
-                .build();
-
-        when(userRepository.findByEmailIgnoreCase("member@example.com")).thenReturn(Optional.of(user));
-        when(researchGroupRepository.findByInvitationCodeIgnoreCase("EXISTCODE123")).thenReturn(Optional.of(group));
-        when(memberRepository.findActiveMemberByGroupIdAndUserId(77L, 31L)).thenReturn(Optional.of(existingMember));
-
-        assertThatThrownBy(() -> researchGroupService.joinResearchGroupByCode("member@example.com", "EXISTCODE123"))
-                .isInstanceOf(ResearchGroupMemberAlreadyExistsException.class);
-    }
-
-    private void setId(User user, Long id) {
-        try {
-            java.lang.reflect.Field idField = User.class.getDeclaredField("id");
-            idField.setAccessible(true);
-            idField.set(user, id);
-        } catch (ReflectiveOperationException ex) {
-            throw new RuntimeException(ex);
+        @BeforeEach
+        void setUp() {
+                researchGroupService = new ResearchGroupServiceImpl(
+                                userRepository,
+                                researchGroupRepository,
+                                memberRepository,
+                                invitationRepository,
+                                emailService,
+                                "http://localhost:5173");
         }
-    }
 
-    private void setGroupFields(ResearchGroup group, Long id, Instant createdAt, String invitationCode) {
-        try {
-            java.lang.reflect.Field idField = ResearchGroup.class.getDeclaredField("id");
-            idField.setAccessible(true);
-            idField.set(group, id);
+        @Test
+        void getResearchGroupDetailShouldReturnDetailWhenRequesterIsMember() {
+                User requester = UserTestBuilder.validUser().withEmail("member@example.com").build();
+                setId(requester, 10L);
 
-            java.lang.reflect.Field createdAtField = ResearchGroup.class.getDeclaredField("createdAt");
-            createdAtField.setAccessible(true);
-            createdAtField.set(group, createdAt);
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup()
+                                .withName("CITIC - NLP UDC")
+                                .withDescription("Computational Linguistics Research Group")
+                                .build();
+                setGroupFields(group, 99L, Instant.parse("2026-03-31T12:00:00Z"), "ABC123XYZ789");
 
-            java.lang.reflect.Field codeField = ResearchGroup.class.getDeclaredField("invitationCode");
-            codeField.setAccessible(true);
-            codeField.set(group, invitationCode);
-        } catch (ReflectiveOperationException ex) {
-            throw new RuntimeException(ex);
+                ResearchGroupMemberDto owner = new ResearchGroupMemberDto(
+                                10L,
+                                "Elena",
+                                "Alvarez",
+                                "member@example.com",
+                                ResearchGroupMemberRole.OWNER);
+
+                when(userRepository.findByEmailIgnoreCase("member@example.com")).thenReturn(Optional.of(requester));
+                when(researchGroupRepository.findById(99L)).thenReturn(Optional.of(group));
+                when(memberRepository.findMembersByGroupId(99L)).thenReturn(List.of(owner));
+
+                ResearchGroupDetailDto detail = researchGroupService.getResearchGroupDetail("member@example.com", 99L);
+
+                assertThat(detail.id()).isEqualTo(99L);
+                assertThat(detail.invitationCode()).isEqualTo("ABC123XYZ789");
+                assertThat(detail.totalMembers()).isEqualTo(1L);
         }
-    }
 
-    private void setInvitationFields(ResearchGroupInvitation invitation, Long id, Instant createdAt) {
-        try {
-            java.lang.reflect.Field idField = ResearchGroupInvitation.class.getDeclaredField("id");
-            idField.setAccessible(true);
-            idField.set(invitation, id);
+        @Test
+        void getResearchGroupDetailShouldThrowWhenUserDoesNotExist() {
+                when(userRepository.findByEmailIgnoreCase("missing@example.com")).thenReturn(Optional.empty());
 
-            java.lang.reflect.Field createdAtField = ResearchGroupInvitation.class.getDeclaredField("createdAt");
-            createdAtField.setAccessible(true);
-            createdAtField.set(invitation, createdAt);
-        } catch (ReflectiveOperationException ex) {
-            throw new RuntimeException(ex);
+                assertThatThrownBy(() -> researchGroupService.getResearchGroupDetail("missing@example.com", 1L))
+                                .isInstanceOf(EmailNotFoundException.class)
+                                .hasMessage("No account found for email: missing@example.com");
         }
-    }
+
+        @Test
+        void getResearchGroupDetailShouldThrowWhenGroupDoesNotExist() {
+                User requester = UserTestBuilder.validUser().withEmail("member@example.com").build();
+                setId(requester, 10L);
+
+                when(userRepository.findByEmailIgnoreCase("member@example.com")).thenReturn(Optional.of(requester));
+                when(researchGroupRepository.findById(404L)).thenReturn(Optional.empty());
+
+                assertThatThrownBy(() -> researchGroupService.getResearchGroupDetail("member@example.com", 404L))
+                                .isInstanceOf(ResearchGroupNotFoundException.class)
+                                .hasMessage("Research group not found with id: 404");
+        }
+
+        @Test
+        void inviteResearcherByEmailShouldCreateInvitationWithRoleAndExpiration() {
+                User inviter = UserTestBuilder.validUser()
+                                .withEmail("admin@example.com")
+                                .withFirstName("Admin")
+                                .withLastName("User")
+                                .build();
+                setId(inviter, 1L);
+
+                User invitedUser = UserTestBuilder.validUser().withEmail("invitee@example.com").build();
+                setId(invitedUser, 2L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("NLP Group").build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+
+                ResearchGroupMember inviterMember = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(inviter)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ADMIN)
+                                .build();
+
+                Instant expiresAt = Instant.parse("2026-04-10T12:00:00Z");
+
+                when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(inviter));
+                when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
+                                .thenReturn(Optional.of(inviterMember));
+                when(memberRepository.findActiveMemberEmailsByGroupId(10L)).thenReturn(List.of("admin@example.com"));
+                when(invitationRepository.existsActivePendingInvitation(
+                                eq(10L),
+                                eq("invitee@example.com"),
+                                eq(ResearchGroupInvitationStatus.PENDING),
+                                any(Instant.class)))
+                                .thenReturn(false);
+                when(userRepository.findByEmailIgnoreCase("invitee@example.com")).thenReturn(Optional.of(invitedUser));
+                when(invitationRepository.saveAndFlush(any(ResearchGroupInvitation.class))).thenAnswer(invocation -> {
+                        ResearchGroupInvitation invitation = invocation.getArgument(0);
+                        setInvitationFields(invitation, 100L, Instant.parse("2026-03-31T13:00:00Z"));
+                        return invitation;
+                });
+
+                ResearchGroupInvitationDto result = researchGroupService.inviteResearcherByEmail(
+                                "admin@example.com",
+                                10L,
+                                "invitee@example.com",
+                                ResearchGroupMemberRole.ADMIN,
+                                expiresAt);
+
+                assertThat(result.id()).isEqualTo(100L);
+                assertThat(result.role()).isEqualTo(ResearchGroupMemberRole.ADMIN);
+                assertThat(result.expiresAt()).isEqualTo(expiresAt);
+                verify(emailService).sendResearchGroupInvitationToExistingUser(
+                                eq("invitee@example.com"),
+                                eq("NLP Group"),
+                                eq("Admin User"),
+                                any(String.class));
+        }
+
+        @Test
+        void inviteResearcherByEmailShouldThrowWhenRoleIsOwner() {
+                assertThatThrownBy(() -> researchGroupService.inviteResearcherByEmail(
+                                "owner@example.com",
+                                10L,
+                                "invitee@example.com",
+                                ResearchGroupMemberRole.OWNER,
+                                Instant.parse("2026-04-10T12:00:00Z")))
+                                .isInstanceOf(InvalidResearchGroupInvitationRoleException.class);
+        }
+
+        @Test
+        void inviteResearcherByEmailShouldThrowWhenInvitationAlreadyExists() {
+                User inviter = UserTestBuilder.validUser().withEmail("admin@example.com").build();
+                setId(inviter, 1L);
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+                ResearchGroupMember inviterMember = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(inviter)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ADMIN)
+                                .build();
+
+                when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(inviter));
+                when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
+                                .thenReturn(Optional.of(inviterMember));
+                when(memberRepository.findActiveMemberEmailsByGroupId(10L)).thenReturn(List.of("admin@example.com"));
+                when(invitationRepository.existsActivePendingInvitation(
+                                eq(10L),
+                                eq("invitee@example.com"),
+                                eq(ResearchGroupInvitationStatus.PENDING),
+                                any(Instant.class)))
+                                .thenReturn(true);
+
+                assertThatThrownBy(() -> researchGroupService.inviteResearcherByEmail(
+                                "admin@example.com",
+                                10L,
+                                "invitee@example.com",
+                                ResearchGroupMemberRole.ANNOTATOR,
+                                Instant.parse("2026-04-10T12:00:00Z")))
+                                .isInstanceOf(ResearchGroupInvitationAlreadyExistsException.class);
+        }
+
+        @Test
+        void inviteResearcherByEmailShouldThrowWhenEmailAlreadyBelongsToActiveMember() {
+                User inviter = UserTestBuilder.validUser().withEmail("owner@example.com").build();
+                setId(inviter, 1L);
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+                ResearchGroupMember inviterMember = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(inviter)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build();
+
+                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(inviter));
+                when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
+                                .thenReturn(Optional.of(inviterMember));
+                when(memberRepository.findActiveMemberEmailsByGroupId(10L)).thenReturn(List.of("existing@example.com"));
+
+                assertThatThrownBy(() -> researchGroupService.inviteResearcherByEmail(
+                                "owner@example.com",
+                                10L,
+                                "existing@example.com",
+                                ResearchGroupMemberRole.ANNOTATOR,
+                                Instant.parse("2026-04-10T12:00:00Z")))
+                                .isInstanceOf(ResearchGroupMemberAlreadyExistsException.class);
+        }
+
+        @Test
+        void findMyPendingInvitationsShouldReturnPendingInvitationsForUserEmail() {
+                User invitedUser = UserTestBuilder.validUser().withEmail("invited@example.com").build();
+                setId(invitedUser, 15L);
+
+                ResearchGroupInvitationDto dto = new ResearchGroupInvitationDto(
+                                1L,
+                                10L,
+                                "NLP Group",
+                                "invited@example.com",
+                                "Admin User",
+                                ResearchGroupMemberRole.ANNOTATOR,
+                                ResearchGroupInvitationStatus.PENDING,
+                                Instant.parse("2026-03-31T12:00:00Z"),
+                                Instant.parse("2026-04-10T12:00:00Z"));
+
+                when(userRepository.findByEmailIgnoreCase("invited@example.com")).thenReturn(Optional.of(invitedUser));
+                when(invitationRepository.findPendingInvitationsByInvitedEmail(eq("invited@example.com"),
+                                any(Instant.class)))
+                                .thenReturn(List.of(dto));
+
+                List<ResearchGroupInvitationDto> invitations = researchGroupService
+                                .findMyPendingInvitations("invited@example.com");
+
+                assertThat(invitations).hasSize(1);
+                assertThat(invitations.get(0).role()).isEqualTo(ResearchGroupMemberRole.ANNOTATOR);
+        }
+
+        @Test
+        void joinResearchGroupByCodeShouldCreateAnnotatorMembership() {
+                User user = UserTestBuilder.validUser().withEmail("joiner@example.com").build();
+                setId(user, 21L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("Joinable Group").build();
+                setGroupFields(group, 44L, Instant.parse("2026-03-31T12:00:00Z"), "JOINCODE12345");
+
+                when(userRepository.findByEmailIgnoreCase("joiner@example.com")).thenReturn(Optional.of(user));
+                when(researchGroupRepository.findByInvitationCodeIgnoreCase("JOINCODE12345"))
+                                .thenReturn(Optional.of(group));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(44L, 21L)).thenReturn(Optional.empty());
+                when(memberRepository.findActiveMemberEmailsByGroupId(44L))
+                                .thenReturn(List.of("owner@example.com", "joiner@example.com"));
+
+                ResearchGroupSummaryDto result = researchGroupService.joinResearchGroupByCode("joiner@example.com",
+                                "JOINCODE12345");
+
+                assertThat(result.id()).isEqualTo(44L);
+                assertThat(result.role()).isEqualTo(ResearchGroupMemberRole.ANNOTATOR);
+                assertThat(result.memberCount()).isEqualTo(2L);
+        }
+
+        @Test
+        void joinResearchGroupByCodeShouldResolvePendingInvitationsForUserAndGroup() {
+                User user = UserTestBuilder.validUser().withEmail("joiner@example.com").build();
+                setId(user, 21L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("Joinable Group").build();
+                setGroupFields(group, 44L, Instant.parse("2026-03-31T12:00:00Z"), "JOINCODE12345");
+
+                ResearchGroupInvitation pendingInvitation = new ResearchGroupInvitation();
+                pendingInvitation.setStatus(ResearchGroupInvitationStatus.PENDING);
+
+                when(userRepository.findByEmailIgnoreCase("joiner@example.com")).thenReturn(Optional.of(user));
+                when(researchGroupRepository.findByInvitationCodeIgnoreCase("JOINCODE12345"))
+                                .thenReturn(Optional.of(group));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(44L, 21L)).thenReturn(Optional.empty());
+                when(invitationRepository.findActivePendingInvitationsByGroupIdAndInvitedEmail(
+                                eq(44L),
+                                eq("joiner@example.com"),
+                                any(Instant.class)))
+                                .thenReturn(List.of(pendingInvitation));
+                when(memberRepository.findActiveMemberEmailsByGroupId(44L))
+                                .thenReturn(List.of("owner@example.com", "joiner@example.com"));
+
+                researchGroupService.joinResearchGroupByCode("joiner@example.com", "JOINCODE12345");
+
+                ArgumentCaptor<List<ResearchGroupInvitation>> invitationsCaptor = ArgumentCaptor.forClass(List.class);
+                verify(invitationRepository).saveAll(invitationsCaptor.capture());
+
+                List<ResearchGroupInvitation> savedInvitations = invitationsCaptor.getValue();
+                assertThat(savedInvitations).hasSize(1);
+                assertThat(savedInvitations.get(0).getStatus()).isEqualTo(ResearchGroupInvitationStatus.ACCEPTED);
+                assertThat(savedInvitations.get(0).getInvitedUser()).isEqualTo(user);
+        }
+
+        @Test
+        void joinResearchGroupByCodeShouldThrowWhenCodeDoesNotExist() {
+                User user = UserTestBuilder.validUser().withEmail("joiner@example.com").build();
+                setId(user, 21L);
+
+                when(userRepository.findByEmailIgnoreCase("joiner@example.com")).thenReturn(Optional.of(user));
+                when(researchGroupRepository.findByInvitationCodeIgnoreCase("UNKNOWNCODE"))
+                                .thenReturn(Optional.empty());
+
+                assertThatThrownBy(
+                                () -> researchGroupService.joinResearchGroupByCode("joiner@example.com", "UNKNOWNCODE"))
+                                .isInstanceOf(ResearchGroupInvitationCodeNotFoundException.class);
+        }
+
+        @Test
+        void joinResearchGroupByCodeShouldThrowWhenUserIsAlreadyMember() {
+                User user = UserTestBuilder.validUser().withEmail("member@example.com").build();
+                setId(user, 31L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+                setGroupFields(group, 77L, Instant.parse("2026-03-31T12:00:00Z"), "EXISTCODE123");
+
+                ResearchGroupMember existingMember = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(user)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ADMIN)
+                                .build();
+
+                when(userRepository.findByEmailIgnoreCase("member@example.com")).thenReturn(Optional.of(user));
+                when(researchGroupRepository.findByInvitationCodeIgnoreCase("EXISTCODE123"))
+                                .thenReturn(Optional.of(group));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(77L, 31L))
+                                .thenReturn(Optional.of(existingMember));
+
+                assertThatThrownBy(() -> researchGroupService.joinResearchGroupByCode("member@example.com",
+                                "EXISTCODE123"))
+                                .isInstanceOf(ResearchGroupMemberAlreadyExistsException.class);
+        }
+
+        private void setId(User user, Long id) {
+                try {
+                        java.lang.reflect.Field idField = User.class.getDeclaredField("id");
+                        idField.setAccessible(true);
+                        idField.set(user, id);
+                } catch (ReflectiveOperationException ex) {
+                        throw new RuntimeException(ex);
+                }
+        }
+
+        private void setGroupFields(ResearchGroup group, Long id, Instant createdAt, String invitationCode) {
+                try {
+                        java.lang.reflect.Field idField = ResearchGroup.class.getDeclaredField("id");
+                        idField.setAccessible(true);
+                        idField.set(group, id);
+
+                        java.lang.reflect.Field createdAtField = ResearchGroup.class.getDeclaredField("createdAt");
+                        createdAtField.setAccessible(true);
+                        createdAtField.set(group, createdAt);
+
+                        java.lang.reflect.Field codeField = ResearchGroup.class.getDeclaredField("invitationCode");
+                        codeField.setAccessible(true);
+                        codeField.set(group, invitationCode);
+                } catch (ReflectiveOperationException ex) {
+                        throw new RuntimeException(ex);
+                }
+        }
+
+        private void setInvitationFields(ResearchGroupInvitation invitation, Long id, Instant createdAt) {
+                try {
+                        java.lang.reflect.Field idField = ResearchGroupInvitation.class.getDeclaredField("id");
+                        idField.setAccessible(true);
+                        idField.set(invitation, id);
+
+                        java.lang.reflect.Field createdAtField = ResearchGroupInvitation.class
+                                        .getDeclaredField("createdAt");
+                        createdAtField.setAccessible(true);
+                        createdAtField.set(invitation, createdAt);
+                } catch (ReflectiveOperationException ex) {
+                        throw new RuntimeException(ex);
+                }
+        }
 }

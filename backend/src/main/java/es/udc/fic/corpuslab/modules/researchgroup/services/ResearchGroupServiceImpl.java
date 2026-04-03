@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ import es.udc.fic.corpuslab.modules.researchgroup.exceptions.InvalidResearchGrou
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationAlreadyExistsException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationCodeNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationEmailDeliveryException;
+import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupMemberAlreadyExistsException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupInvitationRepository;
@@ -37,6 +39,8 @@ import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupRepo
 
 @Service
 public class ResearchGroupServiceImpl implements ResearchGroupService {
+
+        private static final int MAX_TOKEN_GENERATION_ATTEMPTS = 10;
 
         private final UserRepository userRepository;
         private final ResearchGroupRepository researchGroupRepository;
@@ -185,11 +189,10 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                 invitation.setInviterUser(inviter);
                 invitation.setInvitedUser(invitedUser);
                 invitation.setInvitedEmail(normalizedInvitedEmail);
-                invitation.setToken(UUID.randomUUID().toString());
                 invitation.setRole(role);
                 invitation.setStatus(ResearchGroupInvitationStatus.PENDING);
                 invitation.setExpiresAt(expiresAt);
-                invitation = invitationRepository.save(invitation);
+                invitation = saveInvitationWithUniqueToken(invitation);
 
                 String inviterFullName = (inviter.getFirstName() + " " + inviter.getLastName()).trim();
                 String invitationUrl = frontendBaseUrl + "/home/invitations?token=" + invitation.getToken();
@@ -238,6 +241,55 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
 
         @Override
         @Transactional
+        public ResearchGroupSummaryDto acceptMyInvitation(String authenticatedEmail, Long invitationId) {
+                String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(authenticatedEmail);
+
+                User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+                                .orElseThrow(() -> new EmailNotFoundException(normalizedEmail));
+
+                ResearchGroupInvitation invitation = findActivePendingInvitationForUser(invitationId, normalizedEmail);
+                ResearchGroup group = invitation.getResearchGroup();
+
+                if (memberRepository.findActiveMemberByGroupIdAndUserId(group.getId(), user.getId()).isPresent()) {
+                        throw new ResearchGroupMemberAlreadyExistsException(group.getId(), normalizedEmail);
+                }
+
+                ResearchGroupMember member = new ResearchGroupMember();
+                member.setResearchGroup(group);
+                member.setUser(user);
+                member.setRole(invitation.getRole());
+                memberRepository.save(member);
+
+                invitation.setInvitedUser(user);
+                invitation.setStatus(ResearchGroupInvitationStatus.ACCEPTED);
+                invitationRepository.save(invitation);
+
+                long memberCount = memberRepository.findActiveMemberEmailsByGroupId(group.getId()).size();
+
+                return new ResearchGroupSummaryDto(
+                                group.getId(),
+                                group.getName(),
+                                group.getDescription(),
+                                invitation.getRole(),
+                                memberCount,
+                                group.getCreatedAt());
+        }
+
+        @Override
+        @Transactional
+        public void declineMyInvitation(String authenticatedEmail, Long invitationId) {
+                String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(authenticatedEmail);
+
+                userRepository.findByEmailIgnoreCase(normalizedEmail)
+                                .orElseThrow(() -> new EmailNotFoundException(normalizedEmail));
+
+                ResearchGroupInvitation invitation = findActivePendingInvitationForUser(invitationId, normalizedEmail);
+                invitation.setStatus(ResearchGroupInvitationStatus.DECLINED);
+                invitationRepository.save(invitation);
+        }
+
+        @Override
+        @Transactional
         public ResearchGroupSummaryDto joinResearchGroupByCode(String authenticatedEmail, String invitationCode) {
                 String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(authenticatedEmail);
                 String normalizedCode = invitationCode.trim().toUpperCase(Locale.ROOT);
@@ -258,6 +310,8 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                 member.setRole(ResearchGroupMemberRole.ANNOTATOR);
                 memberRepository.save(member);
 
+                resolvePendingInvitationsAfterJoinByCode(group.getId(), normalizedEmail, user);
+
                 long memberCount = memberRepository.findActiveMemberEmailsByGroupId(group.getId()).size();
 
                 return new ResearchGroupSummaryDto(
@@ -267,5 +321,51 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                                 ResearchGroupMemberRole.ANNOTATOR,
                                 memberCount,
                                 group.getCreatedAt());
+        }
+
+        private ResearchGroupInvitation saveInvitationWithUniqueToken(ResearchGroupInvitation invitation) {
+                for (int attempt = 1; attempt <= MAX_TOKEN_GENERATION_ATTEMPTS; attempt++) {
+                        String token = UUID.randomUUID().toString();
+                        if (invitationRepository.existsByToken(token)) {
+                                continue;
+                        }
+
+                        invitation.setToken(token);
+
+                        try {
+                                return invitationRepository.saveAndFlush(invitation);
+                        } catch (DataIntegrityViolationException ex) {
+                                if (invitationRepository.existsByToken(token)) {
+                                        continue;
+                                }
+                                throw ex;
+                        }
+                }
+
+                throw new IllegalStateException("Unable to generate a unique invitation token");
+        }
+
+        private ResearchGroupInvitation findActivePendingInvitationForUser(Long invitationId, String normalizedEmail) {
+                return invitationRepository
+                                .findActivePendingInvitationByIdAndInvitedEmail(invitationId, normalizedEmail,
+                                                Instant.now())
+                                .orElseThrow(() -> new ResearchGroupInvitationNotFoundException(invitationId));
+        }
+
+        private void resolvePendingInvitationsAfterJoinByCode(Long groupId, String normalizedEmail, User user) {
+                List<ResearchGroupInvitation> pendingInvitations = invitationRepository
+                                .findActivePendingInvitationsByGroupIdAndInvitedEmail(groupId, normalizedEmail,
+                                                Instant.now());
+
+                if (pendingInvitations.isEmpty()) {
+                        return;
+                }
+
+                pendingInvitations.forEach(invitation -> {
+                        invitation.setInvitedUser(user);
+                        invitation.setStatus(ResearchGroupInvitationStatus.ACCEPTED);
+                });
+
+                invitationRepository.saveAll(pendingInvitations);
         }
 }

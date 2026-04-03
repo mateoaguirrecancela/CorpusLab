@@ -26,5 +26,9 @@ public interface ResearchGroupService {
 
     List<ResearchGroupInvitationDto> findMyPendingInvitations(String authenticatedEmail);
 
+    ResearchGroupSummaryDto acceptMyInvitation(String authenticatedEmail, Long invitationId);
+
+    void declineMyInvitation(String authenticatedEmail, Long invitationId);
+
     ResearchGroupSummaryDto joinResearchGroupByCode(String authenticatedEmail, String invitationCode);
 }
