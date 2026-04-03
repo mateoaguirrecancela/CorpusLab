@@ -10,6 +10,7 @@
     "errors": {
       "loadFailed": "No se pudieron cargar los grupos de investigación. Inténtalo más tarde.",
       "createFailed": "No se pudo crear el grupo de investigación. Inténtalo de nuevo.",
+      "updateFailed": "No se pudo actualizar el grupo de investigación. Inténtalo de nuevo.",
       "detailLoadFailed": "No se pudo cargar el detalle del grupo de investigación.",
       "invalidGroupId": "El identificador del grupo no es válido.",
       "inviteFailed": "No se pudo enviar la invitación. Inténtalo de nuevo.",
@@ -33,6 +34,14 @@
       "descriptionLabel": "Descripción",
       "descriptionPlaceholder": "Describe brevemente el propósito del grupo...",
       "submit": "Crear Grupo de Investigación"
+    },
+    "edit": {
+      "title": "Editar Grupo de Investigación",
+      "nameLabel": "Nombre",
+      "namePlaceholder": "Nombre del Grupo de Investigación",
+      "descriptionLabel": "Descripción",
+      "descriptionPlaceholder": "Describe brevemente el propósito del grupo...",
+      "submit": "Guardar cambios"
     },
     "invite": {
       "title": "Invitar investigador",
@@ -70,6 +79,7 @@
       "newExperiment": "Nuevo Experimento",
       "experimentsDeferred": "La gestión de experimentos se implementará en una fase posterior.",
       "researchers": "Investigadores",
+      "editGroup": "Editar grupo",
       "inviteMember": "Invitar Miembro",
       "invitationCode": "Código de invitación",
       "copyCode": "Copiar código",

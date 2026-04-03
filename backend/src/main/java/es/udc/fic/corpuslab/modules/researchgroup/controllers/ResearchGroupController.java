@@ -7,6 +7,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -22,6 +23,7 @@ import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupDetailDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupSummaryDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.UpdateResearchGroupMemberRoleRequestDto;
+import es.udc.fic.corpuslab.modules.researchgroup.dtos.UpdateResearchGroupRequestDto;
 import es.udc.fic.corpuslab.modules.researchgroup.services.ResearchGroupService;
 
 @RestController
@@ -52,6 +54,14 @@ public class ResearchGroupController {
             Authentication authentication,
             @PathVariable Long id) {
         return researchGroupService.getResearchGroupDetail(authentication.getName(), id);
+    }
+
+    @PutMapping("/{id}")
+    public ResearchGroupDetailDto updateGroup(
+            Authentication authentication,
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateResearchGroupRequestDto request) {
+        return researchGroupService.updateResearchGroup(authentication.getName(), id, request);
     }
 
     @PostMapping("/{id}/members/{memberUserId}/role")

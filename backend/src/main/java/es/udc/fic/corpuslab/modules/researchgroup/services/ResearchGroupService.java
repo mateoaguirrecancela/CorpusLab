@@ -8,6 +8,7 @@ import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupInvitationDt
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupDetailDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupSummaryDto;
+import es.udc.fic.corpuslab.modules.researchgroup.dtos.UpdateResearchGroupRequestDto;
 import es.udc.fic.corpuslab.modules.researchgroup.enums.ResearchGroupMemberRole;
 
 public interface ResearchGroupService {
@@ -17,6 +18,11 @@ public interface ResearchGroupService {
     ResearchGroupSummaryDto createResearchGroup(String authenticatedEmail, CreateResearchGroupRequestDto request);
 
     ResearchGroupDetailDto getResearchGroupDetail(String authenticatedEmail, Long groupId);
+
+    ResearchGroupDetailDto updateResearchGroup(
+            String authenticatedEmail,
+            Long groupId,
+            UpdateResearchGroupRequestDto request);
 
     ResearchGroupInvitationDto inviteResearcherByEmail(
             String authenticatedEmail,

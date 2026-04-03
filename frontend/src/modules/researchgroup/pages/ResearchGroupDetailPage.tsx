@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
-import { FlaskConical, MoreVertical, Plus, Users } from 'lucide-react';
+import { FilePenLine, FlaskConical, MoreVertical, Plus, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
+import { BackButton } from '@/components/common/BackButton';
 import { Button } from '@/components/ui/button';
 import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { Spinner } from '@/components/ui/spinner';
 import { useProfileQuery } from '@/modules/auth/hooks/useProfileQuery';
+import { EditResearchGroupDialog } from '@/modules/researchgroup/components/EditResearchGroupDialog';
 import { InviteResearchGroupMemberDialog } from '@/modules/researchgroup/components/InviteResearchGroupMemberDialog';
 import { ManageResearchGroupMemberDialog } from '@/modules/researchgroup/components/ManageResearchGroupMemberDialog';
 import { useResearchGroupDetailQuery } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
@@ -54,7 +56,7 @@ export default function ResearchGroupDetailPage() {
   const canManageResearchers = currentMember?.role === 'OWNER';
 
   return (
-    <section className="px-6 py-6 sm:px-8 sm:py-8">
+    <section className="px-5 py-4 sm:px-8 sm:py-4">
       {isLoading && (
         <div className="rounded-md border border-[color:var(--cl-line)] bg-white px-4 py-6 text-sm text-[color:var(--cl-secondary)]">
           <span className="inline-flex items-center gap-2">
@@ -69,7 +71,29 @@ export default function ResearchGroupDetailPage() {
       )}
 
       {!isLoading && !errorMessage && group && (
-        <div className="space-y-7">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <BackButton fallbackTo="/home/research-groups" />
+
+            {canManageResearchers && (
+              <EditResearchGroupDialog
+                groupId={group.id}
+                initialDescription={group.description}
+                initialName={group.name}
+                trigger={
+                  <Button
+                    className="h-10 rounded-md border border-[color:var(--cl-line)] bg-white px-4 text-sm font-semibold text-[color:var(--cl-primary)] hover:bg-[color:var(--cl-primary-soft)] cursor-pointer"
+                    type="button"
+                    variant="outline"
+                  >
+                    <FilePenLine className="size-4" />
+                    {t('researchGroup.detail.editGroup')}
+                  </Button>
+                }
+              />
+            )}
+          </div>
+
           <section className="rounded-md border border-[color:var(--cl-line)] bg-white p-6 sm:p-7">
             <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
               <div>

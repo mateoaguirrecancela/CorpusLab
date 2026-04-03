@@ -34,6 +34,11 @@ export type InviteResearchGroupMemberPayload = {
   expiresAt: string;
 };
 
+export type UpdateResearchGroupPayload = {
+  name: string;
+  description?: string;
+};
+
 export type UpdateResearchGroupMemberRolePayload = {
   role: ResearchGroupMemberRole;
 };

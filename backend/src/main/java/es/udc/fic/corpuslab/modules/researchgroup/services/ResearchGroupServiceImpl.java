@@ -21,6 +21,7 @@ import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupInvitationDt
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupDetailDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupSummaryDto;
+import es.udc.fic.corpuslab.modules.researchgroup.dtos.UpdateResearchGroupRequestDto;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroup;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroupInvitation;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroupMember;
@@ -126,6 +127,46 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                 if (!isMember) {
                         throw new AccessDeniedException("User is not a member of this research group");
                 }
+
+                return new ResearchGroupDetailDto(
+                                group.getId(),
+                                group.getName(),
+                                group.getDescription(),
+                                group.getInvitationCode(),
+                                members.size(),
+                                0L,
+                                group.getCreatedAt(),
+                                members);
+        }
+
+        @Override
+        @Transactional
+        public ResearchGroupDetailDto updateResearchGroup(
+                        String authenticatedEmail,
+                        Long groupId,
+                        UpdateResearchGroupRequestDto request) {
+                User requester = findUserByEmail(authenticatedEmail);
+
+                ResearchGroup group = researchGroupRepository.findById(groupId)
+                                .orElseThrow(() -> new ResearchGroupNotFoundException(groupId));
+
+                ResearchGroupMember requesterMembership = memberRepository
+                                .findActiveMemberByGroupIdAndUserId(groupId, requester.getId())
+                                .orElseThrow(() -> new AccessDeniedException(
+                                                "User is not a member of this research group"));
+
+                if (requesterMembership.getRole() != ResearchGroupMemberRole.OWNER) {
+                        throw new AccessDeniedException("Only owners can edit this research group");
+                }
+
+                group.setName(request.name().trim());
+                group.setDescription(
+                                request.description() != null && !request.description().isBlank()
+                                                ? request.description().trim()
+                                                : null);
+                researchGroupRepository.save(group);
+
+                List<ResearchGroupMemberDto> members = memberRepository.findMembersByGroupId(groupId);
 
                 return new ResearchGroupDetailDto(
                                 group.getId(),
