@@ -10,6 +10,7 @@
     "errors": {
       "loadFailed": "Could not load research groups. Please try again later.",
       "createFailed": "Could not create the research group. Please try again.",
+      "updateFailed": "Could not update the research group. Please try again.",
       "detailLoadFailed": "Could not load research group details.",
       "invalidGroupId": "The research group identifier is not valid.",
       "inviteFailed": "Could not send the invitation. Please try again.",
@@ -33,6 +34,14 @@
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "Briefly describe the group's purpose...",
       "submit": "Create Research Group"
+    },
+    "edit": {
+      "title": "Edit Research Group",
+      "nameLabel": "Name",
+      "namePlaceholder": "Name of the Research Group",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Briefly describe the group's purpose...",
+      "submit": "Save changes"
     },
     "invite": {
       "title": "Invite researcher",
@@ -70,6 +79,7 @@
       "newExperiment": "New Experiment",
       "experimentsDeferred": "Experiment management will be implemented in a future phase.",
       "researchers": "Researchers",
+      "editGroup": "Edit group",
       "inviteMember": "Invite Member",
       "invitationCode": "Invitation code",
       "copyCode": "Copy code",

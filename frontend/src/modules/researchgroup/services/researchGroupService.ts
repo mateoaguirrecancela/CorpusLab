@@ -6,6 +6,7 @@ import {
   type ResearchGroupDetail,
   type ResearchGroupInvitation,
   type ResearchGroupSummary,
+  type UpdateResearchGroupPayload,
   type UpdateResearchGroupMemberRolePayload,
 } from '@/modules/researchgroup/types/researchGroup';
 
@@ -28,6 +29,19 @@ export async function createResearchGroup(
 
 export async function getResearchGroupDetail(groupId: number): Promise<ResearchGroupDetail> {
   const response = await api.get<ResearchGroupDetail>(`/research-groups/${groupId}`);
+  return response.data;
+}
+
+export async function updateResearchGroup(
+  groupId: number,
+  payload: UpdateResearchGroupPayload,
+): Promise<ResearchGroupDetail> {
+  const body = {
+    name: payload.name.trim(),
+    description: payload.description?.trim() || undefined,
+  };
+
+  const response = await api.put<ResearchGroupDetail>(`/research-groups/${groupId}`, body);
   return response.data;
 }
 
@@ -102,6 +116,10 @@ export function getResearchGroupsErrorMessage(error: unknown): string {
 
 export function getCreateGroupErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, 'researchGroup.errors.createFailed');
+}
+
+export function getUpdateGroupErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'researchGroup.errors.updateFailed');
 }
 
 export function getResearchGroupDetailErrorMessage(error: unknown): string {

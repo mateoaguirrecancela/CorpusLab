@@ -10,9 +10,13 @@ import {
   inviteResearchGroupMember,
   joinResearchGroupByCode,
   removeResearchGroupMember,
+  updateResearchGroup,
   updateResearchGroupMemberRole,
 } from '@/modules/researchgroup/services/researchGroupService';
-import { type InviteResearchGroupMemberPayload } from '@/modules/researchgroup/types/researchGroup';
+import {
+  type InviteResearchGroupMemberPayload,
+  type UpdateResearchGroupPayload,
+} from '@/modules/researchgroup/types/researchGroup';
 
 export const RESEARCH_GROUPS_QUERY_KEY = ['research-groups'] as const;
 export const RESEARCH_GROUP_INVITATIONS_QUERY_KEY = ['research-groups', 'invitations'] as const;
@@ -49,6 +53,18 @@ export function useCreateResearchGroupMutation() {
   return useMutation({
     mutationFn: (payload: CreateResearchGroupPayload) => createResearchGroup(payload),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: RESEARCH_GROUPS_QUERY_KEY });
+    },
+  });
+}
+
+export function useUpdateResearchGroupMutation(groupId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateResearchGroupPayload) => updateResearchGroup(groupId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: researchGroupDetailQueryKey(groupId) });
       void queryClient.invalidateQueries({ queryKey: RESEARCH_GROUPS_QUERY_KEY });
     },
   });
