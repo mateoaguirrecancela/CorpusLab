@@ -9,6 +9,8 @@ import {
   getResearchGroupDetail,
   inviteResearchGroupMember,
   joinResearchGroupByCode,
+  removeResearchGroupMember,
+  updateResearchGroupMemberRole,
 } from '@/modules/researchgroup/services/researchGroupService';
 import { type InviteResearchGroupMemberPayload } from '@/modules/researchgroup/types/researchGroup';
 
@@ -96,6 +98,31 @@ export function useDeclineResearchGroupInvitationMutation() {
     mutationFn: (invitationId: number) => declineResearchGroupInvitation(invitationId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: RESEARCH_GROUP_INVITATIONS_QUERY_KEY });
+    },
+  });
+}
+
+export function useUpdateResearchGroupMemberRoleMutation(groupId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ memberUserId, role }: { memberUserId: number; role: 'ADMIN' | 'ANNOTATOR' }) =>
+      updateResearchGroupMemberRole(groupId, memberUserId, { role }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: researchGroupDetailQueryKey(groupId) });
+      void queryClient.invalidateQueries({ queryKey: RESEARCH_GROUPS_QUERY_KEY });
+    },
+  });
+}
+
+export function useRemoveResearchGroupMemberMutation(groupId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (memberUserId: number) => removeResearchGroupMember(groupId, memberUserId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: researchGroupDetailQueryKey(groupId) });
+      void queryClient.invalidateQueries({ queryKey: RESEARCH_GROUPS_QUERY_KEY });
     },
   });
 }

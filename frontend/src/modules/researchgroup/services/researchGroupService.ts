@@ -6,6 +6,7 @@ import {
   type ResearchGroupDetail,
   type ResearchGroupInvitation,
   type ResearchGroupSummary,
+  type UpdateResearchGroupMemberRolePayload,
 } from '@/modules/researchgroup/types/researchGroup';
 
 export async function getMyResearchGroups(): Promise<ResearchGroupSummary[]> {
@@ -68,6 +69,23 @@ export async function declineResearchGroupInvitation(invitationId: number): Prom
   await api.post(`/research-groups/my-invitations/${invitationId}/decline`);
 }
 
+export async function updateResearchGroupMemberRole(
+  groupId: number,
+  memberUserId: number,
+  payload: UpdateResearchGroupMemberRolePayload,
+): Promise<void> {
+  await api.post(`/research-groups/${groupId}/members/${memberUserId}/role`, {
+    role: payload.role,
+  });
+}
+
+export async function removeResearchGroupMember(
+  groupId: number,
+  memberUserId: number,
+): Promise<void> {
+  await api.post(`/research-groups/${groupId}/members/${memberUserId}/remove`);
+}
+
 function extractApiErrorMessage(error: unknown, fallbackKey: string): string {
   if (typeof error === 'object' && error !== null && 'response' in error) {
     const response = (error as { response?: { data?: { message?: string; error?: string } } })
@@ -108,4 +126,12 @@ export function getAcceptInvitationErrorMessage(error: unknown): string {
 
 export function getDeclineInvitationErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, 'researchGroup.errors.declineInvitationFailed');
+}
+
+export function getUpdateMemberRoleErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'researchGroup.errors.updateMemberRoleFailed');
+}
+
+export function getRemoveMemberErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'researchGroup.errors.removeMemberFailed');
 }

@@ -16,7 +16,9 @@
       "invitationsLoadFailed": "Non se puideron cargar as túas invitacións.",
       "joinByCodeFailed": "Non se puido unir ao grupo con ese código.",
       "acceptInvitationFailed": "Non se puido aceptar a invitación.",
-      "declineInvitationFailed": "Non se puido rexeitar a invitación."
+      "declineInvitationFailed": "Non se puido rexeitar a invitación.",
+      "updateMemberRoleFailed": "Non se puido actualizar o rol do investigador.",
+      "removeMemberFailed": "Non se puido eliminar o investigador do grupo."
     },
     "loading": "Cargando grupos de investigación...",
     "roles": {
@@ -75,6 +77,17 @@
       "codeCopied": "Código copiado ao portapapeis.",
       "codeCopyFailed": "Non se puido copiar o código automaticamente.",
       "memberActions": "Accións do investigador",
+      "manage": {
+        "title": "Xestionar investigador",
+        "researcher": "Investigador",
+        "roleLabel": "Rol",
+        "setRole": "Cambiar a {{role}}",
+        "updateRole": "Actualizar rol",
+        "remove": "Eliminar",
+        "removing": "Eliminando...",
+        "updateSuccess": "Rol actualizado correctamente.",
+        "confirmRemove": "Seguro que queres eliminar a {{name}} do grupo?"
+      },
       "columns": {
         "name": "Nome",
         "role": "Rol",

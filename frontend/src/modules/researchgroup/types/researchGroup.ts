@@ -34,6 +34,10 @@ export type InviteResearchGroupMemberPayload = {
   expiresAt: string;
 };
 
+export type UpdateResearchGroupMemberRolePayload = {
+  role: ResearchGroupMemberRole;
+};
+
 export type ResearchGroupInvitationStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
 
 export type ResearchGroupInvitation = {
