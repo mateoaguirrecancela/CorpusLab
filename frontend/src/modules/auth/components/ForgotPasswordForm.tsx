@@ -2,10 +2,9 @@ import { type FormEvent } from 'react';
 import { Mail } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
-import { Field, FieldLabel } from '@/components/ui/field';
 import { FeedbackMessage } from '@/components/ui/feedback-message';
-import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { type ForgotPasswordFormState } from '@/modules/auth/types/forgotPassword';
 
@@ -35,19 +34,16 @@ export function ForgotPasswordForm({
 
   return (
     <form className="mt-8 space-y-4" onSubmit={onSubmit}>
-      <Field>
-        <FieldLabel htmlFor="email">
-          <Mail className="size-4" />
-          {`${t('auth.login.email')} *`}
-        </FieldLabel>
-        <Input
-          id="email"
-          onChange={(e) => onFieldChange('email', e.currentTarget.value)}
-          placeholder="example@email.com"
-          type="email"
-          value={form.email}
-        />
-      </Field>
+      <FormFieldControl
+        icon={<Mail className="size-4" />}
+        id="email"
+        inputProps={{ placeholder: 'example@email.com' }}
+        inputType="email"
+        label={t('auth.login.email')}
+        onValueChange={(value) => onFieldChange('email', value)}
+        required
+        value={form.email}
+      />
 
       <Button
         className="h-11 w-full rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white shadow-[0_8px_16px_-10px_rgba(49,46,129,0.95)] hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer"

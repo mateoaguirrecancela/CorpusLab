@@ -2,7 +2,9 @@ import { api } from '@/lib/api';
 import i18n from '@/lib/i18n';
 import { type CreateResearchGroupPayload } from '@/modules/researchgroup/types/createResearchGroup';
 import {
+  type InviteResearchGroupMemberPayload,
   type ResearchGroupDetail,
+  type ResearchGroupInvitation,
   type ResearchGroupSummary,
 } from '@/modules/researchgroup/types/researchGroup';
 
@@ -28,6 +30,44 @@ export async function getResearchGroupDetail(groupId: number): Promise<ResearchG
   return response.data;
 }
 
+export async function inviteResearchGroupMember(
+  groupId: number,
+  payload: InviteResearchGroupMemberPayload,
+): Promise<void> {
+  const body = {
+    email: payload.email.trim(),
+    role: payload.role,
+    expiresAt: payload.expiresAt,
+  };
+
+  await api.post(`/research-groups/${groupId}/invitations`, body);
+}
+
+export async function getMyResearchGroupInvitations(): Promise<ResearchGroupInvitation[]> {
+  const response = await api.get<ResearchGroupInvitation[]>('/research-groups/my-invitations');
+  return response.data;
+}
+
+export async function joinResearchGroupByCode(code: string): Promise<ResearchGroupSummary> {
+  const response = await api.post<ResearchGroupSummary>('/research-groups/join-by-code', {
+    code: code.trim(),
+  });
+  return response.data;
+}
+
+export async function acceptResearchGroupInvitation(
+  invitationId: number,
+): Promise<ResearchGroupSummary> {
+  const response = await api.post<ResearchGroupSummary>(
+    `/research-groups/my-invitations/${invitationId}/accept`,
+  );
+  return response.data;
+}
+
+export async function declineResearchGroupInvitation(invitationId: number): Promise<void> {
+  await api.post(`/research-groups/my-invitations/${invitationId}/decline`);
+}
+
 function extractApiErrorMessage(error: unknown, fallbackKey: string): string {
   if (typeof error === 'object' && error !== null && 'response' in error) {
     const response = (error as { response?: { data?: { message?: string; error?: string } } })
@@ -48,4 +88,24 @@ export function getCreateGroupErrorMessage(error: unknown): string {
 
 export function getResearchGroupDetailErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, 'researchGroup.errors.detailLoadFailed');
+}
+
+export function getInviteResearcherErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'researchGroup.errors.inviteFailed');
+}
+
+export function getInvitationsErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'researchGroup.errors.invitationsLoadFailed');
+}
+
+export function getJoinByCodeErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'researchGroup.errors.joinByCodeFailed');
+}
+
+export function getAcceptInvitationErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'researchGroup.errors.acceptInvitationFailed');
+}
+
+export function getDeclineInvitationErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'researchGroup.errors.declineInvitationFailed');
 }

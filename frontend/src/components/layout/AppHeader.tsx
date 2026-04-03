@@ -1,14 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Bell, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 import corpusLabLogo from '@/assets/CorpusLab.png';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getUserInitials } from '@/lib/user';
-import {
-  SESSION_AUTH_TOKEN_STORAGE_KEY,
-  SESSION_USER_STORAGE_KEY,
-} from '@/modules/auth/constants/session';
+import { SESSION_AUTH_TOKEN_STORAGE_KEY } from '@/modules/auth/constants/session';
+import { PROFILE_QUERY_KEY, useProfileQuery } from '@/modules/auth/hooks/useProfileQuery';
 import { getLogoutErrorMessage, logout } from '@/modules/auth/services/authService';
 
 type AppTopbarProps = {
@@ -19,57 +18,21 @@ type AppTopbarProps = {
 export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [sessionUser, setSessionUser] = useState<{
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-  } | null>(null);
-
-  const readSessionUser = () => {
-    try {
-      const storedValue = localStorage.getItem(SESSION_USER_STORAGE_KEY);
-
-      if (!storedValue) {
-        return null;
-      }
-
-      const parsedValue = JSON.parse(storedValue) as {
-        firstName?: string;
-        lastName?: string;
-        email?: string;
-      };
-
-      return parsedValue;
-    } catch {
-      return null;
-    }
-  };
-
-  useEffect(() => {
-    const syncSessionUser = () => {
-      setSessionUser(readSessionUser());
-    };
-
-    syncSessionUser();
-    window.addEventListener('session-user-updated', syncSessionUser);
-
-    return () => {
-      window.removeEventListener('session-user-updated', syncSessionUser);
-    };
-  }, []);
+  const { data: profile } = useProfileQuery();
 
   const userLabel = useMemo(() => {
-    const firstName = sessionUser?.firstName?.trim() ?? '';
-    const lastName = sessionUser?.lastName?.trim() ?? '';
+    const firstName = profile?.firstName?.trim() ?? '';
+    const lastName = profile?.lastName?.trim() ?? '';
 
     const fullName = `${firstName} ${lastName}`.trim();
     return fullName.length > 0 ? fullName : t('common.user');
-  }, [sessionUser, t]);
+  }, [profile, t]);
 
   const userInitials = useMemo(() => {
-    return getUserInitials(sessionUser ?? {});
-  }, [sessionUser]);
+    return getUserInitials(profile ?? {});
+  }, [profile]);
 
   const handleLogout = async () => {
     if (isLoggingOut) {
@@ -83,9 +46,8 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
     } catch (error) {
       console.error(getLogoutErrorMessage(error));
     } finally {
-      localStorage.removeItem(SESSION_USER_STORAGE_KEY);
       localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY);
-      window.dispatchEvent(new Event('session-user-updated'));
+      queryClient.removeQueries({ queryKey: PROFILE_QUERY_KEY });
       navigate('/auth/login', { replace: true });
       setIsLoggingOut(false);
     }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
 import { FeedbackMessage } from '@/components/ui/feedback-message';
@@ -6,8 +7,8 @@ import { Spinner } from '@/components/ui/spinner';
 import {
   OAUTH_PROVIDER_LABEL,
   SESSION_AUTH_TOKEN_STORAGE_KEY,
-  SESSION_USER_STORAGE_KEY,
 } from '@/modules/auth/constants/session';
+import { PROFILE_QUERY_KEY } from '@/modules/auth/hooks/useProfileQuery';
 import { getProfile } from '@/modules/auth/services/authService';
 
 function mapOAuthError(
@@ -36,6 +37,7 @@ function mapOAuthError(
 export default function OAuthRedirectPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -73,14 +75,7 @@ export default function OAuthRedirectPage() {
 
       try {
         const profile = await getProfile();
-        localStorage.setItem(
-          SESSION_USER_STORAGE_KEY,
-          JSON.stringify({
-            firstName: profile.firstName,
-            lastName: profile.lastName,
-            email: profile.email,
-          }),
-        );
+        queryClient.setQueryData(PROFILE_QUERY_KEY, profile);
       } catch {
         localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY);
         setErrorMessage(t('auth.oauth.errors.profileLoad'));
@@ -94,7 +89,7 @@ export default function OAuthRedirectPage() {
     };
 
     void completeOAuthLogin();
-  }, [navigate, oauthError, t, token]);
+  }, [navigate, oauthError, queryClient, t, token]);
 
   return (
     <section className="signup-card w-full max-w-md rounded-xl border border-[color:var(--cl-line)] bg-white/80 p-6 text-center shadow-[0_20px_60px_-45px_rgba(15,23,42,0.75)] backdrop-blur sm:p-8">

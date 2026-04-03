@@ -11,7 +11,12 @@
       "loadFailed": "Could not load research groups. Please try again later.",
       "createFailed": "Could not create the research group. Please try again.",
       "detailLoadFailed": "Could not load research group details.",
-      "invalidGroupId": "The research group identifier is not valid."
+      "invalidGroupId": "The research group identifier is not valid.",
+      "inviteFailed": "Could not send the invitation. Please try again.",
+      "invitationsLoadFailed": "Could not load your invitations.",
+      "joinByCodeFailed": "Could not join the group with that code.",
+      "acceptInvitationFailed": "Could not accept the invitation.",
+      "declineInvitationFailed": "Could not decline the invitation."
     },
     "loading": "Loading research groups...",
     "roles": {
@@ -27,6 +32,33 @@
       "descriptionPlaceholder": "Briefly describe the group's purpose...",
       "submit": "Create Research Group"
     },
+    "invite": {
+      "title": "Invite researcher",
+      "emailLabel": "Email",
+      "emailPlaceholder": "user@example.com",
+      "invalidEmail": "The email format is invalid.",
+      "roleLabel": "Role",
+      "submit": "Send invitation",
+      "success": "Invitation sent successfully."
+    },
+    "invitationsDialog": {
+      "title": "Invitations and join by code",
+      "myInvitations": "My invitations",
+      "loadingInvitations": "Loading invitations...",
+      "noInvitations": "You have no pending invitations.",
+      "invitedBy": "Invited by {{name}}",
+      "expiresAt": "Expires: {{date}}",
+      "joinByCode": "Join with invitation code",
+      "codeLabel": "Invitation code",
+      "codePlaceholder": "Enter invitation code",
+      "joinSubmit": "Join",
+      "joining": "Joining...",
+      "joinSuccess": "You joined the group successfully.",
+      "acceptAria": "Accept invitation",
+      "declineAria": "Decline invitation",
+      "acceptSuccess": "Invitation accepted successfully.",
+      "declineSuccess": "Invitation declined successfully."
+    },
     "detail": {
       "backToGroups": "Back to groups",
       "loading": "Loading group details...",
@@ -37,6 +69,11 @@
       "experimentsDeferred": "Experiment management will be implemented in a future phase.",
       "researchers": "Researchers",
       "inviteMember": "Invite Member",
+      "invitationCode": "Invitation code",
+      "copyCode": "Copy code",
+      "copied": "Copied",
+      "codeCopied": "Invitation code copied to clipboard.",
+      "codeCopyFailed": "Could not copy the code automatically.",
       "memberActions": "Researcher actions",
       "columns": {
         "name": "Name",

@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from 'react';
 import { Mail, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { FeedbackMessage } from '@/components/ui/feedback-message';
@@ -6,39 +5,18 @@ import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { CreateResearchGroupDialog } from '@/modules/researchgroup/components/CreateResearchGroupDialog';
 import { ResearchGroupCard } from '@/modules/researchgroup/components/ResearchGroupCard';
+import { ResearchGroupInvitationsDialog } from '@/modules/researchgroup/components/ResearchGroupInvitationsDialog';
+import { getResearchGroupsErrorMessage } from '@/modules/researchgroup/services/researchGroupService';
 import {
-  getMyResearchGroups,
-  getResearchGroupsErrorMessage,
-} from '@/modules/researchgroup/services/researchGroupService';
-import { type ResearchGroupSummary } from '@/modules/researchgroup/types/researchGroup';
+  useResearchGroupInvitationsQuery,
+  useResearchGroupsQuery,
+} from '@/modules/researchgroup/hooks/useResearchGroupQueries';
 
 export default function ResearchGroupsPage() {
   const { t } = useTranslation();
-  const [groups, setGroups] = useState<ResearchGroupSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
-
-  const loadGroups = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage('');
-
-    try {
-      const data = await getMyResearchGroups();
-      setGroups(data);
-    } catch (error) {
-      setErrorMessage(getResearchGroupsErrorMessage(error));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadGroups();
-  }, [loadGroups]);
-
-  const handleGroupCreated = (newGroup: ResearchGroupSummary) => {
-    setGroups((current) => [newGroup, ...current]);
-  };
+  const { data: groups = [], isLoading, isError, error } = useResearchGroupsQuery();
+  const { data: invitations = [] } = useResearchGroupInvitationsQuery();
+  const errorMessage = isError ? getResearchGroupsErrorMessage(error) : '';
 
   return (
     <section className="px-6 py-6 sm:px-8 sm:py-8">
@@ -48,16 +26,24 @@ export default function ResearchGroupsPage() {
         </h1>
 
         <div className="flex gap-3">
-          <Button
-            className="h-10 px-4 rounded-md border border-[color:var(--cl-line)] bg-white text-sm font-semibold text-[color:var(--cl-neutral)] transition-colors hover:bg-[color:var(--cl-primary-soft)] cursor-pointer"
-            type="button"
-          >
-            <Mail className="size-4" />
-            {t('researchGroup.invitations')}
-          </Button>
+          <ResearchGroupInvitationsDialog
+            trigger={
+              <Button
+                className="h-10 px-4 rounded-md border border-[color:var(--cl-line)] bg-white text-sm font-semibold text-[color:var(--cl-neutral)] transition-colors hover:bg-[color:var(--cl-primary-soft)] cursor-pointer"
+                type="button"
+              >
+                <Mail className="size-4" />
+                {t('researchGroup.invitations')}
+                {invitations.length > 0 && (
+                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-(--cl-neutral) text-[11px] font-bold leading-none text-white">
+                    {invitations.length}
+                  </span>
+                )}
+              </Button>
+            }
+          />
 
           <CreateResearchGroupDialog
-            onCreated={handleGroupCreated}
             trigger={
               <Button
                 className="h-10 px-4 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white transition-colors hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer"
@@ -106,4 +92,3 @@ export default function ResearchGroupsPage() {
     </section>
   );
 }
-
