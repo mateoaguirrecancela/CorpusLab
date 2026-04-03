@@ -1,25 +1,10 @@
 import { type ReactNode } from 'react';
 import { Navigate } from 'react-router';
-import { SESSION_USER_STORAGE_KEY } from '@/modules/auth/constants/session';
+import { SESSION_AUTH_TOKEN_STORAGE_KEY } from '@/modules/auth/constants/session';
 
 function hasSession(): boolean {
-  try {
-    const rawValue = localStorage.getItem(SESSION_USER_STORAGE_KEY);
-
-    if (!rawValue) {
-      return false;
-    }
-
-    const parsedValue = JSON.parse(rawValue) as {
-      email?: string;
-      firstName?: string;
-      lastName?: string;
-    };
-
-    return Boolean(parsedValue.email || parsedValue.firstName || parsedValue.lastName);
-  } catch {
-    return false;
-  }
+  const token = localStorage.getItem(SESSION_AUTH_TOKEN_STORAGE_KEY);
+  return Boolean(token && token.trim().length > 0);
 }
 
 type GuardProps = {

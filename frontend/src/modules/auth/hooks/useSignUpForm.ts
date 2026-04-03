@@ -1,13 +1,15 @@
 import { type FormEvent, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { INITIAL_REGISTER_STATE } from '@/modules/auth/constants/signup';
 import {
   type OAuthProvider,
   SESSION_AUTH_TOKEN_STORAGE_KEY,
-  SESSION_USER_STORAGE_KEY,
 } from '@/modules/auth/constants/session';
+import { PROFILE_QUERY_KEY } from '@/modules/auth/hooks/useProfileQuery';
 import {
+  getProfile,
   getLoginErrorMessage,
   getRegisterErrorMessage,
   login,
@@ -15,6 +17,7 @@ import {
   signup,
 } from '@/modules/auth/services/authService';
 import { type RegisterFormState } from '@/modules/auth/types/signup';
+import { type ProfileResponse } from '@/modules/auth/types/profile';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -47,6 +50,7 @@ function isAtLeast16YearsOld(birthDate: string): boolean {
 export function useSignUpForm() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<RegisterFormState>(INITIAL_REGISTER_STATE);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -99,15 +103,25 @@ export function useSignUpForm() {
         password: form.password,
       });
 
-      localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY);
-      localStorage.setItem(
-        SESSION_USER_STORAGE_KEY,
-        JSON.stringify({
+      localStorage.setItem(SESSION_AUTH_TOKEN_STORAGE_KEY, loginResponse.token);
+
+      try {
+        await queryClient.fetchQuery({
+          queryKey: PROFILE_QUERY_KEY,
+          queryFn: getProfile,
+        });
+      } catch {
+        queryClient.setQueryData<ProfileResponse>(PROFILE_QUERY_KEY, {
+          email: loginResponse.email,
           firstName: loginResponse.firstName,
           lastName: loginResponse.lastName,
-          email: loginResponse.email,
-        }),
-      );
+          birth: null,
+          gender: null,
+          countryCode: null,
+          city: null,
+        });
+      }
+
       setSuccessMessage(t('auth.signup.success', { name: loginResponse.firstName }));
       setForm(INITIAL_REGISTER_STATE);
       navigate('/home');

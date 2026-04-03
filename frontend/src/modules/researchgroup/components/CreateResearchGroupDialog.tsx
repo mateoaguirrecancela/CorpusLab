@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,34 +11,22 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { FeedbackMessage } from '@/components/ui/feedback-message';
-import {
-  Field,
-  FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from '@/components/ui/spinner';
-import {
-  createResearchGroup,
-  getCreateGroupErrorMessage,
-} from '@/modules/researchgroup/services/researchGroupService';
-import { type ResearchGroupSummary } from '@/modules/researchgroup/types/researchGroup';
+import { useCreateResearchGroupMutation } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
+import { getCreateGroupErrorMessage } from '@/modules/researchgroup/services/researchGroupService';
 
 type CreateResearchGroupDialogProps = {
   trigger: React.ReactNode;
-  onCreated: (group: ResearchGroupSummary) => void;
 };
 
-export function CreateResearchGroupDialog({
-  trigger,
-  onCreated,
-}: Readonly<CreateResearchGroupDialogProps>) {
+export function CreateResearchGroupDialog({ trigger }: Readonly<CreateResearchGroupDialogProps>) {
   const { t } = useTranslation();
+  const createGroupMutation = useCreateResearchGroupMutation();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const isSaving = createGroupMutation.isPending;
 
   const canSave = name.trim().length > 0 && !isSaving;
 
@@ -45,7 +34,6 @@ export function CreateResearchGroupDialog({
     setName('');
     setDescription('');
     setErrorMessage('');
-    setIsSaving(false);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -60,22 +48,18 @@ export function CreateResearchGroupDialog({
       return;
     }
 
-    setIsSaving(true);
     setErrorMessage('');
 
     try {
-      const created = await createResearchGroup({
+      await createGroupMutation.mutateAsync({
         name: name.trim(),
         description: description.trim() || undefined,
       });
 
-      onCreated(created);
       setOpen(false);
       resetForm();
     } catch (error) {
       setErrorMessage(getCreateGroupErrorMessage(error));
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -89,36 +73,38 @@ export function CreateResearchGroupDialog({
         </DialogHeader>
 
         <div className="my-8 space-y-4">
-          <Field>
-            <FieldLabel htmlFor="create-group-name">
-              {t('researchGroup.create.nameLabel') + ' *'}
-            </FieldLabel>
-            <Input
-              autoFocus
-              id="create-group-name"
-              maxLength={256}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t('researchGroup.create.namePlaceholder')}
-              required
-              value={name}
-            />
-          </Field>
+          <FormFieldControl
+            id="create-group-name"
+            inputProps={{
+              autoFocus: true,
+              maxLength: 256,
+              placeholder: t('researchGroup.create.namePlaceholder'),
+              required: true,
+            }}
+            label={t('researchGroup.create.nameLabel')}
+            onValueChange={setName}
+            required
+            value={name}
+          />
 
-          <Field>
-            <FieldLabel htmlFor="create-group-description">
-              {t('researchGroup.create.descriptionLabel')}
-            </FieldLabel>
-            <Textarea
-              id="create-group-description"
-              maxLength={2048}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={t('researchGroup.create.descriptionPlaceholder')}
-              value={description}
-            />
-          </Field>
+          <FormFieldControl
+            controlType="textarea"
+            id="create-group-description"
+            label={t('researchGroup.create.descriptionLabel')}
+            onValueChange={setDescription}
+            textareaProps={{
+              maxLength: 2048,
+              placeholder: t('researchGroup.create.descriptionPlaceholder'),
+            }}
+            value={description}
+          />
 
           {errorMessage.length > 0 && (
-            <FeedbackMessage className="rounded-lg px-4 py-3" message={errorMessage} variant="error" />
+            <FeedbackMessage
+              className="rounded-lg px-4 py-3"
+              message={errorMessage}
+              variant="error"
+            />
           )}
         </div>
 

@@ -1,11 +1,10 @@
-import { type FormEvent, useState } from 'react';
-import { Eye, EyeOff, Github, Lock, Mail } from 'lucide-react';
+import { type FormEvent } from 'react';
+import { Github, Lock, Mail } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
-import { Field, FieldLabel } from '@/components/ui/field';
 import { FeedbackMessage } from '@/components/ui/feedback-message';
-import { Input } from '@/components/ui/input';
 import { SubmitButtonWithSpinner } from '@/components/ui/submit-button-with-spinner';
 import { type OAuthProvider } from '@/modules/auth/constants/session';
 import { type LoginFormState } from '@/modules/auth/types/login';
@@ -34,55 +33,34 @@ export function LogInForm({
   const { t } = useTranslation();
   const trimmedEmail = form.email.trim();
   const isEmailInvalid = trimmedEmail.length > 0 && !EMAIL_REGEX.test(trimmedEmail);
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   return (
     <form className="mt-8 space-y-4" onSubmit={onSubmit}>
-      <Field>
-        <FieldLabel htmlFor="email">
-          <Mail className="size-4" />
-          {`${t('auth.login.email')} *`}
-        </FieldLabel>
-        <Input
-          id="email"
-          onChange={(e) => onFieldChange('email', e.currentTarget.value)}
-          placeholder="example@email.com"
-          type="email"
-          value={form.email}
-        />
-      </Field>
-
-      {isEmailInvalid && (
-        <p className="-mt-2 text-xs text-red-700">{t('auth.login.invalidEmail')}</p>
-      )}
+      <FormFieldControl
+        icon={<Mail className="size-4" />}
+        id="email"
+        inputProps={{ placeholder: 'example@email.com' }}
+        inputType="email"
+        label={t('auth.login.email')}
+        message={isEmailInvalid ? t('auth.login.invalidEmail') : undefined}
+        onValueChange={(value) => onFieldChange('email', value)}
+        required
+        value={form.email}
+      />
 
       <div className="space-y-1.5">
-        <Field>
-          <FieldLabel htmlFor="password">
-            <Lock className="size-4" />
-            {`${t('auth.login.password')} *`}
-          </FieldLabel>
-          <div className="relative">
-            <Input
-              id="password"
-              minLength={8}
-              onChange={(e) => onFieldChange('password', e.currentTarget.value)}
-              placeholder="********"
-              type={isPasswordVisible ? 'text' : 'password'}
-              value={form.password}
-            />
-            <button
-              aria-label={
-                isPasswordVisible ? t('common.aria.hidePassword') : t('common.aria.showPassword')
-              }
-              className="absolute top-1/2 right-3 -translate-y-1/2 text-[color:var(--cl-tertiary)] transition hover:text-[color:var(--cl-primary)]"
-              onClick={() => setIsPasswordVisible((current) => !current)}
-              type="button"
-            >
-              {isPasswordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            </button>
-          </div>
-        </Field>
+        <FormFieldControl
+          hidePasswordLabel={t('common.aria.hidePassword')}
+          icon={<Lock className="size-4" />}
+          id="password"
+          inputProps={{ minLength: 8, placeholder: '********' }}
+          inputType="password"
+          label={t('auth.login.password')}
+          onValueChange={(value) => onFieldChange('password', value)}
+          required
+          showPasswordLabel={t('common.aria.showPassword')}
+          value={form.password}
+        />
 
         <div className="flex items-end justify-end">
           <Link
@@ -145,4 +123,3 @@ export function LogInForm({
     </form>
   );
 }
-

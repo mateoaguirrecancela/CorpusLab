@@ -11,7 +11,12 @@
       "loadFailed": "No se pudieron cargar los grupos de investigación. Inténtalo más tarde.",
       "createFailed": "No se pudo crear el grupo de investigación. Inténtalo de nuevo.",
       "detailLoadFailed": "No se pudo cargar el detalle del grupo de investigación.",
-      "invalidGroupId": "El identificador del grupo no es válido."
+      "invalidGroupId": "El identificador del grupo no es válido.",
+      "inviteFailed": "No se pudo enviar la invitación. Inténtalo de nuevo.",
+      "invitationsLoadFailed": "No se pudieron cargar tus invitaciones.",
+      "joinByCodeFailed": "No se pudo unir al grupo con ese código.",
+      "acceptInvitationFailed": "No se pudo aceptar la invitación.",
+      "declineInvitationFailed": "No se pudo rechazar la invitación."
     },
     "loading": "Cargando grupos de investigación...",
     "roles": {
@@ -27,6 +32,33 @@
       "descriptionPlaceholder": "Describe brevemente el propósito del grupo...",
       "submit": "Crear Grupo de Investigación"
     },
+    "invite": {
+      "title": "Invitar investigador",
+      "emailLabel": "Email",
+      "emailPlaceholder": "usuario@ejemplo.com",
+      "invalidEmail": "El email no tiene un formato válido.",
+      "roleLabel": "Rol",
+      "submit": "Enviar invitación",
+      "success": "Invitación enviada correctamente."
+    },
+    "invitationsDialog": {
+      "title": "Invitaciones y unión por código",
+      "myInvitations": "Mis invitaciones",
+      "loadingInvitations": "Cargando invitaciones...",
+      "noInvitations": "No tienes invitaciones pendientes.",
+      "invitedBy": "Invitado por {{name}}",
+      "expiresAt": "Expira: {{date}}",
+      "joinByCode": "Unirse mediante código",
+      "codeLabel": "Código de invitación",
+      "codePlaceholder": "Introduce el código de invitación",
+      "joinSubmit": "Unirme",
+      "joining": "Uniéndome...",
+      "joinSuccess": "Te has unido al grupo correctamente.",
+      "acceptAria": "Aceptar invitación",
+      "declineAria": "Rechazar invitación",
+      "acceptSuccess": "Invitación aceptada correctamente.",
+      "declineSuccess": "Invitación rechazada correctamente."
+    },
     "detail": {
       "backToGroups": "Volver a grupos",
       "loading": "Cargando detalle del grupo...",
@@ -37,6 +69,11 @@
       "experimentsDeferred": "La gestión de experimentos se implementará en una fase posterior.",
       "researchers": "Investigadores",
       "inviteMember": "Invitar Miembro",
+      "invitationCode": "Código de invitación",
+      "copyCode": "Copiar código",
+      "copied": "Copiado",
+      "codeCopied": "Código copiado al portapapeles.",
+      "codeCopyFailed": "No se pudo copiar el código automáticamente.",
       "memberActions": "Acciones del investigador",
       "columns": {
         "name": "Nombre",

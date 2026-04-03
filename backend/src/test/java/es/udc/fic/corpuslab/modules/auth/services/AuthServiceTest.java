@@ -48,6 +48,7 @@ import es.udc.fic.corpuslab.modules.auth.fixtures.UserUpdateProfileRequestTestBu
 import es.udc.fic.corpuslab.modules.auth.repositories.PasswordResetTokenRepository;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
+import es.udc.fic.corpuslab.common.security.JwtTokenService;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -66,11 +67,19 @@ class AuthServiceTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private JwtTokenService jwtTokenService;
+
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthServiceImpl(userRepository, passwordEncoder, passwordResetTokenRepository, emailService);
+        authService = new AuthServiceImpl(
+                userRepository,
+                passwordEncoder,
+                passwordResetTokenRepository,
+                emailService,
+                jwtTokenService);
     }
 
     @AfterEach
@@ -145,8 +154,7 @@ class AuthServiceTest {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> savedWithIdAndCreatedAt(
                 invocation.getArgument(0),
                 7L,
-                Instant.parse("2026-03-25T00:00:00Z")
-        ));
+                Instant.parse("2026-03-25T00:00:00Z")));
 
         authService.signup(request);
 
@@ -170,6 +178,7 @@ class AuthServiceTest {
 
         when(userRepository.findByEmailIgnoreCase("new.user@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("strong-password", user.getPasswordHash())).thenReturn(true);
+        when(jwtTokenService.generateToken("new.user@example.com")).thenReturn("jwt-token");
 
         UserLoginResponseDto response = authService.login(request, httpRequest);
 
@@ -177,6 +186,7 @@ class AuthServiceTest {
         assertThat(response.email()).isEqualTo("new.user@example.com");
         assertThat(response.firstName()).isEqualTo("New");
         assertThat(response.lastName()).isEqualTo("User");
+        assertThat(response.token()).isEqualTo("jwt-token");
 
         HttpSession session = httpRequest.getSession(false);
         assertThat(session).isNotNull();
@@ -312,9 +322,7 @@ class AuthServiceTest {
                 org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(
                         "new.user@example.com",
                         null,
-                        java.util.List.of()
-                )
-        );
+                        java.util.List.of()));
 
         UserLogoutResponseDto response = authService.logout(httpRequest);
 
@@ -330,9 +338,7 @@ class AuthServiceTest {
                 org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(
                         "new.user@example.com",
                         null,
-                        java.util.List.of()
-                )
-        );
+                        java.util.List.of()));
 
         UserLogoutResponseDto response = authService.logout(httpRequest);
 
@@ -401,8 +407,8 @@ class AuthServiceTest {
         when(userRepository.findByEmailIgnoreCase("new.user@example.com")).thenReturn(Optional.of(user));
         when(passwordResetTokenRepository.findByUserId(15L)).thenReturn(Optional.empty());
         doThrow(new RuntimeException("smtp down"))
-            .when(emailService)
-            .sendPasswordResetEmail(eq("new.user@example.com"), any(String.class));
+                .when(emailService)
+                .sendPasswordResetEmail(eq("new.user@example.com"), any(String.class));
 
         assertThatThrownBy(() -> authService.requestPasswordReset("new.user@example.com"))
                 .isInstanceOf(PasswordResetEmailDeliveryException.class)

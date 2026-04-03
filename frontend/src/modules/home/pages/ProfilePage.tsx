@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ChevronDown, Flag, Globe, MapPin, UserRound } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { CalendarDays, Globe, MapPin, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
 import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { Spinner } from '@/components/ui/spinner';
-import { Input } from '@/components/ui/input';
-import { Field, FieldLabel } from '@/components/ui/field';
 import { getCountryLabelByCode } from '@/lib/countries';
 import { getUserInitials } from '@/lib/user';
 import { CountryCombobox } from '@/modules/auth/components/CountryCombobox';
+import { PROFILE_QUERY_KEY, useProfileQuery } from '@/modules/auth/hooks/useProfileQuery';
 import { getCountryOptions, getGenderOptions } from '@/modules/auth/constants/signup';
 import {
-  getProfile,
   getProfileErrorMessage,
   getUpdateProfileErrorMessage,
   updateProfile,
@@ -71,7 +71,13 @@ function ProfileRow({ label, value }: Readonly<ProfileRowProps>) {
 
 export default function ProfilePage() {
   const { t, i18n } = useTranslation();
-  const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  const queryClient = useQueryClient();
+  const {
+    data: profile,
+    error: profileError,
+    isError: isProfileError,
+    isLoading,
+  } = useProfileQuery();
   const [form, setForm] = useState<ProfileFormState>({
     firstName: '',
     lastName: '',
@@ -80,7 +86,6 @@ export default function ProfilePage() {
     countryCode: '',
     city: '',
   });
-  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -102,28 +107,24 @@ export default function ProfilePage() {
     });
   }, []);
 
-  const loadProfile = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage('');
-
-    try {
-      const response = await getProfile();
-      setProfile(response);
-      syncFormWithProfile(response);
-    } catch (error) {
-      setErrorMessage(getProfileErrorMessage(error));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [syncFormWithProfile]);
-
   const setField = <K extends keyof ProfileFormState>(field: K, value: ProfileFormState[K]) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
   useEffect(() => {
-    void loadProfile();
-  }, [loadProfile]);
+    if (profile && !isEditing) {
+      syncFormWithProfile(profile);
+    }
+  }, [isEditing, profile, syncFormWithProfile]);
+
+  useEffect(() => {
+    if (isProfileError) {
+      setErrorMessage(getProfileErrorMessage(profileError));
+      return;
+    }
+
+    setErrorMessage('');
+  }, [isProfileError, profileError]);
 
   const userInitials = useMemo(() => {
     if (!profile) {
@@ -179,7 +180,7 @@ export default function ProfilePage() {
         city: form.city.trim() ? form.city : undefined,
       });
 
-      setProfile(updatedProfile);
+      queryClient.setQueryData(PROFILE_QUERY_KEY, updatedProfile);
       syncFormWithProfile(updatedProfile);
       setIsEditing(false);
       setSuccessMessage(t('home.profile.updated'));
@@ -283,101 +284,81 @@ export default function ProfilePage() {
             {isEditing && (
               <div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field>
-                    <FieldLabel htmlFor="firstName">
-                      <UserRound className="size-4" />
-                      {t('home.profile.firstName')}
-                    </FieldLabel>
-                    <Input
-                      autoComplete="off"
-                      id="firstName"
-                      className="bg-white"
-                      onChange={(e) => setField('firstName', e.currentTarget.value)}
-                      placeholder={t('home.profile.firstNamePlaceholder')}
-                      value={form.firstName}
-                    />
-                  </Field>
+                  <FormFieldControl
+                    controlClassName="bg-white"
+                    icon={<UserRound className="size-4" />}
+                    id="firstName"
+                    inputProps={{
+                      autoComplete: 'off',
+                      placeholder: t('home.profile.firstNamePlaceholder'),
+                    }}
+                    label={t('home.profile.firstName')}
+                    onValueChange={(value) => setField('firstName', value)}
+                    value={form.firstName}
+                  />
 
-                  <Field>
-                    <FieldLabel htmlFor="lastName">
-                      <UserRound className="size-4" />
-                      {t('home.profile.lastName')}
-                    </FieldLabel>
-                    <Input
-                      autoComplete="off"
-                      id="lastName"
-                      className="bg-white"
-                      onChange={(e) => setField('lastName', e.currentTarget.value)}
-                      placeholder={t('home.profile.lastNamePlaceholder')}
-                      value={form.lastName}
-                    />
-                  </Field>
+                  <FormFieldControl
+                    controlClassName="bg-white"
+                    icon={<UserRound className="size-4" />}
+                    id="lastName"
+                    inputProps={{
+                      autoComplete: 'off',
+                      placeholder: t('home.profile.lastNamePlaceholder'),
+                    }}
+                    label={t('home.profile.lastName')}
+                    onValueChange={(value) => setField('lastName', value)}
+                    value={form.lastName}
+                  />
 
-                  <Field>
-                    <FieldLabel htmlFor="birth">
-                      <CalendarDays className="size-4" />
-                      {t('home.profile.birthDate')}
-                    </FieldLabel>
-                    <Input
-                      autoComplete="off"
-                      id="birth"
-                      className="bg-white"
-                      onChange={(e) => setField('birth', e.currentTarget.value)}
-                      type="date"
-                      value={form.birth}
-                    />
-                  </Field>
+                  <FormFieldControl
+                    controlClassName="bg-white"
+                    icon={<CalendarDays className="size-4" />}
+                    id="birth"
+                    inputProps={{ autoComplete: 'off' }}
+                    inputType="date"
+                    label={t('home.profile.birthDate')}
+                    onValueChange={(value) => setField('birth', value)}
+                    value={form.birth}
+                  />
 
-                  <Field>
-                    <FieldLabel htmlFor="gender">
-                      <UserRound className="size-4" />
-                      {t('home.profile.gender')}
-                    </FieldLabel>
-                    <div className="relative">
-                      <select
-                        className="h-10 w-full appearance-none rounded-md border border-input bg-white px-3 pr-10 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
-                        id="gender"
-                        onChange={(e) => setField('gender', e.currentTarget.value)}
-                        value={form.gender}
-                      >
-                        {genderOptions.map((option) => (
-                          <option key={option.label} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-[color:var(--cl-tertiary)]" />
-                    </div>
-                  </Field>
+                  <FormFieldControl
+                    controlType="select"
+                    icon={<UserRound className="size-4" />}
+                    id="gender"
+                    label={t('home.profile.gender')}
+                    onValueChange={(value) => setField('gender', value)}
+                    options={genderOptions}
+                    value={form.gender}
+                  />
 
-                  <Field>
-                    <FieldLabel htmlFor="countryCode">
-                      <Globe className="size-4" />
-                      {t('home.profile.country')}
-                    </FieldLabel>
-                    <CountryCombobox
-                      id="countryCode"
-                      options={countryOptions}
-                      placeholder={t('home.profile.searchCountry')}
-                      value={form.countryCode}
-                      onChange={(value) => setField('countryCode', value)}
-                    />
-                  </Field>
+                  <FormFieldControl
+                    controlType="custom"
+                    icon={<Globe className="size-4" />}
+                    id="countryCode"
+                    label={t('home.profile.country')}
+                    renderControl={({ id }) => (
+                      <CountryCombobox
+                        id={id}
+                        options={countryOptions}
+                        placeholder={t('home.profile.searchCountry')}
+                        value={form.countryCode}
+                        onChange={(value) => setField('countryCode', value)}
+                      />
+                    )}
+                  />
 
-                  <Field>
-                    <FieldLabel htmlFor="city">
-                      <MapPin className="size-4" />
-                      {t('home.profile.city')}
-                    </FieldLabel>
-                    <Input
-                      autoComplete="off"
-                      id="city"
-                      className="bg-white"
-                      onChange={(e) => setField('city', e.currentTarget.value)}
-                      placeholder={t('home.profile.cityPlaceholder')}
-                      value={form.city}
-                    />
-                  </Field>
+                  <FormFieldControl
+                    controlClassName="bg-white"
+                    icon={<MapPin className="size-4" />}
+                    id="city"
+                    inputProps={{
+                      autoComplete: 'off',
+                      placeholder: t('home.profile.cityPlaceholder'),
+                    }}
+                    label={t('home.profile.city')}
+                    onValueChange={(value) => setField('city', value)}
+                    value={form.city}
+                  />
                 </div>
 
                 <div className="mt-5 flex flex-wrap justify-center gap-3">

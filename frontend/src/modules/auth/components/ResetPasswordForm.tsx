@@ -1,11 +1,10 @@
-import { type FormEvent, useState } from 'react';
-import { Eye, EyeOff, Lock } from 'lucide-react';
+import { type FormEvent } from 'react';
+import { Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
-import { Field, FieldLabel } from '@/components/ui/field';
 import { FeedbackMessage } from '@/components/ui/feedback-message';
-import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { type ResetPasswordFormState } from '@/modules/auth/types/resetPassword';
 
@@ -30,74 +29,44 @@ export function ResetPasswordForm({
   onFieldChange,
 }: ResetPasswordFormProps) {
   const { t } = useTranslation();
-  const [isNewPasswordVisible, setIsNewPasswordVisible] = useState(false);
-  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
 
   return (
     <form className="mt-8 space-y-4" onSubmit={onSubmit}>
-      <Field>
-        <FieldLabel htmlFor="newPassword">
-          <Lock className="size-3.5" />
-          {t('auth.resetPassword.newPassword')}
-        </FieldLabel>
-        <div className="relative">
-          <Input
-            id="newPassword"
-            minLength={8}
-            onChange={(e) => onFieldChange('newPassword', e.currentTarget.value)}
-            placeholder="********"
-            type={isNewPasswordVisible ? 'text' : 'password'}
-            value={form.newPassword}
-          />
-          <button
-            aria-label={
-              isNewPasswordVisible ? t('common.aria.hidePassword') : t('common.aria.showPassword')
-            }
-            className="absolute top-1/2 right-3 -translate-y-1/2 text-[color:var(--cl-tertiary)] transition hover:text-[color:var(--cl-primary)] outline-none focus-visible:text-[color:var(--cl-primary)]"
-            onClick={() => setIsNewPasswordVisible((current) => !current)}
-            type="button"
-          >
-            {isNewPasswordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-          </button>
-        </div>
-      </Field>
+      <FormFieldControl
+        hidePasswordLabel={t('common.aria.hidePassword')}
+        icon={<Lock className="size-3.5" />}
+        id="newPassword"
+        inputProps={{ minLength: 8, placeholder: '********' }}
+        inputType="password"
+        label={t('auth.resetPassword.newPassword')}
+        message={
+          form.newPassword.length > 0 && form.newPassword.length < 8
+            ? t('auth.signup.passwordLength')
+            : undefined
+        }
+        messageClassName="-mt-2"
+        onValueChange={(value) => onFieldChange('newPassword', value)}
+        showPasswordLabel={t('common.aria.showPassword')}
+        value={form.newPassword}
+      />
 
-      {form.newPassword.length > 0 && form.newPassword.length < 8 && (
-        <p className="-mt-2 text-xs text-red-700">{t('auth.signup.passwordLength')}</p>
-      )}
-
-      <Field>
-        <FieldLabel htmlFor="confirmPassword">
-          <Lock className="size-3.5" />
-          {t('auth.resetPassword.confirmPassword')}
-        </FieldLabel>
-        <div className="relative">
-          <Input
-            id="confirmPassword"
-            minLength={8}
-            onChange={(e) => onFieldChange('confirmPassword', e.currentTarget.value)}
-            placeholder="********"
-            type={isConfirmPasswordVisible ? 'text' : 'password'}
-            value={form.confirmPassword}
-          />
-          <button
-            aria-label={
-              isConfirmPasswordVisible
-                ? t('common.aria.hidePassword')
-                : t('common.aria.showPassword')
-            }
-            className="absolute top-1/2 right-3 -translate-y-1/2 text-[color:var(--cl-tertiary)] transition hover:text-[color:var(--cl-primary)] outline-none focus-visible:text-[color:var(--cl-primary)]"
-            onClick={() => setIsConfirmPasswordVisible((current) => !current)}
-            type="button"
-          >
-            {isConfirmPasswordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-          </button>
-        </div>
-      </Field>
-
-      {form.confirmPassword.length > 0 && form.confirmPassword.length < 8 && (
-        <p className="-mt-2 text-xs text-red-700">{t('auth.signup.passwordLength')}</p>
-      )}
+      <FormFieldControl
+        hidePasswordLabel={t('common.aria.hidePassword')}
+        icon={<Lock className="size-3.5" />}
+        id="confirmPassword"
+        inputProps={{ minLength: 8, placeholder: '********' }}
+        inputType="password"
+        label={t('auth.resetPassword.confirmPassword')}
+        message={
+          form.confirmPassword.length > 0 && form.confirmPassword.length < 8
+            ? t('auth.signup.passwordLength')
+            : undefined
+        }
+        messageClassName="-mt-2"
+        onValueChange={(value) => onFieldChange('confirmPassword', value)}
+        showPasswordLabel={t('common.aria.showPassword')}
+        value={form.confirmPassword}
+      />
 
       {form.confirmPassword.length > 0 && form.confirmPassword !== form.newPassword && (
         <p className="-mt-2 text-xs text-red-700">{t('auth.resetPassword.passwordMismatch')}</p>

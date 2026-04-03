@@ -34,7 +34,7 @@ export function AppSidebar({ isCollapsed }: AppSidebarProps) {
                     : 'text-[color:var(--cl-secondary)] hover:bg-white hover:text-[color:var(--cl-primary)]',
                 ].join(' ')
               }
-              end
+              end={item.to === '/home'}
               key={item.key}
               to={item.to}
             >

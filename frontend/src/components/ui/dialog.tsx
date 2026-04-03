@@ -57,7 +57,13 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            render={<Button variant="ghost" className="absolute top-4 right-4 cursor-pointer" size="icon-sm" />}
+            render={
+              <Button
+                variant="ghost"
+                className="absolute top-4 right-4 cursor-pointer"
+                size="icon-sm"
+              />
+            }
           >
             <XIcon />
             <span className="sr-only">Close</span>
@@ -86,7 +92,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        '-mx-8 -mb-8 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end',
+        '-mx-8 -mb-8 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 py-4 px-8 sm:flex-row sm:justify-end',
         className,
       )}
       {...props}
@@ -103,7 +109,10 @@ function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn('font-heading text-2xl leading-none font-extrabold tracking-tight text-[color:var(--cl-primary)]', className)}
+      className={cn(
+        'font-heading text-2xl leading-none font-extrabold tracking-tight text-[color:var(--cl-primary)]',
+        className,
+      )}
       {...props}
     />
   );

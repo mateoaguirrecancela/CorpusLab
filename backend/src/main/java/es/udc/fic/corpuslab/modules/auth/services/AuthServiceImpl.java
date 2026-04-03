@@ -43,17 +43,19 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailService emailService;
+    private final es.udc.fic.corpuslab.common.security.JwtTokenService jwtTokenService;
 
     public AuthServiceImpl(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             PasswordResetTokenRepository passwordResetTokenRepository,
-            EmailService emailService
-    ) {
+            EmailService emailService,
+            es.udc.fic.corpuslab.common.security.JwtTokenService jwtTokenService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.emailService = emailService;
+        this.jwtTokenService = jwtTokenService;
     }
 
     @Override
@@ -80,8 +82,7 @@ public class AuthServiceImpl implements AuthService {
                 saved.getEmail(),
                 saved.getFirstName(),
                 saved.getLastName(),
-                saved.getCreatedAt()
-        );
+                saved.getCreatedAt());
     }
 
     @Override
@@ -99,8 +100,7 @@ public class AuthServiceImpl implements AuthService {
         UsernamePasswordAuthenticationToken authentication = UsernamePasswordAuthenticationToken.authenticated(
                 user.getEmail(),
                 null,
-                List.of(new SimpleGrantedAuthority("ROLE_USER"))
-        );
+                List.of(new SimpleGrantedAuthority("ROLE_USER")));
 
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
@@ -109,12 +109,14 @@ public class AuthServiceImpl implements AuthService {
         HttpSession session = httpRequest.getSession(true);
         session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
 
+        String token = jwtTokenService.generateToken(user.getEmail());
+
         return new UserLoginResponseDto(
                 user.getId(),
                 user.getEmail(),
                 user.getFirstName(),
-                user.getLastName()
-        );
+                user.getLastName(),
+                token);
     }
 
     @Override
@@ -123,7 +125,7 @@ public class AuthServiceImpl implements AuthService {
         String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(authenticatedEmail);
 
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
-            .orElseThrow(() -> new EmailNotFoundException(normalizedEmail));
+                .orElseThrow(() -> new EmailNotFoundException(normalizedEmail));
 
         return toProfileResponse(user);
     }
@@ -156,8 +158,7 @@ public class AuthServiceImpl implements AuthService {
                 user.getBirth(),
                 user.getGender(),
                 user.getCountryCode(),
-                user.getCity()
-        );
+                user.getCity());
     }
 
     @Override
@@ -209,8 +210,8 @@ public class AuthServiceImpl implements AuthService {
         }
 
         PasswordResetToken passwordResetToken = passwordResetTokenRepository.findByToken(token.trim())
-            .filter(currentToken -> currentToken.getExpiryDate().isAfter(LocalDateTime.now()))
-            .orElseThrow(PasswordResetTokenNotFoundException::new);
+                .filter(currentToken -> currentToken.getExpiryDate().isAfter(LocalDateTime.now()))
+                .orElseThrow(PasswordResetTokenNotFoundException::new);
 
         User user = passwordResetToken.getUser();
         user.setPasswordHash(passwordEncoder.encode(newPassword));

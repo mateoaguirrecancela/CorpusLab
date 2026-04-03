@@ -17,6 +17,7 @@ import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroupMember;
 import es.udc.fic.corpuslab.modules.researchgroup.enums.ResearchGroupMemberRole;
 import es.udc.fic.corpuslab.modules.researchgroup.fixtures.ResearchGroupMemberTestBuilder;
 import es.udc.fic.corpuslab.modules.researchgroup.fixtures.ResearchGroupTestBuilder;
+import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupInvitationRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupMemberRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupRepository;
 
@@ -39,241 +40,245 @@ import java.time.Instant;
 @ActiveProfiles("test")
 class ResearchGroupListIntegrationTest extends AbstractIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @Autowired
-    private UserRepository userRepository;
+        @Autowired
+        private UserRepository userRepository;
 
-    @Autowired
-    private ResearchGroupRepository researchGroupRepository;
+        @Autowired
+        private ResearchGroupRepository researchGroupRepository;
 
-    @Autowired
-    private ResearchGroupMemberRepository memberRepository;
+        @Autowired
+        private ResearchGroupMemberRepository memberRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+        @Autowired
+        private ResearchGroupInvitationRepository invitationRepository;
 
-    private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
+        @Autowired
+        private PasswordEncoder passwordEncoder;
 
-    @BeforeEach
-    void cleanData() {
-        memberRepository.deleteAll();
-        researchGroupRepository.deleteAll();
-        userRepository.deleteAll();
-    }
+        private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
 
-    private MockHttpSession loginAs(String email) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(
-                                UserLoginRequestTestBuilder.validRequest()
-                                        .withEmail(email)
-                                        .build())))
-                .andExpect(status().isOk())
-                .andReturn();
+        @BeforeEach
+        void cleanData() {
+                invitationRepository.deleteAll();
+                memberRepository.deleteAll();
+                researchGroupRepository.deleteAll();
+                userRepository.deleteAll();
+        }
 
-        return (MockHttpSession) result.getRequest().getSession(false);
-    }
+        private MockHttpSession loginAs(String email) throws Exception {
+                MvcResult result = mockMvc.perform(post("/api/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(
+                                                UserLoginRequestTestBuilder.validRequest()
+                                                                .withEmail(email)
+                                                                .build())))
+                                .andExpect(status().isOk())
+                                .andReturn();
 
-    @Test
-    void shouldReturnEmptyListWhenUserHasNoGroups() throws Exception {
-        User user = UserTestBuilder.validUser()
-                .withEmail("no.groups@example.com")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        userRepository.save(user);
+                return (MockHttpSession) result.getRequest().getSession(false);
+        }
 
-        MockHttpSession session = loginAs("no.groups@example.com");
+        @Test
+        void shouldReturnEmptyListWhenUserHasNoGroups() throws Exception {
+                User user = UserTestBuilder.validUser()
+                                .withEmail("no.groups@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                userRepository.save(user);
 
-        mockMvc.perform(get("/api/research-groups").session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$").isEmpty());
-    }
+                MockHttpSession session = loginAs("no.groups@example.com");
 
-    @Test
-    void shouldReturnGroupsWithRoleAndMemberCount() throws Exception {
-        User owner = UserTestBuilder.validUser()
-                .withEmail("owner@example.com")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        owner = userRepository.save(owner);
+                mockMvc.perform(get("/api/research-groups").session(session))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$").isArray())
+                                .andExpect(jsonPath("$").isEmpty());
+        }
 
-        User annotator = UserTestBuilder.validUser()
-                .withEmail("annotator@example.com")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        annotator = userRepository.save(annotator);
+        @Test
+        void shouldReturnGroupsWithRoleAndMemberCount() throws Exception {
+                User owner = UserTestBuilder.validUser()
+                                .withEmail("owner@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                owner = userRepository.save(owner);
 
-        ResearchGroup groupA = ResearchGroupTestBuilder.validGroup()
-                .withName("NLP Lab")
-                .withDescription("Natural Language Processing research")
-                .build();
-        groupA = researchGroupRepository.save(groupA);
+                User annotator = UserTestBuilder.validUser()
+                                .withEmail("annotator@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                annotator = userRepository.save(annotator);
 
-        ResearchGroup groupB = ResearchGroupTestBuilder.validGroup()
-                .withName("AI Ethics")
-                .withDescription("AI Ethics research")
-                .build();
-        groupB = researchGroupRepository.save(groupB);
+                ResearchGroup groupA = ResearchGroupTestBuilder.validGroup()
+                                .withName("NLP Lab")
+                                .withDescription("Natural Language Processing research")
+                                .build();
+                groupA = researchGroupRepository.save(groupA);
 
-        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
-                .withUser(owner)
-                .withResearchGroup(groupA)
-                .withRole(ResearchGroupMemberRole.OWNER)
-                .build());
+                ResearchGroup groupB = ResearchGroupTestBuilder.validGroup()
+                                .withName("AI Ethics")
+                                .withDescription("AI Ethics research")
+                                .build();
+                groupB = researchGroupRepository.save(groupB);
 
-        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
-                .withUser(annotator)
-                .withResearchGroup(groupA)
-                .withRole(ResearchGroupMemberRole.ANNOTATOR)
-                .build());
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(groupA)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
 
-        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
-                .withUser(owner)
-                .withResearchGroup(groupB)
-                .withRole(ResearchGroupMemberRole.ADMIN)
-                .build());
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(annotator)
+                                .withResearchGroup(groupA)
+                                .withRole(ResearchGroupMemberRole.ANNOTATOR)
+                                .build());
 
-        MockHttpSession session = loginAs("owner@example.com");
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(groupB)
+                                .withRole(ResearchGroupMemberRole.ADMIN)
+                                .build());
 
-        mockMvc.perform(get("/api/research-groups").session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].name").value("AI Ethics"))
-                .andExpect(jsonPath("$[0].role").value("ADMIN"))
-                .andExpect(jsonPath("$[0].memberCount").value(1))
-                .andExpect(jsonPath("$[1].name").value("NLP Lab"))
-                .andExpect(jsonPath("$[1].role").value("OWNER"))
-                .andExpect(jsonPath("$[1].memberCount").value(2))
-                .andExpect(jsonPath("$[1].description").value("Natural Language Processing research"))
-                .andExpect(jsonPath("$[1].id").isNumber())
-                .andExpect(jsonPath("$[1].createdAt").isNotEmpty());
-    }
+                MockHttpSession session = loginAs("owner@example.com");
 
-    @Test
-    void shouldNotReturnGroupsOfOtherUsers() throws Exception {
-        User userA = UserTestBuilder.validUser()
-                .withEmail("user.a@example.com")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        userA = userRepository.save(userA);
+                mockMvc.perform(get("/api/research-groups").session(session))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.length()").value(2))
+                                .andExpect(jsonPath("$[0].name").value("AI Ethics"))
+                                .andExpect(jsonPath("$[0].role").value("ADMIN"))
+                                .andExpect(jsonPath("$[0].memberCount").value(1))
+                                .andExpect(jsonPath("$[1].name").value("NLP Lab"))
+                                .andExpect(jsonPath("$[1].role").value("OWNER"))
+                                .andExpect(jsonPath("$[1].memberCount").value(2))
+                                .andExpect(jsonPath("$[1].description").value("Natural Language Processing research"))
+                                .andExpect(jsonPath("$[1].id").isNumber())
+                                .andExpect(jsonPath("$[1].createdAt").isNotEmpty());
+        }
 
-        User userB = UserTestBuilder.validUser()
-                .withEmail("user.b@example.com")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        userB = userRepository.save(userB);
+        @Test
+        void shouldNotReturnGroupsOfOtherUsers() throws Exception {
+                User userA = UserTestBuilder.validUser()
+                                .withEmail("user.a@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                userA = userRepository.save(userA);
 
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup()
-                .withName("Secret Lab")
-                .build();
-        group = researchGroupRepository.save(group);
+                User userB = UserTestBuilder.validUser()
+                                .withEmail("user.b@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                userB = userRepository.save(userB);
 
-        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
-                .withUser(userB)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.OWNER)
-                .build());
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup()
+                                .withName("Secret Lab")
+                                .build();
+                group = researchGroupRepository.save(group);
 
-        MockHttpSession session = loginAs("user.a@example.com");
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(userB)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
 
-        mockMvc.perform(get("/api/research-groups").session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$").isEmpty());
-    }
+                MockHttpSession session = loginAs("user.a@example.com");
 
-    @Test
-    void shouldExcludeSoftDeletedMemberships() throws Exception {
-        User user = UserTestBuilder.validUser()
-                .withEmail("deleted.member@example.com")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        user = userRepository.save(user);
+                mockMvc.perform(get("/api/research-groups").session(session))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$").isArray())
+                                .andExpect(jsonPath("$").isEmpty());
+        }
 
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup()
-                .withName("Old Group")
-                .build();
-        group = researchGroupRepository.save(group);
+        @Test
+        void shouldExcludeSoftDeletedMemberships() throws Exception {
+                User user = UserTestBuilder.validUser()
+                                .withEmail("deleted.member@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                user = userRepository.save(user);
 
-        ResearchGroupMember member = ResearchGroupMemberTestBuilder.validMember()
-                .withUser(user)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.ANNOTATOR)
-                .build();
-        member = memberRepository.save(member);
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup()
+                                .withName("Old Group")
+                                .build();
+                group = researchGroupRepository.save(group);
 
-        member.setDeletedAt(Instant.now());
-        memberRepository.save(member);
+                ResearchGroupMember member = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(user)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ANNOTATOR)
+                                .build();
+                member = memberRepository.save(member);
 
-        MockHttpSession session = loginAs("deleted.member@example.com");
+                member.setDeletedAt(Instant.now());
+                memberRepository.save(member);
 
-        mockMvc.perform(get("/api/research-groups").session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$").isEmpty());
-    }
+                MockHttpSession session = loginAs("deleted.member@example.com");
 
-    @Test
-    void shouldReturnForbiddenWhenNotAuthenticated() throws Exception {
-        mockMvc.perform(get("/api/research-groups"))
-                .andExpect(status().isForbidden());
-    }
+                mockMvc.perform(get("/api/research-groups").session(session))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$").isArray())
+                                .andExpect(jsonPath("$").isEmpty());
+        }
 
-    @Test
-    void shouldNotCountSoftDeletedMembersInMemberCount() throws Exception {
-        User owner = UserTestBuilder.validUser()
-                .withEmail("owner.count@example.com")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        owner = userRepository.save(owner);
+        @Test
+        void shouldReturnForbiddenWhenNotAuthenticated() throws Exception {
+                mockMvc.perform(get("/api/research-groups"))
+                                .andExpect(status().isForbidden());
+        }
 
-        User activeAnnotator = UserTestBuilder.validUser()
-                .withEmail("active.annotator@example.com")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        activeAnnotator = userRepository.save(activeAnnotator);
+        @Test
+        void shouldNotCountSoftDeletedMembersInMemberCount() throws Exception {
+                User owner = UserTestBuilder.validUser()
+                                .withEmail("owner.count@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                owner = userRepository.save(owner);
 
-        User removedAnnotator = UserTestBuilder.validUser()
-                .withEmail("removed.annotator@example.com")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        removedAnnotator = userRepository.save(removedAnnotator);
+                User activeAnnotator = UserTestBuilder.validUser()
+                                .withEmail("active.annotator@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                activeAnnotator = userRepository.save(activeAnnotator);
 
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup()
-                .withName("Count Test Group")
-                .build();
-        group = researchGroupRepository.save(group);
+                User removedAnnotator = UserTestBuilder.validUser()
+                                .withEmail("removed.annotator@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                removedAnnotator = userRepository.save(removedAnnotator);
 
-        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
-                .withUser(owner)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.OWNER)
-                .build());
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup()
+                                .withName("Count Test Group")
+                                .build();
+                group = researchGroupRepository.save(group);
 
-        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
-                .withUser(activeAnnotator)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.ANNOTATOR)
-                .build());
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
 
-        ResearchGroupMember removed = ResearchGroupMemberTestBuilder.validMember()
-                .withUser(removedAnnotator)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.ANNOTATOR)
-                .build();
-        removed = memberRepository.save(removed);
-        removed.setDeletedAt(Instant.now());
-        memberRepository.save(removed);
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(activeAnnotator)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ANNOTATOR)
+                                .build());
 
-        MockHttpSession session = loginAs("owner.count@example.com");
+                ResearchGroupMember removed = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(removedAnnotator)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ANNOTATOR)
+                                .build();
+                removed = memberRepository.save(removed);
+                removed.setDeletedAt(Instant.now());
+                memberRepository.save(removed);
 
-        mockMvc.perform(get("/api/research-groups").session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].name").value("Count Test Group"))
-                .andExpect(jsonPath("$[0].memberCount").value(2));
-    }
+                MockHttpSession session = loginAs("owner.count@example.com");
+
+                mockMvc.perform(get("/api/research-groups").session(session))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.length()").value(1))
+                                .andExpect(jsonPath("$[0].name").value("Count Test Group"))
+                                .andExpect(jsonPath("$[0].memberCount").value(2));
+        }
 }

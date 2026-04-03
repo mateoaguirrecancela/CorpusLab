@@ -13,6 +13,7 @@ import es.udc.fic.corpuslab.modules.auth.fixtures.UserLoginRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.CreateResearchGroupRequestDto;
+import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupInvitationRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupMemberRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupRepository;
 
@@ -33,180 +34,184 @@ import org.springframework.test.web.servlet.MvcResult;
 @ActiveProfiles("test")
 class ResearchGroupCreateIntegrationTest extends AbstractIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @Autowired
-    private UserRepository userRepository;
+        @Autowired
+        private UserRepository userRepository;
 
-    @Autowired
-    private ResearchGroupRepository researchGroupRepository;
+        @Autowired
+        private ResearchGroupRepository researchGroupRepository;
 
-    @Autowired
-    private ResearchGroupMemberRepository memberRepository;
+        @Autowired
+        private ResearchGroupMemberRepository memberRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+        @Autowired
+        private ResearchGroupInvitationRepository invitationRepository;
 
-    private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
+        @Autowired
+        private PasswordEncoder passwordEncoder;
 
-    @BeforeEach
-    void cleanData() {
-        memberRepository.deleteAll();
-        researchGroupRepository.deleteAll();
-        userRepository.deleteAll();
-    }
+        private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
 
-    private MockHttpSession loginAs(String email) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(
-                                UserLoginRequestTestBuilder.validRequest()
-                                        .withEmail(email)
-                                        .build())))
-                .andExpect(status().isOk())
-                .andReturn();
+        @BeforeEach
+        void cleanData() {
+                invitationRepository.deleteAll();
+                memberRepository.deleteAll();
+                researchGroupRepository.deleteAll();
+                userRepository.deleteAll();
+        }
 
-        return (MockHttpSession) result.getRequest().getSession(false);
-    }
+        private MockHttpSession loginAs(String email) throws Exception {
+                MvcResult result = mockMvc.perform(post("/api/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(
+                                                UserLoginRequestTestBuilder.validRequest()
+                                                                .withEmail(email)
+                                                                .build())))
+                                .andExpect(status().isOk())
+                                .andReturn();
 
-    private void createUser(String email) {
-        User user = UserTestBuilder.validUser()
-                .withEmail(email)
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        userRepository.save(user);
-    }
+                return (MockHttpSession) result.getRequest().getSession(false);
+        }
 
-    @Test
-    void shouldCreateGroupAndReturnSummaryWithOwnerRole() throws Exception {
-        createUser("creator@example.com");
-        MockHttpSession session = loginAs("creator@example.com");
+        private void createUser(String email) {
+                User user = UserTestBuilder.validUser()
+                                .withEmail(email)
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                userRepository.save(user);
+        }
 
-        CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
-                "NLP Research Lab", "Computational linguistics research");
+        @Test
+        void shouldCreateGroupAndReturnSummaryWithOwnerRole() throws Exception {
+                createUser("creator@example.com");
+                MockHttpSession session = loginAs("creator@example.com");
 
-        mockMvc.perform(post("/api/research-groups")
-                        .session(session)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").isNumber())
-                .andExpect(jsonPath("$.name").value("NLP Research Lab"))
-                .andExpect(jsonPath("$.description").value("Computational linguistics research"))
-                .andExpect(jsonPath("$.role").value("OWNER"))
-                .andExpect(jsonPath("$.memberCount").value(1))
-                .andExpect(jsonPath("$.createdAt").isNotEmpty());
-    }
+                CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
+                                "NLP Research Lab", "Computational linguistics research");
 
-    @Test
-    void shouldCreateGroupWithNullDescription() throws Exception {
-        createUser("nodesc@example.com");
-        MockHttpSession session = loginAs("nodesc@example.com");
+                mockMvc.perform(post("/api/research-groups")
+                                .session(session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.id").isNumber())
+                                .andExpect(jsonPath("$.name").value("NLP Research Lab"))
+                                .andExpect(jsonPath("$.description").value("Computational linguistics research"))
+                                .andExpect(jsonPath("$.role").value("OWNER"))
+                                .andExpect(jsonPath("$.memberCount").value(1))
+                                .andExpect(jsonPath("$.createdAt").isNotEmpty());
+        }
 
-        CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
-                "Minimal Group", null);
+        @Test
+        void shouldCreateGroupWithNullDescription() throws Exception {
+                createUser("nodesc@example.com");
+                MockHttpSession session = loginAs("nodesc@example.com");
 
-        mockMvc.perform(post("/api/research-groups")
-                        .session(session)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("Minimal Group"))
-                .andExpect(jsonPath("$.description").isEmpty())
-                .andExpect(jsonPath("$.role").value("OWNER"))
-                .andExpect(jsonPath("$.memberCount").value(1));
-    }
+                CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
+                                "Minimal Group", null);
 
-    @Test
-    void shouldTrimNameAndDescription() throws Exception {
-        createUser("trim@example.com");
-        MockHttpSession session = loginAs("trim@example.com");
+                mockMvc.perform(post("/api/research-groups")
+                                .session(session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.name").value("Minimal Group"))
+                                .andExpect(jsonPath("$.description").isEmpty())
+                                .andExpect(jsonPath("$.role").value("OWNER"))
+                                .andExpect(jsonPath("$.memberCount").value(1));
+        }
 
-        CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
-                "  Trimmed Name  ", "  Trimmed Desc  ");
+        @Test
+        void shouldTrimNameAndDescription() throws Exception {
+                createUser("trim@example.com");
+                MockHttpSession session = loginAs("trim@example.com");
 
-        mockMvc.perform(post("/api/research-groups")
-                        .session(session)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("Trimmed Name"))
-                .andExpect(jsonPath("$.description").value("Trimmed Desc"));
-    }
+                CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
+                                "  Trimmed Name  ", "  Trimmed Desc  ");
 
-    @Test
-    void shouldAppearInListAfterCreation() throws Exception {
-        createUser("lister@example.com");
-        MockHttpSession session = loginAs("lister@example.com");
+                mockMvc.perform(post("/api/research-groups")
+                                .session(session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.name").value("Trimmed Name"))
+                                .andExpect(jsonPath("$.description").value("Trimmed Desc"));
+        }
 
-        CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
-                "Listed Group", "Should appear in my groups");
+        @Test
+        void shouldAppearInListAfterCreation() throws Exception {
+                createUser("lister@example.com");
+                MockHttpSession session = loginAs("lister@example.com");
 
-        mockMvc.perform(post("/api/research-groups")
-                        .session(session)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
+                CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
+                                "Listed Group", "Should appear in my groups");
 
-        mockMvc.perform(get("/api/research-groups").session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].name").value("Listed Group"))
-                .andExpect(jsonPath("$[0].role").value("OWNER"));
-    }
+                mockMvc.perform(post("/api/research-groups")
+                                .session(session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isCreated());
 
-    @Test
-    void shouldRejectBlankName() throws Exception {
-        createUser("blank@example.com");
-        MockHttpSession session = loginAs("blank@example.com");
+                mockMvc.perform(get("/api/research-groups").session(session))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.length()").value(1))
+                                .andExpect(jsonPath("$[0].name").value("Listed Group"))
+                                .andExpect(jsonPath("$[0].role").value("OWNER"));
+        }
 
-        CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
-                "   ", "Some description");
+        @Test
+        void shouldRejectBlankName() throws Exception {
+                createUser("blank@example.com");
+                MockHttpSession session = loginAs("blank@example.com");
 
-        mockMvc.perform(post("/api/research-groups")
-                        .session(session)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
+                CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
+                                "   ", "Some description");
 
-    @Test
-    void shouldRejectMissingName() throws Exception {
-        createUser("missing@example.com");
-        MockHttpSession session = loginAs("missing@example.com");
+                mockMvc.perform(post("/api/research-groups")
+                                .session(session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isBadRequest());
+        }
 
-        mockMvc.perform(post("/api/research-groups")
-                        .session(session)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"description\": \"No name\"}"))
-                .andExpect(status().isBadRequest());
-    }
+        @Test
+        void shouldRejectMissingName() throws Exception {
+                createUser("missing@example.com");
+                MockHttpSession session = loginAs("missing@example.com");
 
-    @Test
-    void shouldReturnForbiddenWhenNotAuthenticated() throws Exception {
-        CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
-                "Unauthorized Group", null);
+                mockMvc.perform(post("/api/research-groups")
+                                .session(session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"description\": \"No name\"}"))
+                                .andExpect(status().isBadRequest());
+        }
 
-        mockMvc.perform(post("/api/research-groups")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isForbidden());
-    }
+        @Test
+        void shouldReturnForbiddenWhenNotAuthenticated() throws Exception {
+                CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
+                                "Unauthorized Group", null);
 
-    @Test
-    void shouldRejectDescriptionTooLong() throws Exception {
-        createUser("longdesc@example.com");
-        MockHttpSession session = loginAs("longdesc@example.com");
+                mockMvc.perform(post("/api/research-groups")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isForbidden());
+        }
 
-        String tooLongDescription = "a".repeat(2049);
-        CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
-                "Group With Long Desc", tooLongDescription);
+        @Test
+        void shouldRejectDescriptionTooLong() throws Exception {
+                createUser("longdesc@example.com");
+                MockHttpSession session = loginAs("longdesc@example.com");
 
-        mockMvc.perform(post("/api/research-groups")
-                        .session(session)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
+                String tooLongDescription = "a".repeat(2049);
+                CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
+                                "Group With Long Desc", tooLongDescription);
+
+                mockMvc.perform(post("/api/research-groups")
+                                .session(session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isBadRequest());
+        }
 }

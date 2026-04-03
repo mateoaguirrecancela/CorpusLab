@@ -1,4 +1,3 @@
-export const SESSION_USER_STORAGE_KEY = 'corpuslab.sessionUser';
 export const SESSION_AUTH_TOKEN_STORAGE_KEY = 'corpuslab.authToken';
 
 export type OAuthProvider = 'google' | 'github';

@@ -17,6 +17,7 @@ import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroupMember;
 import es.udc.fic.corpuslab.modules.researchgroup.enums.ResearchGroupMemberRole;
 import es.udc.fic.corpuslab.modules.researchgroup.fixtures.ResearchGroupMemberTestBuilder;
 import es.udc.fic.corpuslab.modules.researchgroup.fixtures.ResearchGroupTestBuilder;
+import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupInvitationRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupMemberRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupRepository;
 
@@ -39,221 +40,225 @@ import java.time.Instant;
 @ActiveProfiles("test")
 class ResearchGroupDetailIntegrationTest extends AbstractIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @Autowired
-    private UserRepository userRepository;
+        @Autowired
+        private UserRepository userRepository;
 
-    @Autowired
-    private ResearchGroupRepository researchGroupRepository;
+        @Autowired
+        private ResearchGroupRepository researchGroupRepository;
 
-    @Autowired
-    private ResearchGroupMemberRepository memberRepository;
+        @Autowired
+        private ResearchGroupMemberRepository memberRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+        @Autowired
+        private ResearchGroupInvitationRepository invitationRepository;
 
-    private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
+        @Autowired
+        private PasswordEncoder passwordEncoder;
 
-    @BeforeEach
-    void cleanData() {
-        memberRepository.deleteAll();
-        researchGroupRepository.deleteAll();
-        userRepository.deleteAll();
-    }
+        private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
 
-    private MockHttpSession loginAs(String email) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(
-                        UserLoginRequestTestBuilder.validRequest()
-                                .withEmail(email)
-                                .build())))
-                .andExpect(status().isOk())
-                .andReturn();
+        @BeforeEach
+        void cleanData() {
+                invitationRepository.deleteAll();
+                memberRepository.deleteAll();
+                researchGroupRepository.deleteAll();
+                userRepository.deleteAll();
+        }
 
-        return (MockHttpSession) result.getRequest().getSession(false);
-    }
+        private MockHttpSession loginAs(String email) throws Exception {
+                MvcResult result = mockMvc.perform(post("/api/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(
+                                                UserLoginRequestTestBuilder.validRequest()
+                                                                .withEmail(email)
+                                                                .build())))
+                                .andExpect(status().isOk())
+                                .andReturn();
 
-    @Test
-    void shouldReturnGroupDetailForMember() throws Exception {
-        User user = UserTestBuilder.validUser()
-                .withEmail("member@example.com")
-                .withFirstName("Elena")
-                .withLastName("Alvarez")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        user = userRepository.save(user);
+                return (MockHttpSession) result.getRequest().getSession(false);
+        }
 
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup()
-                .withName("CITIC - NLP UDC")
-                .withDescription("Computational Linguistics Research Group")
-                .build();
-        group = researchGroupRepository.save(group);
+        @Test
+        void shouldReturnGroupDetailForMember() throws Exception {
+                User user = UserTestBuilder.validUser()
+                                .withEmail("member@example.com")
+                                .withFirstName("Elena")
+                                .withLastName("Alvarez")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                user = userRepository.save(user);
 
-        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
-                .withUser(user)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.OWNER)
-                .build());
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup()
+                                .withName("CITIC - NLP UDC")
+                                .withDescription("Computational Linguistics Research Group")
+                                .build();
+                group = researchGroupRepository.save(group);
 
-        MockHttpSession session = loginAs("member@example.com");
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(user)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
 
-        mockMvc.perform(get("/api/research-groups/" + group.getId()).session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(group.getId()))
-                .andExpect(jsonPath("$.name").value("CITIC - NLP UDC"))
-                .andExpect(jsonPath("$.description").value("Computational Linguistics Research Group"))
-                .andExpect(jsonPath("$.totalMembers").value(1))
-                .andExpect(jsonPath("$.members.length()").value(1))
-                .andExpect(jsonPath("$.members[0].firstName").value("Elena"))
-                .andExpect(jsonPath("$.members[0].role").value("OWNER"));
-    }
+                MockHttpSession session = loginAs("member@example.com");
 
-    @Test
-    void shouldReturnForbiddenForNonMember() throws Exception {
-        User userA = UserTestBuilder.validUser()
-                .withEmail("usera@example.com")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        userRepository.save(userA);
+                mockMvc.perform(get("/api/research-groups/" + group.getId()).session(session))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.id").value(group.getId()))
+                                .andExpect(jsonPath("$.name").value("CITIC - NLP UDC"))
+                                .andExpect(jsonPath("$.description").value("Computational Linguistics Research Group"))
+                                .andExpect(jsonPath("$.totalMembers").value(1))
+                                .andExpect(jsonPath("$.members.length()").value(1))
+                                .andExpect(jsonPath("$.members[0].firstName").value("Elena"))
+                                .andExpect(jsonPath("$.members[0].role").value("OWNER"));
+        }
 
-        User userB = UserTestBuilder.validUser()
-                .withEmail("userb@example.com")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        userB = userRepository.save(userB);
+        @Test
+        void shouldReturnForbiddenForNonMember() throws Exception {
+                User userA = UserTestBuilder.validUser()
+                                .withEmail("usera@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                userRepository.save(userA);
 
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
-        group = researchGroupRepository.save(group);
+                User userB = UserTestBuilder.validUser()
+                                .withEmail("userb@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                userB = userRepository.save(userB);
 
-        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
-                .withUser(userB)
-                .withResearchGroup(group)
-                .build());
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+                group = researchGroupRepository.save(group);
 
-        MockHttpSession session = loginAs("usera@example.com");
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(userB)
+                                .withResearchGroup(group)
+                                .build());
 
-        mockMvc.perform(get("/api/research-groups/" + group.getId()).session(session))
-                .andExpect(status().isForbidden());
-    }
+                MockHttpSession session = loginAs("usera@example.com");
 
-    @Test
-    void shouldReturnNotFoundForNonExistentGroup() throws Exception {
-        User user = UserTestBuilder.validUser()
-                .withEmail("user@example.com")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        userRepository.save(user);
+                mockMvc.perform(get("/api/research-groups/" + group.getId()).session(session))
+                                .andExpect(status().isForbidden());
+        }
 
-        MockHttpSession session = loginAs("user@example.com");
+        @Test
+        void shouldReturnNotFoundForNonExistentGroup() throws Exception {
+                User user = UserTestBuilder.validUser()
+                                .withEmail("user@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                userRepository.save(user);
 
-        mockMvc.perform(get("/api/research-groups/999").session(session))
-                .andExpect(status().isNotFound());
-    }
+                MockHttpSession session = loginAs("user@example.com");
 
-    @Test
-    void shouldReturnForbiddenWhenNotAuthenticated() throws Exception {
-        mockMvc.perform(get("/api/research-groups/1"))
-                .andExpect(status().isForbidden());
-    }
+                mockMvc.perform(get("/api/research-groups/999").session(session))
+                                .andExpect(status().isNotFound());
+        }
 
-    @Test
-    void shouldReturnDetailWithExpectedContract() throws Exception {
-        User owner = UserTestBuilder.validUser()
-                .withEmail("owner.contract@example.com")
-                .withFirstName("Elena")
-                .withLastName("Alvarez")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        owner = userRepository.save(owner);
+        @Test
+        void shouldReturnForbiddenWhenNotAuthenticated() throws Exception {
+                mockMvc.perform(get("/api/research-groups/1"))
+                                .andExpect(status().isForbidden());
+        }
 
-        User admin = UserTestBuilder.validUser()
-                .withEmail("admin.contract@example.com")
-                .withFirstName("Linda")
-                .withLastName("Vo")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        admin = userRepository.save(admin);
+        @Test
+        void shouldReturnDetailWithExpectedContract() throws Exception {
+                User owner = UserTestBuilder.validUser()
+                                .withEmail("owner.contract@example.com")
+                                .withFirstName("Elena")
+                                .withLastName("Alvarez")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                owner = userRepository.save(owner);
 
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup()
-                .withName("Contract Group")
-                .withDescription("Contract response validation")
-                .build();
-        group = researchGroupRepository.save(group);
+                User admin = UserTestBuilder.validUser()
+                                .withEmail("admin.contract@example.com")
+                                .withFirstName("Linda")
+                                .withLastName("Vo")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                admin = userRepository.save(admin);
 
-        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
-                .withUser(owner)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.OWNER)
-                .build());
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup()
+                                .withName("Contract Group")
+                                .withDescription("Contract response validation")
+                                .build();
+                group = researchGroupRepository.save(group);
 
-        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
-                .withUser(admin)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.ADMIN)
-                .build());
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
 
-        MockHttpSession session = loginAs("owner.contract@example.com");
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(admin)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ADMIN)
+                                .build());
 
-        mockMvc.perform(get("/api/research-groups/" + group.getId()).session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(group.getId()))
-                .andExpect(jsonPath("$.name").value("Contract Group"))
-                .andExpect(jsonPath("$.description").value("Contract response validation"))
-                .andExpect(jsonPath("$.totalMembers").value(2))
-                .andExpect(jsonPath("$.activeProjects").value(0))
-                .andExpect(jsonPath("$.createdAt").isNotEmpty())
-                .andExpect(jsonPath("$.members.length()").value(2))
-                .andExpect(jsonPath("$.members[0].email").isNotEmpty())
-                .andExpect(jsonPath("$.members[0].role").isNotEmpty());
-    }
+                MockHttpSession session = loginAs("owner.contract@example.com");
 
-    @Test
-    void shouldExcludeSoftDeletedMembersFromDetail() throws Exception {
-        User owner = UserTestBuilder.validUser()
-                .withEmail("owner.softdelete@example.com")
-                .withFirstName("Elena")
-                .withLastName("Alvarez")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        owner = userRepository.save(owner);
+                mockMvc.perform(get("/api/research-groups/" + group.getId()).session(session))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.id").value(group.getId()))
+                                .andExpect(jsonPath("$.name").value("Contract Group"))
+                                .andExpect(jsonPath("$.description").value("Contract response validation"))
+                                .andExpect(jsonPath("$.totalMembers").value(2))
+                                .andExpect(jsonPath("$.activeProjects").value(0))
+                                .andExpect(jsonPath("$.createdAt").isNotEmpty())
+                                .andExpect(jsonPath("$.members.length()").value(2))
+                                .andExpect(jsonPath("$.members[0].email").isNotEmpty())
+                                .andExpect(jsonPath("$.members[0].role").isNotEmpty());
+        }
 
-        User removedMemberUser = UserTestBuilder.validUser()
-                .withEmail("removed.member@example.com")
-                .withFirstName("Removed")
-                .withLastName("Member")
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        removedMemberUser = userRepository.save(removedMemberUser);
+        @Test
+        void shouldExcludeSoftDeletedMembersFromDetail() throws Exception {
+                User owner = UserTestBuilder.validUser()
+                                .withEmail("owner.softdelete@example.com")
+                                .withFirstName("Elena")
+                                .withLastName("Alvarez")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                owner = userRepository.save(owner);
 
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup()
-                .withName("Soft Delete Group")
-                .build();
-        group = researchGroupRepository.save(group);
+                User removedMemberUser = UserTestBuilder.validUser()
+                                .withEmail("removed.member@example.com")
+                                .withFirstName("Removed")
+                                .withLastName("Member")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                removedMemberUser = userRepository.save(removedMemberUser);
 
-        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
-                .withUser(owner)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.OWNER)
-                .build());
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup()
+                                .withName("Soft Delete Group")
+                                .build();
+                group = researchGroupRepository.save(group);
 
-        ResearchGroupMember removedMember = ResearchGroupMemberTestBuilder.validMember()
-                .withUser(removedMemberUser)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.ANNOTATOR)
-                .build();
-        removedMember = memberRepository.save(removedMember);
-        removedMember.setDeletedAt(Instant.now());
-        memberRepository.save(removedMember);
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
 
-        MockHttpSession session = loginAs("owner.softdelete@example.com");
+                ResearchGroupMember removedMember = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(removedMemberUser)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ANNOTATOR)
+                                .build();
+                removedMember = memberRepository.save(removedMember);
+                removedMember.setDeletedAt(Instant.now());
+                memberRepository.save(removedMember);
 
-        mockMvc.perform(get("/api/research-groups/" + group.getId()).session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalMembers").value(1))
-                .andExpect(jsonPath("$.members.length()").value(1))
-                .andExpect(jsonPath("$.members[0].email").value("owner.softdelete@example.com"));
-    }
+                MockHttpSession session = loginAs("owner.softdelete@example.com");
+
+                mockMvc.perform(get("/api/research-groups/" + group.getId()).session(session))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.totalMembers").value(1))
+                                .andExpect(jsonPath("$.members.length()").value(1))
+                                .andExpect(jsonPath("$.members[0].email").value("owner.softdelete@example.com"));
+        }
 }

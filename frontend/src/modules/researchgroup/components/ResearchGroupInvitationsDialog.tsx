@@ -1,0 +1,292 @@
+import { useMemo, useState } from 'react';
+import { Check, Mail, UserRound, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { FormFieldControl } from '@/components/common/FormFieldControl';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { FeedbackMessage } from '@/components/ui/feedback-message';
+import { Spinner } from '@/components/ui/spinner';
+import {
+  useAcceptResearchGroupInvitationMutation,
+  useDeclineResearchGroupInvitationMutation,
+  useJoinResearchGroupByCodeMutation,
+  useResearchGroupInvitationsQuery,
+} from '@/modules/researchgroup/hooks/useResearchGroupQueries';
+import {
+  getAcceptInvitationErrorMessage,
+  getDeclineInvitationErrorMessage,
+  getInvitationsErrorMessage,
+  getJoinByCodeErrorMessage,
+} from '@/modules/researchgroup/services/researchGroupService';
+
+type ResearchGroupInvitationsDialogProps = {
+  trigger: React.ReactNode;
+};
+
+export function ResearchGroupInvitationsDialog({
+  trigger,
+}: Readonly<ResearchGroupInvitationsDialogProps>) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [invitationCode, setInvitationCode] = useState('');
+  const [joinErrorMessage, setJoinErrorMessage] = useState('');
+  const [joinSuccessMessage, setJoinSuccessMessage] = useState('');
+  const [invitationActionErrorMessage, setInvitationActionErrorMessage] = useState('');
+  const [invitationActionSuccessMessage, setInvitationActionSuccessMessage] = useState('');
+  const { data: invitations = [], isLoading, isError, error } = useResearchGroupInvitationsQuery();
+  const joinByCodeMutation = useJoinResearchGroupByCodeMutation();
+  const acceptInvitationMutation = useAcceptResearchGroupInvitationMutation();
+  const declineInvitationMutation = useDeclineResearchGroupInvitationMutation();
+
+  const invitationsErrorMessage = isError ? getInvitationsErrorMessage(error) : '';
+  const canJoinByCode = invitationCode.trim().length > 0 && !joinByCodeMutation.isPending;
+  const pendingInvitationId =
+    acceptInvitationMutation.variables ?? declineInvitationMutation.variables;
+  const isInvitationActionPending =
+    acceptInvitationMutation.isPending || declineInvitationMutation.isPending;
+  const sortedInvitations = useMemo(
+    () =>
+      [...invitations].sort(
+        (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+      ),
+    [invitations],
+  );
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setInvitationCode('');
+      setJoinErrorMessage('');
+      setJoinSuccessMessage('');
+      setInvitationActionErrorMessage('');
+      setInvitationActionSuccessMessage('');
+    }
+
+    setOpen(nextOpen);
+  };
+
+  const handleJoinByCode = async () => {
+    if (!canJoinByCode) {
+      return;
+    }
+
+    setJoinErrorMessage('');
+    setJoinSuccessMessage('');
+
+    try {
+      await joinByCodeMutation.mutateAsync(invitationCode);
+      setJoinSuccessMessage(t('researchGroup.invitationsDialog.joinSuccess'));
+      setInvitationCode('');
+    } catch (joinError) {
+      setJoinErrorMessage(getJoinByCodeErrorMessage(joinError));
+    }
+  };
+
+  const handleAcceptInvitation = async (invitationId: number) => {
+    if (isInvitationActionPending) {
+      return;
+    }
+
+    setInvitationActionErrorMessage('');
+    setInvitationActionSuccessMessage('');
+
+    try {
+      await acceptInvitationMutation.mutateAsync(invitationId);
+      setInvitationActionSuccessMessage(t('researchGroup.invitationsDialog.acceptSuccess'));
+    } catch (acceptError) {
+      setInvitationActionErrorMessage(getAcceptInvitationErrorMessage(acceptError));
+    }
+  };
+
+  const handleDeclineInvitation = async (invitationId: number) => {
+    if (isInvitationActionPending) {
+      return;
+    }
+
+    setInvitationActionErrorMessage('');
+    setInvitationActionSuccessMessage('');
+
+    try {
+      await declineInvitationMutation.mutateAsync(invitationId);
+      setInvitationActionSuccessMessage(t('researchGroup.invitationsDialog.declineSuccess'));
+    } catch (declineError) {
+      setInvitationActionErrorMessage(getDeclineInvitationErrorMessage(declineError));
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger render={trigger as React.JSX.Element} />
+
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{t('researchGroup.invitationsDialog.title')}</DialogTitle>
+        </DialogHeader>
+
+        <div className="my-6 space-y-6">
+          <div className="space-y-3">
+            <div className="flex items-end gap-2">
+              <FormFieldControl
+                className="flex-1"
+                id="join-by-code"
+                inputProps={{
+                  autoComplete: 'off',
+                  maxLength: 64,
+                  placeholder: t('researchGroup.invitationsDialog.codePlaceholder'),
+                }}
+                label={t('researchGroup.invitationsDialog.codeLabel')}
+                onValueChange={setInvitationCode}
+                value={invitationCode}
+              />
+
+              <Button
+                className="h-10 min-w-28 cursor-pointer rounded-md bg-(--cl-primary) text-sm font-semibold text-white transition-colors hover:bg-(--cl-primary-deep) disabled:bg-(--cl-tertiary)"
+                disabled={!canJoinByCode}
+                onClick={() => void handleJoinByCode()}
+                type="button"
+              >
+                {joinByCodeMutation.isPending ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Spinner aria-hidden className="size-4" />
+                    {t('researchGroup.invitationsDialog.joining')}
+                  </span>
+                ) : (
+                  t('researchGroup.invitationsDialog.joinSubmit')
+                )}
+              </Button>
+            </div>
+
+            {joinErrorMessage.length > 0 && (
+              <FeedbackMessage
+                className="rounded-lg px-4 py-3"
+                message={joinErrorMessage}
+                variant="error"
+              />
+            )}
+
+            {joinSuccessMessage.length > 0 && (
+              <FeedbackMessage
+                className="rounded-lg px-4 py-3"
+                message={joinSuccessMessage}
+                variant="success"
+              />
+            )}
+
+            {invitationActionErrorMessage.length > 0 && (
+              <FeedbackMessage
+                className="rounded-lg px-4 py-3"
+                message={invitationActionErrorMessage}
+                variant="error"
+              />
+            )}
+
+            {invitationActionSuccessMessage.length > 0 && (
+              <FeedbackMessage
+                className="rounded-lg px-4 py-3"
+                message={invitationActionSuccessMessage}
+                variant="success"
+              />
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-(--cl-secondary) text-sm font-bold tracking-[0.08em] uppercase">
+              {t('researchGroup.invitationsDialog.myInvitations')}
+            </h3>
+
+            {isLoading && (
+              <div className="text-(--cl-secondary) rounded-lg border border-(--cl-line) bg-white px-4 py-4 text-sm">
+                <span className="inline-flex items-center gap-2">
+                  <Spinner aria-hidden className="size-4" />
+                  {t('researchGroup.invitationsDialog.loadingInvitations')}
+                </span>
+              </div>
+            )}
+
+            {!isLoading && invitationsErrorMessage.length > 0 && (
+              <FeedbackMessage
+                className="rounded-lg px-4 py-3"
+                message={invitationsErrorMessage}
+                variant="error"
+              />
+            )}
+
+            {!isLoading &&
+              invitationsErrorMessage.length === 0 &&
+              sortedInvitations.length === 0 && (
+                <div className="text-(--cl-secondary) rounded-lg border border-(--cl-line) bg-white px-4 py-4 text-sm">
+                  {t('researchGroup.invitationsDialog.noInvitations')}
+                </div>
+              )}
+
+            {!isLoading && sortedInvitations.length > 0 && (
+              <div className="space-y-2">
+                {sortedInvitations.map((invitation) => (
+                  <div
+                    className="flex items-center gap-2 rounded-lg border border-(--cl-line) bg-white px-4 py-3"
+                    key={invitation.id}
+                  >
+                    <p className="text-(--cl-secondary) min-w-0 flex flex-1 items-center gap-8 overflow-hidden text-sm">
+                      <span className="text-(--cl-primary) shrink-0 font-semibold">
+                        {invitation.researchGroupName}
+                      </span>
+                      <span className="inline-flex min-w-0 items-center gap-2">
+                        <UserRound className="size-3.5 shrink-0" />
+                        <span className="truncate">{invitation.inviterFullName}</span>
+                      </span>
+                      <span className="inline-flex shrink-0 items-center gap-2">
+                        <Mail className="size-3.5 shrink-0" />
+                        {t(`researchGroup.roles.${invitation.role}`)}
+                      </span>
+                    </p>
+
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Button
+                        aria-label={t('researchGroup.invitationsDialog.acceptAria')}
+                        className="rounded-full border-emerald-600 bg-white text-emerald-600 hover:bg-emerald-600 hover:text-white cursor-pointer"
+                        disabled={isInvitationActionPending}
+                        onClick={() => void handleAcceptInvitation(invitation.id)}
+                        size="icon"
+                        type="button"
+                        variant="outline"
+                      >
+                        {acceptInvitationMutation.isPending &&
+                        pendingInvitationId === invitation.id ? (
+                          <Spinner aria-hidden className="size-4" />
+                        ) : (
+                          <Check className="size-4" />
+                        )}
+                      </Button>
+
+                      <Button
+                        aria-label={t('researchGroup.invitationsDialog.declineAria')}
+                        className="rounded-full border-rose-600 bg-white text-rose-600 hover:bg-rose-600 hover:text-white cursor-pointer"
+                        disabled={isInvitationActionPending}
+                        onClick={() => void handleDeclineInvitation(invitation.id)}
+                        size="icon"
+                        type="button"
+                        variant="outline"
+                      >
+                        {declineInvitationMutation.isPending &&
+                        pendingInvitationId === invitation.id ? (
+                          <Spinner aria-hidden className="size-4" />
+                        ) : (
+                          <X className="size-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

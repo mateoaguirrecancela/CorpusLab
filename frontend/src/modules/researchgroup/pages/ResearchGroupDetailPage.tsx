@@ -1,18 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { FlaskConical, MoreVertical, Plus, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { Spinner } from '@/components/ui/spinner';
-import {
-  getResearchGroupDetail,
-  getResearchGroupDetailErrorMessage,
-} from '@/modules/researchgroup/services/researchGroupService';
-import {
-  type ResearchGroupDetail,
-  type ResearchGroupMember,
-} from '@/modules/researchgroup/types/researchGroup';
+import { InviteResearchGroupMemberDialog } from '@/modules/researchgroup/components/InviteResearchGroupMemberDialog';
+import { useResearchGroupDetailQuery } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
+import { getResearchGroupDetailErrorMessage } from '@/modules/researchgroup/services/researchGroupService';
+import { type ResearchGroupMember } from '@/modules/researchgroup/types/researchGroup';
 
 function getMemberInitials(member: ResearchGroupMember): string {
   const firstInitial = member.firstName.trim().charAt(0).toUpperCase();
@@ -33,35 +29,14 @@ export default function ResearchGroupDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams();
 
-  const [group, setGroup] = useState<ResearchGroupDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
-
   const numericGroupId = useMemo(() => Number(id), [id]);
-
-  const loadGroupDetail = useCallback(async () => {
-    if (!Number.isFinite(numericGroupId) || numericGroupId <= 0) {
-      setErrorMessage(t('researchGroup.errors.invalidGroupId'));
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setErrorMessage('');
-
-    try {
-      const data = await getResearchGroupDetail(numericGroupId);
-      setGroup(data);
-    } catch (error) {
-      setErrorMessage(getResearchGroupDetailErrorMessage(error));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [numericGroupId, t]);
-
-  useEffect(() => {
-    void loadGroupDetail();
-  }, [loadGroupDetail]);
+  const isInvalidGroupId = !Number.isFinite(numericGroupId) || numericGroupId <= 0;
+  const { data: group, isLoading, isError, error } = useResearchGroupDetailQuery(numericGroupId);
+  const errorMessage = isInvalidGroupId
+    ? t('researchGroup.errors.invalidGroupId')
+    : isError
+      ? getResearchGroupDetailErrorMessage(error)
+      : '';
 
   return (
     <section className="px-6 py-6 sm:px-8 sm:py-8">
@@ -144,13 +119,19 @@ export default function ResearchGroupDetailPage() {
                 {t('researchGroup.detail.researchers')}
               </h2>
 
-              <Button
-                className="h-10 rounded-md bg-[color:var(--cl-primary)] px-4 text-sm font-semibold text-white hover:bg-[color:var(--cl-primary-deep)] cursor-pointer"
-                type="button"
-              >
-                <Plus className="size-4" />
-                {t('researchGroup.detail.inviteMember')}
-              </Button>
+              <InviteResearchGroupMemberDialog
+                groupId={group.id}
+                invitationCode={group.invitationCode}
+                trigger={
+                  <Button
+                    className="h-10 rounded-md bg-[color:var(--cl-primary)] px-4 text-sm font-semibold text-white hover:bg-[color:var(--cl-primary-deep)] cursor-pointer"
+                    type="button"
+                  >
+                    <Plus className="size-4" />
+                    {t('researchGroup.detail.inviteMember')}
+                  </Button>
+                }
+              />
             </div>
 
             <div className="overflow-x-auto rounded-md border border-[color:var(--cl-line)] bg-white">
