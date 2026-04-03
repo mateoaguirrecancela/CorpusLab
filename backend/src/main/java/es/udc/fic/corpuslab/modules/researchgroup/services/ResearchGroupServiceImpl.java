@@ -27,11 +27,13 @@ import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroupMember;
 import es.udc.fic.corpuslab.modules.researchgroup.enums.ResearchGroupInvitationStatus;
 import es.udc.fic.corpuslab.modules.researchgroup.enums.ResearchGroupMemberRole;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.InvalidResearchGroupInvitationRoleException;
+import es.udc.fic.corpuslab.modules.researchgroup.exceptions.InvalidResearchGroupMemberRoleException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationAlreadyExistsException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationCodeNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationEmailDeliveryException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupMemberAlreadyExistsException;
+import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupMemberNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupInvitationRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupMemberRepository;
@@ -290,6 +292,57 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
 
         @Override
         @Transactional
+        public ResearchGroupMemberDto updateMemberRole(
+                        String authenticatedEmail,
+                        Long groupId,
+                        Long memberUserId,
+                        ResearchGroupMemberRole role) {
+                if (role == ResearchGroupMemberRole.OWNER) {
+                        throw new InvalidResearchGroupMemberRoleException(role);
+                }
+
+                User requester = findUserByEmail(authenticatedEmail);
+                validateOwnerPermissions(groupId, requester.getId());
+
+                ResearchGroupMember targetMember = memberRepository
+                                .findActiveMemberByGroupIdAndUserId(groupId, memberUserId)
+                                .orElseThrow(() -> new ResearchGroupMemberNotFoundException(groupId, memberUserId));
+
+                if (targetMember.getRole() == ResearchGroupMemberRole.OWNER) {
+                        throw new InvalidResearchGroupMemberRoleException(targetMember.getRole());
+                }
+
+                targetMember.setRole(role);
+                ResearchGroupMember saved = memberRepository.save(targetMember);
+
+                return new ResearchGroupMemberDto(
+                                saved.getUser().getId(),
+                                saved.getUser().getFirstName(),
+                                saved.getUser().getLastName(),
+                                saved.getUser().getEmail(),
+                                saved.getRole());
+        }
+
+        @Override
+        @Transactional
+        public void removeMember(String authenticatedEmail, Long groupId, Long memberUserId) {
+                User requester = findUserByEmail(authenticatedEmail);
+                validateOwnerPermissions(groupId, requester.getId());
+
+                ResearchGroupMember targetMember = memberRepository
+                                .findActiveMemberByGroupIdAndUserId(groupId, memberUserId)
+                                .orElseThrow(() -> new ResearchGroupMemberNotFoundException(groupId, memberUserId));
+
+                if (targetMember.getRole() == ResearchGroupMemberRole.OWNER) {
+                        throw new InvalidResearchGroupMemberRoleException(targetMember.getRole());
+                }
+
+                targetMember.setDeletedAt(Instant.now());
+                memberRepository.save(targetMember);
+        }
+
+        @Override
+        @Transactional
         public ResearchGroupSummaryDto joinResearchGroupByCode(String authenticatedEmail, String invitationCode) {
                 String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(authenticatedEmail);
                 String normalizedCode = invitationCode.trim().toUpperCase(Locale.ROOT);
@@ -367,5 +420,26 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                 });
 
                 invitationRepository.saveAll(pendingInvitations);
+        }
+
+        private User findUserByEmail(String authenticatedEmail) {
+                String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(authenticatedEmail);
+                return userRepository.findByEmailIgnoreCase(normalizedEmail)
+                                .orElseThrow(() -> new EmailNotFoundException(normalizedEmail));
+        }
+
+        private void validateOwnerPermissions(Long groupId, Long requesterUserId) {
+                if (!researchGroupRepository.existsById(groupId)) {
+                        throw new ResearchGroupNotFoundException(groupId);
+                }
+
+                ResearchGroupMember requesterMembership = memberRepository
+                                .findActiveMemberByGroupIdAndUserId(groupId, requesterUserId)
+                                .orElseThrow(() -> new AccessDeniedException(
+                                                "User is not a member of this research group"));
+
+                if (requesterMembership.getRole() != ResearchGroupMemberRole.OWNER) {
+                        throw new AccessDeniedException("Only owners can manage researchers");
+                }
         }
 }

@@ -19,7 +19,9 @@ import es.udc.fic.corpuslab.modules.researchgroup.dtos.CreateResearchGroupInvita
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.JoinResearchGroupByCodeRequestDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupInvitationDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupDetailDto;
+import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupSummaryDto;
+import es.udc.fic.corpuslab.modules.researchgroup.dtos.UpdateResearchGroupMemberRoleRequestDto;
 import es.udc.fic.corpuslab.modules.researchgroup.services.ResearchGroupService;
 
 @RestController
@@ -50,6 +52,28 @@ public class ResearchGroupController {
             Authentication authentication,
             @PathVariable Long id) {
         return researchGroupService.getResearchGroupDetail(authentication.getName(), id);
+    }
+
+    @PostMapping("/{id}/members/{memberUserId}/role")
+    public ResearchGroupMemberDto updateMemberRole(
+            Authentication authentication,
+            @PathVariable Long id,
+            @PathVariable Long memberUserId,
+            @Valid @RequestBody UpdateResearchGroupMemberRoleRequestDto request) {
+        return researchGroupService.updateMemberRole(
+                authentication.getName(),
+                id,
+                memberUserId,
+                request.role());
+    }
+
+    @PostMapping("/{id}/members/{memberUserId}/remove")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeMember(
+            Authentication authentication,
+            @PathVariable Long id,
+            @PathVariable Long memberUserId) {
+        researchGroupService.removeMember(authentication.getName(), id, memberUserId);
     }
 
     @PostMapping("/{id}/invitations")

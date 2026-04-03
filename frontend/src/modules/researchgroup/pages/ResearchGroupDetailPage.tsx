@@ -5,7 +5,9 @@ import { useParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { Spinner } from '@/components/ui/spinner';
+import { useProfileQuery } from '@/modules/auth/hooks/useProfileQuery';
 import { InviteResearchGroupMemberDialog } from '@/modules/researchgroup/components/InviteResearchGroupMemberDialog';
+import { ManageResearchGroupMemberDialog } from '@/modules/researchgroup/components/ManageResearchGroupMemberDialog';
 import { useResearchGroupDetailQuery } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
 import { getResearchGroupDetailErrorMessage } from '@/modules/researchgroup/services/researchGroupService';
 import { type ResearchGroupMember } from '@/modules/researchgroup/types/researchGroup';
@@ -28,6 +30,7 @@ function getRoleBadgeClasses(role: string): string {
 export default function ResearchGroupDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams();
+  const { data: profile } = useProfileQuery();
 
   const numericGroupId = useMemo(() => Number(id), [id]);
   const isInvalidGroupId = !Number.isFinite(numericGroupId) || numericGroupId <= 0;
@@ -37,6 +40,18 @@ export default function ResearchGroupDetailPage() {
     : isError
       ? getResearchGroupDetailErrorMessage(error)
       : '';
+
+  const currentMember = useMemo(() => {
+    if (!group || !profile?.email) {
+      return undefined;
+    }
+
+    return group.members.find(
+      (member) => member.email.toLowerCase() === profile.email.toLowerCase(),
+    );
+  }, [group, profile?.email]);
+
+  const canManageResearchers = currentMember?.role === 'OWNER';
 
   return (
     <section className="px-6 py-6 sm:px-8 sm:py-8">
@@ -185,13 +200,21 @@ export default function ResearchGroupDetailPage() {
                       </td>
 
                       <td className="px-6 py-4 text-right align-middle">
-                        <button
-                          aria-label={t('researchGroup.detail.memberActions')}
-                          className="inline-flex size-8 items-center justify-center rounded-md text-[color:var(--cl-secondary)] transition-colors hover:bg-[color:var(--cl-primary-soft)] hover:text-[color:var(--cl-primary)]"
-                          type="button"
-                        >
-                          <MoreVertical className="size-4" />
-                        </button>
+                        {canManageResearchers && member.role !== 'OWNER' && (
+                          <ManageResearchGroupMemberDialog
+                            groupId={group.id}
+                            member={member}
+                            trigger={
+                              <button
+                                aria-label={t('researchGroup.detail.memberActions')}
+                                className="inline-flex size-8 items-center justify-center rounded-md text-[color:var(--cl-secondary)] transition-colors hover:bg-[color:var(--cl-primary-soft)] hover:text-[color:var(--cl-primary)] cursor-pointer"
+                                type="button"
+                              >
+                                <MoreVertical className="size-4" />
+                              </button>
+                            }
+                          />
+                        )}
                       </td>
                     </tr>
                   ))}

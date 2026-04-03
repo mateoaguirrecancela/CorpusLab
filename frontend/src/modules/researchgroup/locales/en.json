@@ -16,7 +16,9 @@
       "invitationsLoadFailed": "Could not load your invitations.",
       "joinByCodeFailed": "Could not join the group with that code.",
       "acceptInvitationFailed": "Could not accept the invitation.",
-      "declineInvitationFailed": "Could not decline the invitation."
+      "declineInvitationFailed": "Could not decline the invitation.",
+      "updateMemberRoleFailed": "Could not update the researcher's role.",
+      "removeMemberFailed": "Could not remove the researcher from the group."
     },
     "loading": "Loading research groups...",
     "roles": {
@@ -75,6 +77,17 @@
       "codeCopied": "Invitation code copied to clipboard.",
       "codeCopyFailed": "Could not copy the code automatically.",
       "memberActions": "Researcher actions",
+      "manage": {
+        "title": "Manage researcher",
+        "researcher": "Researcher",
+        "roleLabel": "Role",
+        "setRole": "Change to {{role}}",
+        "updateRole": "Update role",
+        "remove": "Remove",
+        "removing": "Removing...",
+        "updateSuccess": "Role updated successfully.",
+        "confirmRemove": "Are you sure you want to remove {{name}} from the group?"
+      },
       "columns": {
         "name": "Name",
         "role": "Role",
