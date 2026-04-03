@@ -28,6 +28,7 @@ import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupDetailDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupInvitationDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupSummaryDto;
+import es.udc.fic.corpuslab.modules.researchgroup.dtos.UpdateResearchGroupRequestDto;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroup;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroupInvitation;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroupMember;
@@ -127,6 +128,125 @@ class ResearchGroupServiceImplTest {
                 assertThatThrownBy(() -> researchGroupService.getResearchGroupDetail("member@example.com", 404L))
                                 .isInstanceOf(ResearchGroupNotFoundException.class)
                                 .hasMessage("Research group not found with id: 404");
+        }
+
+        @Test
+        void updateResearchGroupShouldUpdateNameAndDescriptionWhenRequesterIsOwner() {
+                User owner = UserTestBuilder.validUser().withEmail("owner@example.com").build();
+                setId(owner, 1L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup()
+                                .withName("Old Name")
+                                .withDescription("Old Description")
+                                .build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+
+                ResearchGroupMember ownerMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build();
+
+                ResearchGroupMemberDto ownerDto = new ResearchGroupMemberDto(
+                                1L,
+                                "Owner",
+                                "User",
+                                "owner@example.com",
+                                ResearchGroupMemberRole.OWNER);
+
+                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
+                                .thenReturn(Optional.of(ownerMembership));
+                when(memberRepository.findMembersByGroupId(10L)).thenReturn(List.of(ownerDto));
+
+                ResearchGroupDetailDto result = researchGroupService.updateResearchGroup(
+                                "owner@example.com",
+                                10L,
+                                new UpdateResearchGroupRequestDto("  New Name  ", "  New Description  "));
+
+                assertThat(result.name()).isEqualTo("New Name");
+                assertThat(result.description()).isEqualTo("New Description");
+                assertThat(group.getName()).isEqualTo("New Name");
+                assertThat(group.getDescription()).isEqualTo("New Description");
+                verify(researchGroupRepository).save(group);
+        }
+
+        @Test
+        void updateResearchGroupShouldSetDescriptionToNullWhenBlank() {
+                User owner = UserTestBuilder.validUser().withEmail("owner@example.com").build();
+                setId(owner, 1L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+
+                ResearchGroupMember ownerMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build();
+
+                ResearchGroupMemberDto ownerDto = new ResearchGroupMemberDto(
+                                1L,
+                                "Owner",
+                                "User",
+                                "owner@example.com",
+                                ResearchGroupMemberRole.OWNER);
+
+                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
+                                .thenReturn(Optional.of(ownerMembership));
+                when(memberRepository.findMembersByGroupId(10L)).thenReturn(List.of(ownerDto));
+
+                ResearchGroupDetailDto result = researchGroupService.updateResearchGroup(
+                                "owner@example.com",
+                                10L,
+                                new UpdateResearchGroupRequestDto("Updated Name", "   "));
+
+                assertThat(result.description()).isNull();
+                assertThat(group.getDescription()).isNull();
+        }
+
+        @Test
+        void updateResearchGroupShouldThrowWhenRequesterIsNotOwner() {
+                User admin = UserTestBuilder.validUser().withEmail("admin@example.com").build();
+                setId(admin, 1L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+
+                ResearchGroupMember adminMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(admin)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ADMIN)
+                                .build();
+
+                when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(admin));
+                when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
+                                .thenReturn(Optional.of(adminMembership));
+
+                assertThatThrownBy(() -> researchGroupService.updateResearchGroup(
+                                "admin@example.com",
+                                10L,
+                                new UpdateResearchGroupRequestDto("Updated Name", "Updated Description")))
+                                .isInstanceOf(AccessDeniedException.class);
+        }
+
+        @Test
+        void updateResearchGroupShouldThrowWhenGroupNotFound() {
+                User owner = UserTestBuilder.validUser().withEmail("owner@example.com").build();
+                setId(owner, 1L);
+
+                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(researchGroupRepository.findById(999L)).thenReturn(Optional.empty());
+
+                assertThatThrownBy(() -> researchGroupService.updateResearchGroup(
+                                "owner@example.com",
+                                999L,
+                                new UpdateResearchGroupRequestDto("Updated Name", "Updated Description")))
+                                .isInstanceOf(ResearchGroupNotFoundException.class);
         }
 
         @Test
