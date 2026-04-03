@@ -775,6 +775,131 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
+        void shouldReturnBadRequestWhenUpdatingMemberRoleToOwner() throws Exception {
+                User owner = UserTestBuilder.validUser()
+                                .withEmail("owner13@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                owner = userRepository.save(owner);
+
+                User member = UserTestBuilder.validUser()
+                                .withEmail("member.role3@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                member = userRepository.save(member);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("Role Group 3").build();
+                group = researchGroupRepository.save(group);
+
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(member)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ADMIN)
+                                .build());
+
+                MockHttpSession ownerSession = loginAs("owner13@example.com");
+
+                mockMvc.perform(post("/api/research-groups/" + group.getId() + "/members/" + member.getId() + "/role")
+                                .session(ownerSession)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"role\":\"OWNER\"}"))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenRemovingOwnerMember() throws Exception {
+                User ownerRequester = UserTestBuilder.validUser()
+                                .withEmail("owner14@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                ownerRequester = userRepository.save(ownerRequester);
+
+                User ownerTarget = UserTestBuilder.validUser()
+                                .withEmail("owner.target@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                ownerTarget = userRepository.save(ownerTarget);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("Owner Remove Group").build();
+                group = researchGroupRepository.save(group);
+
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(ownerRequester)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(ownerTarget)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
+
+                MockHttpSession ownerSession = loginAs("owner14@example.com");
+
+                mockMvc.perform(post(
+                                "/api/research-groups/" + group.getId() + "/members/" + ownerTarget.getId() + "/remove")
+                                .session(ownerSession)
+                                .contentType(MediaType.APPLICATION_JSON))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldReturnNotFoundWhenUpdatingMissingMemberRole() throws Exception {
+                User owner = UserTestBuilder.validUser()
+                                .withEmail("owner15@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                owner = userRepository.save(owner);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("Missing Role Group").build();
+                group = researchGroupRepository.save(group);
+
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
+
+                MockHttpSession ownerSession = loginAs("owner15@example.com");
+
+                mockMvc.perform(post("/api/research-groups/" + group.getId() + "/members/999999/role")
+                                .session(ownerSession)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"role\":\"ADMIN\"}"))
+                                .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void shouldReturnNotFoundWhenRemovingMissingMember() throws Exception {
+                User owner = UserTestBuilder.validUser()
+                                .withEmail("owner16@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                owner = userRepository.save(owner);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("Missing Remove Group").build();
+                group = researchGroupRepository.save(group);
+
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
+
+                MockHttpSession ownerSession = loginAs("owner16@example.com");
+
+                mockMvc.perform(post("/api/research-groups/" + group.getId() + "/members/999999/remove")
+                                .session(ownerSession)
+                                .contentType(MediaType.APPLICATION_JSON))
+                                .andExpect(status().isNotFound());
+        }
+
+        @Test
         void shouldReturnForbiddenWhenNotAuthenticatedOnInvitationEndpoints() throws Exception {
                 mockMvc.perform(post("/api/research-groups/1/invitations")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -788,6 +913,15 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                 mockMvc.perform(post("/api/research-groups/join-by-code")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"code\":\"SOMECODE123\"}"))
+                                .andExpect(status().isForbidden());
+
+                mockMvc.perform(post("/api/research-groups/1/members/2/role")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"role\":\"ADMIN\"}"))
+                                .andExpect(status().isForbidden());
+
+                mockMvc.perform(post("/api/research-groups/1/members/2/remove")
+                                .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isForbidden());
         }
 }

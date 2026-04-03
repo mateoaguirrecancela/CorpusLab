@@ -471,6 +471,55 @@ class ResearchGroupServiceImplTest {
         }
 
         @Test
+        void updateMemberRoleShouldThrowWhenTargetMemberIsOwner() {
+                User ownerRequester = UserTestBuilder.validUser().withEmail("owner.requester@example.com").build();
+                setId(ownerRequester, 1L);
+
+                User ownerTarget = UserTestBuilder.validUser().withEmail("owner.target@example.com").build();
+                setId(ownerTarget, 2L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+
+                ResearchGroupMember requesterMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(ownerRequester)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build();
+
+                ResearchGroupMember ownerTargetMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(ownerTarget)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build();
+
+                when(userRepository.findByEmailIgnoreCase("owner.requester@example.com"))
+                                .thenReturn(Optional.of(ownerRequester));
+                when(researchGroupRepository.existsById(10L)).thenReturn(true);
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
+                                .thenReturn(Optional.of(requesterMembership));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 2L))
+                                .thenReturn(Optional.of(ownerTargetMembership));
+
+                assertThatThrownBy(() -> researchGroupService.updateMemberRole(
+                                "owner.requester@example.com", 10L, 2L, ResearchGroupMemberRole.ADMIN))
+                                .isInstanceOf(InvalidResearchGroupMemberRoleException.class);
+        }
+
+        @Test
+        void updateMemberRoleShouldThrowWhenGroupDoesNotExist() {
+                User owner = UserTestBuilder.validUser().withEmail("owner@example.com").build();
+                setId(owner, 1L);
+
+                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(researchGroupRepository.existsById(999L)).thenReturn(false);
+
+                assertThatThrownBy(() -> researchGroupService.updateMemberRole(
+                                "owner@example.com", 999L, 2L, ResearchGroupMemberRole.ADMIN))
+                                .isInstanceOf(ResearchGroupNotFoundException.class);
+        }
+
+        @Test
         void removeMemberShouldSoftDeleteWhenRequesterIsOwner() {
                 User owner = UserTestBuilder.validUser().withEmail("owner@example.com").build();
                 setId(owner, 1L);
@@ -504,6 +553,89 @@ class ResearchGroupServiceImplTest {
 
                 assertThat(targetMembership.getDeletedAt()).isNotNull();
                 verify(memberRepository).save(targetMembership);
+        }
+
+        @Test
+        void removeMemberShouldThrowWhenRequesterIsNotOwner() {
+                User admin = UserTestBuilder.validUser().withEmail("admin@example.com").build();
+                setId(admin, 1L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+
+                ResearchGroupMember adminMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(admin)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ADMIN)
+                                .build();
+
+                when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(admin));
+                when(researchGroupRepository.existsById(10L)).thenReturn(true);
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
+                                .thenReturn(Optional.of(adminMembership));
+
+                assertThatThrownBy(() -> researchGroupService.removeMember("admin@example.com", 10L, 2L))
+                                .isInstanceOf(AccessDeniedException.class);
+        }
+
+        @Test
+        void removeMemberShouldThrowWhenTargetMemberIsMissing() {
+                User owner = UserTestBuilder.validUser().withEmail("owner@example.com").build();
+                setId(owner, 1L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+
+                ResearchGroupMember ownerMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build();
+
+                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(researchGroupRepository.existsById(10L)).thenReturn(true);
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
+                                .thenReturn(Optional.of(ownerMembership));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 999L)).thenReturn(Optional.empty());
+
+                assertThatThrownBy(() -> researchGroupService.removeMember("owner@example.com", 10L, 999L))
+                                .isInstanceOf(ResearchGroupMemberNotFoundException.class);
+        }
+
+        @Test
+        void removeMemberShouldThrowWhenTargetMemberIsOwner() {
+                User ownerRequester = UserTestBuilder.validUser().withEmail("owner.requester@example.com").build();
+                setId(ownerRequester, 1L);
+
+                User ownerTarget = UserTestBuilder.validUser().withEmail("owner.target@example.com").build();
+                setId(ownerTarget, 2L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+                setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
+
+                ResearchGroupMember requesterMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(ownerRequester)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build();
+
+                ResearchGroupMember ownerTargetMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(ownerTarget)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build();
+
+                when(userRepository.findByEmailIgnoreCase("owner.requester@example.com"))
+                                .thenReturn(Optional.of(ownerRequester));
+                when(researchGroupRepository.existsById(10L)).thenReturn(true);
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
+                                .thenReturn(Optional.of(requesterMembership));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 2L))
+                                .thenReturn(Optional.of(ownerTargetMembership));
+
+                assertThatThrownBy(() -> researchGroupService.removeMember(
+                                "owner.requester@example.com", 10L, 2L))
+                                .isInstanceOf(InvalidResearchGroupMemberRoleException.class);
         }
 
         @Test
