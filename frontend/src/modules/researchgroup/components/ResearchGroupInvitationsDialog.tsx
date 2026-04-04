@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Check, Mail, UserRound, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { Spinner } from '@/components/ui/spinner';
 import {
   useAcceptResearchGroupInvitationMutation,
@@ -35,10 +35,6 @@ export function ResearchGroupInvitationsDialog({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [invitationCode, setInvitationCode] = useState('');
-  const [joinErrorMessage, setJoinErrorMessage] = useState('');
-  const [joinSuccessMessage, setJoinSuccessMessage] = useState('');
-  const [invitationActionErrorMessage, setInvitationActionErrorMessage] = useState('');
-  const [invitationActionSuccessMessage, setInvitationActionSuccessMessage] = useState('');
   const { data: invitations = [], isLoading, isError, error } = useResearchGroupInvitationsQuery();
   const joinByCodeMutation = useJoinResearchGroupByCodeMutation();
   const acceptInvitationMutation = useAcceptResearchGroupInvitationMutation();
@@ -58,13 +54,15 @@ export function ResearchGroupInvitationsDialog({
     [invitations],
   );
 
+  useEffect(() => {
+    if (invitationsErrorMessage.length > 0) {
+      toast.error(invitationsErrorMessage, { id: 'research-group-invitations-load-error' });
+    }
+  }, [invitationsErrorMessage]);
+
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       setInvitationCode('');
-      setJoinErrorMessage('');
-      setJoinSuccessMessage('');
-      setInvitationActionErrorMessage('');
-      setInvitationActionSuccessMessage('');
     }
 
     setOpen(nextOpen);
@@ -75,15 +73,12 @@ export function ResearchGroupInvitationsDialog({
       return;
     }
 
-    setJoinErrorMessage('');
-    setJoinSuccessMessage('');
-
     try {
       await joinByCodeMutation.mutateAsync(invitationCode);
-      setJoinSuccessMessage(t('researchGroup.invitationsDialog.joinSuccess'));
+      toast.success(t('researchGroup.invitationsDialog.joinSuccess'));
       setInvitationCode('');
     } catch (joinError) {
-      setJoinErrorMessage(getJoinByCodeErrorMessage(joinError));
+      toast.error(getJoinByCodeErrorMessage(joinError));
     }
   };
 
@@ -92,14 +87,11 @@ export function ResearchGroupInvitationsDialog({
       return;
     }
 
-    setInvitationActionErrorMessage('');
-    setInvitationActionSuccessMessage('');
-
     try {
       await acceptInvitationMutation.mutateAsync(invitationId);
-      setInvitationActionSuccessMessage(t('researchGroup.invitationsDialog.acceptSuccess'));
+      toast.success(t('researchGroup.invitationsDialog.acceptSuccess'));
     } catch (acceptError) {
-      setInvitationActionErrorMessage(getAcceptInvitationErrorMessage(acceptError));
+      toast.error(getAcceptInvitationErrorMessage(acceptError));
     }
   };
 
@@ -108,14 +100,11 @@ export function ResearchGroupInvitationsDialog({
       return;
     }
 
-    setInvitationActionErrorMessage('');
-    setInvitationActionSuccessMessage('');
-
     try {
       await declineInvitationMutation.mutateAsync(invitationId);
-      setInvitationActionSuccessMessage(t('researchGroup.invitationsDialog.declineSuccess'));
+      toast.success(t('researchGroup.invitationsDialog.declineSuccess'));
     } catch (declineError) {
-      setInvitationActionErrorMessage(getDeclineInvitationErrorMessage(declineError));
+      toast.error(getDeclineInvitationErrorMessage(declineError));
     }
   };
 
@@ -160,38 +149,6 @@ export function ResearchGroupInvitationsDialog({
                 )}
               </Button>
             </div>
-
-            {joinErrorMessage.length > 0 && (
-              <FeedbackMessage
-                className="rounded-lg px-4 py-3"
-                message={joinErrorMessage}
-                variant="error"
-              />
-            )}
-
-            {joinSuccessMessage.length > 0 && (
-              <FeedbackMessage
-                className="rounded-lg px-4 py-3"
-                message={joinSuccessMessage}
-                variant="success"
-              />
-            )}
-
-            {invitationActionErrorMessage.length > 0 && (
-              <FeedbackMessage
-                className="rounded-lg px-4 py-3"
-                message={invitationActionErrorMessage}
-                variant="error"
-              />
-            )}
-
-            {invitationActionSuccessMessage.length > 0 && (
-              <FeedbackMessage
-                className="rounded-lg px-4 py-3"
-                message={invitationActionSuccessMessage}
-                variant="success"
-              />
-            )}
           </div>
 
           <div className="space-y-3">
@@ -206,14 +163,6 @@ export function ResearchGroupInvitationsDialog({
                   {t('researchGroup.invitationsDialog.loadingInvitations')}
                 </span>
               </div>
-            )}
-
-            {!isLoading && invitationsErrorMessage.length > 0 && (
-              <FeedbackMessage
-                className="rounded-lg px-4 py-3"
-                message={invitationsErrorMessage}
-                variant="error"
-              />
             )}
 
             {!isLoading &&

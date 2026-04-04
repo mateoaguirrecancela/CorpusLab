@@ -1,11 +1,19 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { FilePenLine, FlaskConical, MoreVertical, Plus, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
+import { toast } from 'sonner';
 import { BackButton } from '@/components/common/BackButton';
 import { Button } from '@/components/ui/button';
-import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useProfileQuery } from '@/modules/auth/hooks/useProfileQuery';
 import { EditResearchGroupDialog } from '@/modules/researchgroup/components/EditResearchGroupDialog';
 import { InviteResearchGroupMemberDialog } from '@/modules/researchgroup/components/InviteResearchGroupMemberDialog';
@@ -43,6 +51,12 @@ export default function ResearchGroupDetailPage() {
       ? getResearchGroupDetailErrorMessage(error)
       : '';
 
+  useEffect(() => {
+    if (errorMessage.length > 0) {
+      toast.error(errorMessage, { id: 'research-group-detail-load-error' });
+    }
+  }, [errorMessage]);
+
   const currentMember = useMemo(() => {
     if (!group || !profile?.email) {
       return undefined;
@@ -64,10 +78,6 @@ export default function ResearchGroupDetailPage() {
             {t('researchGroup.detail.loading')}
           </span>
         </div>
-      )}
-
-      {!isLoading && errorMessage.length > 0 && (
-        <FeedbackMessage className="rounded-lg px-4 py-3" message={errorMessage} variant="error" />
       )}
 
       {!isLoading && !errorMessage && group && (
@@ -173,57 +183,55 @@ export default function ResearchGroupDetailPage() {
               />
             </div>
 
-            <div className="overflow-x-auto rounded-md border border-[color:var(--cl-line)] bg-white">
-              <table className="min-w-full border-collapse">
-                <thead className="bg-[color:var(--sidebar)]">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-bold tracking-widest text-[color:var(--cl-secondary)] uppercase">
+            <div className="rounded-md border border-(--cl-line) bg-white">
+              <Table>
+                <TableHeader className="bg-muted/40">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="px-4 py-3 text-xs font-semibold tracking-wide text-(--cl-secondary) uppercase">
                       {t('researchGroup.detail.columns.name')}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold tracking-widest text-[color:var(--cl-secondary)] uppercase">
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-xs font-semibold tracking-wide text-(--cl-secondary) uppercase">
                       {t('researchGroup.detail.columns.role')}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold tracking-widest text-[color:var(--cl-secondary)] uppercase">
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-xs font-semibold tracking-wide text-(--cl-secondary) uppercase">
                       {t('researchGroup.detail.columns.projects')}
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-bold tracking-widest text-[color:var(--cl-secondary)] uppercase">
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-(--cl-secondary) uppercase">
                       {t('researchGroup.detail.columns.action')}
-                    </th>
-                  </tr>
-                </thead>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
 
-                <tbody>
+                <TableBody>
                   {group.members.map((member) => (
-                    <tr className="border-t border-[color:var(--cl-line)]" key={member.userId}>
-                      <td className="px-6 py-4 align-middle">
+                    <TableRow className="hover:bg-transparent" key={member.userId}>
+                      <TableCell className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex size-9 items-center justify-center rounded-full bg-[color:var(--cl-primary-soft)] text-xs font-bold text-[color:var(--cl-primary)]">
+                          <div className="flex size-8 items-center justify-center rounded-full bg-(--cl-primary-soft) text-xs font-bold text-(--cl-primary)">
                             {getMemberInitials(member)}
                           </div>
                           <div>
-                            <p className="text-base font-bold text-[color:var(--cl-primary)]">
+                            <p className="text-sm font-semibold text-(--cl-primary)">
                               {member.firstName} {member.lastName}
                             </p>
-                            <p className="text-sm text-[color:var(--cl-secondary)]">
-                              {member.email}
-                            </p>
+                            <p className="text-xs text-(--cl-secondary)">{member.email}</p>
                           </div>
                         </div>
-                      </td>
+                      </TableCell>
 
-                      <td className="px-6 py-4 align-middle">
+                      <TableCell className="px-4 py-3">
                         <span
                           className={`inline-flex rounded-sm px-2 py-1 text-xs font-semibold ${getRoleBadgeClasses(member.role)}`}
                         >
                           {t(`researchGroup.roles.${member.role}`)}
                         </span>
-                      </td>
+                      </TableCell>
 
-                      <td className="px-6 py-4 align-middle text-md font-bold text-[color:var(--cl-secondary)]">
+                      <TableCell className="px-4 py-3 text-sm font-semibold text-(--cl-secondary)">
                         00
-                      </td>
+                      </TableCell>
 
-                      <td className="px-6 py-4 text-right align-middle">
+                      <TableCell className="px-4 py-3 text-right">
                         {canManageResearchers && member.role !== 'OWNER' && (
                           <ManageResearchGroupMemberDialog
                             groupId={group.id}
@@ -239,11 +247,11 @@ export default function ResearchGroupDetailPage() {
                             }
                           />
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </section>
         </div>

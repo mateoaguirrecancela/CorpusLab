@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { Spinner } from '@/components/ui/spinner';
 import { useCreateResearchGroupMutation } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
 import { getCreateGroupErrorMessage } from '@/modules/researchgroup/services/researchGroupService';
@@ -25,7 +25,6 @@ export function CreateResearchGroupDialog({ trigger }: Readonly<CreateResearchGr
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
   const isSaving = createGroupMutation.isPending;
 
   const canSave = name.trim().length > 0 && !isSaving;
@@ -33,7 +32,6 @@ export function CreateResearchGroupDialog({ trigger }: Readonly<CreateResearchGr
   const resetForm = () => {
     setName('');
     setDescription('');
-    setErrorMessage('');
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -48,8 +46,6 @@ export function CreateResearchGroupDialog({ trigger }: Readonly<CreateResearchGr
       return;
     }
 
-    setErrorMessage('');
-
     try {
       await createGroupMutation.mutateAsync({
         name: name.trim(),
@@ -58,8 +54,9 @@ export function CreateResearchGroupDialog({ trigger }: Readonly<CreateResearchGr
 
       setOpen(false);
       resetForm();
+      toast.success(t('researchGroup.create.submit'));
     } catch (error) {
-      setErrorMessage(getCreateGroupErrorMessage(error));
+      toast.error(getCreateGroupErrorMessage(error));
     }
   };
 
@@ -98,14 +95,6 @@ export function CreateResearchGroupDialog({ trigger }: Readonly<CreateResearchGr
             }}
             value={description}
           />
-
-          {errorMessage.length > 0 && (
-            <FeedbackMessage
-              className="rounded-lg px-4 py-3"
-              message={errorMessage}
-              variant="error"
-            />
-          )}
         </div>
 
         <DialogFooter>

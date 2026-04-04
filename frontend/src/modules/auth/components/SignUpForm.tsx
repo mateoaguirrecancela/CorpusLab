@@ -1,10 +1,10 @@
-import { type FormEvent, useMemo } from 'react';
+import { type FormEvent, useEffect, useMemo } from 'react';
 import { CalendarDays, Github, Globe, Lock, Mail, MapPin, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+import { toast } from 'sonner';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
-import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { SubmitButtonWithSpinner } from '@/components/ui/submit-button-with-spinner';
 import { getCountryOptions, getGenderOptions } from '@/modules/auth/constants/signup';
 import { CountryCombobox } from '@/modules/auth/components/CountryCombobox';
@@ -44,6 +44,7 @@ type SignUpFormProps = {
   canSubmit: boolean;
   isSubmitting: boolean;
   errorMessage: string;
+  successMessage: string;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   onFieldChange: <K extends keyof RegisterFormState>(field: K, value: RegisterFormState[K]) => void;
   onOAuthClick: (provider: OAuthProvider) => void;
@@ -54,6 +55,7 @@ export function SignUpForm({
   canSubmit,
   isSubmitting,
   errorMessage,
+  successMessage,
   onSubmit,
   onFieldChange,
   onOAuthClick,
@@ -67,6 +69,18 @@ export function SignUpForm({
     () => getCountryOptions(i18n.resolvedLanguage ?? i18n.language ?? 'en'),
     [i18n.language, i18n.resolvedLanguage],
   );
+
+  useEffect(() => {
+    if (errorMessage.trim().length > 0) {
+      toast.error(errorMessage);
+    }
+  }, [errorMessage]);
+
+  useEffect(() => {
+    if (successMessage.trim().length > 0) {
+      toast.success(successMessage);
+    }
+  }, [successMessage]);
 
   return (
     <form className="mt-8 space-y-3" onSubmit={onSubmit}>
@@ -180,8 +194,6 @@ export function SignUpForm({
         isSubmitting={isSubmitting}
         submittingLabel={t('auth.signup.submitting')}
       />
-
-      <FeedbackMessage message={errorMessage} variant="error" />
 
       <div className="my-8 flex items-center gap-3 text-[0.67rem] font-bold tracking-[0.12em] text-[color:var(--cl-tertiary)] uppercase">
         <span className="h-px flex-1 bg-[color:var(--cl-line)]" />

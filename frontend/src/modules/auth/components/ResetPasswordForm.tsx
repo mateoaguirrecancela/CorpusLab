@@ -1,10 +1,10 @@
-import { type FormEvent } from 'react';
+import { type FormEvent, useEffect } from 'react';
 import { Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+import { toast } from 'sonner';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
-import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { Spinner } from '@/components/ui/spinner';
 import { type ResetPasswordFormState } from '@/modules/auth/types/resetPassword';
 
@@ -29,6 +29,12 @@ export function ResetPasswordForm({
   onFieldChange,
 }: ResetPasswordFormProps) {
   const { t } = useTranslation();
+
+  useEffect(() => {
+    if (errorMessage.trim().length > 0) {
+      toast.error(errorMessage);
+    }
+  }, [errorMessage]);
 
   return (
     <form className="mt-8 space-y-4" onSubmit={onSubmit}>
@@ -86,8 +92,6 @@ export function ResetPasswordForm({
           t('auth.resetPassword.submit')
         )}
       </Button>
-
-      <FeedbackMessage message={errorMessage} variant="error" />
 
       <p className="mt-8 text-center text-sm text-[color:var(--cl-secondary)]">
         {t('auth.resetPassword.alreadyUpdated')}{' '}

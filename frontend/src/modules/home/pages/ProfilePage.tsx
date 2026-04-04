@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { CalendarDays, Globe, MapPin, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
-import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { Spinner } from '@/components/ui/spinner';
 import { getCountryLabelByCode } from '@/lib/countries';
 import { getUserInitials } from '@/lib/user';
@@ -88,8 +88,6 @@ export default function ProfilePage() {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const genderOptions = getGenderOptions(t);
   const countryOptions = useMemo(
     () => getCountryOptions(i18n.resolvedLanguage ?? i18n.language ?? 'en'),
@@ -119,11 +117,9 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (isProfileError) {
-      setErrorMessage(getProfileErrorMessage(profileError));
+      toast.error(getProfileErrorMessage(profileError), { id: 'profile-load-error' });
       return;
     }
-
-    setErrorMessage('');
   }, [isProfileError, profileError]);
 
   const userInitials = useMemo(() => {
@@ -145,8 +141,6 @@ export default function ProfilePage() {
     }
 
     syncFormWithProfile(profile);
-    setSuccessMessage('');
-    setErrorMessage('');
     setIsEditing(true);
   };
 
@@ -154,21 +148,16 @@ export default function ProfilePage() {
     if (profile) {
       syncFormWithProfile(profile);
     }
-
-    setErrorMessage('');
-    setSuccessMessage('');
     setIsEditing(false);
   };
 
   const handleSaveProfile = async () => {
     if (!canSave) {
-      setErrorMessage(t('home.profile.requiredNames'));
+      toast.error(t('home.profile.requiredNames'));
       return;
     }
 
     setIsSaving(true);
-    setErrorMessage('');
-    setSuccessMessage('');
 
     try {
       const updatedProfile = await updateProfile({
@@ -183,9 +172,9 @@ export default function ProfilePage() {
       queryClient.setQueryData(PROFILE_QUERY_KEY, updatedProfile);
       syncFormWithProfile(updatedProfile);
       setIsEditing(false);
-      setSuccessMessage(t('home.profile.updated'));
+      toast.success(t('home.profile.updated'));
     } catch (error) {
-      setErrorMessage(getUpdateProfileErrorMessage(error));
+      toast.error(getUpdateProfileErrorMessage(error));
     } finally {
       setIsSaving(false);
     }
@@ -205,22 +194,6 @@ export default function ProfilePage() {
               {t('common.loading.profile')}
             </span>
           </div>
-        )}
-
-        {!isLoading && errorMessage.length > 0 && (
-          <FeedbackMessage
-            className="rounded-lg px-4 py-3"
-            message={errorMessage}
-            variant="error"
-          />
-        )}
-
-        {!isLoading && (
-          <FeedbackMessage
-            className="mb-3 rounded-lg px-4 py-3"
-            message={successMessage}
-            variant="success"
-          />
         )}
 
         {!isLoading && profile && (

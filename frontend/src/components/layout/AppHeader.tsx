@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Bell, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
+import { toast } from 'sonner';
 import corpusLabLogo from '@/assets/CorpusLab.png';
-import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Spinner } from '@/components/ui/spinner';
 import { getUserInitials } from '@/lib/user';
@@ -36,7 +36,6 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
   const queryClient = useQueryClient();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { data: profile } = useProfileQuery();
-  const [notificationActionError, setNotificationActionError] = useState('');
   const {
     data: notificationsData,
     isLoading: isNotificationsLoading,
@@ -49,6 +48,14 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
 
   const notifications = notificationsData?.notifications ?? [];
   const unreadCount = notificationsData?.unreadCount ?? 0;
+
+  useEffect(() => {
+    if (isNotificationsError) {
+      toast.error(getNotificationsErrorMessage(notificationsError), {
+        id: 'notifications-load-error',
+      });
+    }
+  }, [isNotificationsError, notificationsError]);
 
   const userLabel = useMemo(() => {
     const firstName = profile?.firstName?.trim() ?? '';
@@ -72,7 +79,7 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
     try {
       await logout();
     } catch (error) {
-      console.error(getLogoutErrorMessage(error));
+      toast.error(getLogoutErrorMessage(error));
     } finally {
       localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY);
       queryClient.removeQueries({ queryKey: PROFILE_QUERY_KEY });
@@ -114,35 +121,31 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
   };
 
   const handleNotificationClick = (notificationId: number, isRead: boolean) => {
-    setNotificationActionError('');
-
     if (isRead || markNotificationAsReadMutation.isPending) {
       return;
     }
 
     markNotificationAsReadMutation.mutate(notificationId, {
       onError: (error) => {
-        setNotificationActionError(getMarkNotificationReadErrorMessage(error));
+        toast.error(getMarkNotificationReadErrorMessage(error));
       },
     });
   };
 
   const handleMarkAllAsRead = () => {
-    setNotificationActionError('');
-
     if (markAllNotificationsAsReadMutation.isPending) {
       return;
     }
 
     markAllNotificationsAsReadMutation.mutate(undefined, {
       onError: (error) => {
-        setNotificationActionError(getMarkAllNotificationsReadErrorMessage(error));
+        toast.error(getMarkAllNotificationsReadErrorMessage(error));
       },
     });
   };
 
   return (
-    <header className="flex h-[72px] items-center border-b border-[color:var(--cl-line)] bg-white px-4 sm:px-6">
+    <header className="fixed inset-x-0 top-0 z-50 flex h-[72px] items-center border-b border-[color:var(--cl-line)] bg-white px-4 sm:px-6">
       <div className="flex items-center gap-3">
         <Link className="inline-flex items-center gap-2" to="/home">
           <img alt="CorpusLab" className="h-10 w-10 rounded-sm object-cover" src={corpusLabLogo} />
@@ -210,14 +213,6 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
                 </div>
               )}
 
-              {isNotificationsError && (
-                <FeedbackMessage
-                  className="mx-1 my-2"
-                  message={getNotificationsErrorMessage(notificationsError)}
-                  variant="error"
-                />
-              )}
-
               {!isNotificationsLoading && !isNotificationsError && notifications.length === 0 && (
                 <p className="px-3 py-4 text-sm text-[color:var(--cl-secondary)]">
                   {t('notification.empty')}
@@ -254,14 +249,6 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
                     </Link>
                   ))}
                 </div>
-              )}
-
-              {notificationActionError.length > 0 && (
-                <FeedbackMessage
-                  className="mx-1 mt-2"
-                  message={notificationActionError}
-                  variant="error"
-                />
               )}
             </div>
           </PopoverContent>
