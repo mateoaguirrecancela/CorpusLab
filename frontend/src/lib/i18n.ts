@@ -10,6 +10,9 @@ import gl from '@/modules/auth/locales/gl.json';
 import homeEn from '@/modules/home/locales/en.json';
 import homeEs from '@/modules/home/locales/es.json';
 import homeGl from '@/modules/home/locales/gl.json';
+import notificationEn from '@/modules/notification/locales/en.json';
+import notificationEs from '@/modules/notification/locales/es.json';
+import notificationGl from '@/modules/notification/locales/gl.json';
 import rgEn from '@/modules/researchgroup/locales/en.json';
 import rgEs from '@/modules/researchgroup/locales/es.json';
 import rgGl from '@/modules/researchgroup/locales/gl.json';
@@ -19,9 +22,9 @@ void i18n
   .use(initReactI18next)
   .init({
     resources: {
-      en: { translation: { ...commonEn, ...en, ...homeEn, ...rgEn } },
-      es: { translation: { ...commonEs, ...es, ...homeEs, ...rgEs } },
-      gl: { translation: { ...commonGl, ...gl, ...homeGl, ...rgGl } },
+      en: { translation: { ...commonEn, ...en, ...homeEn, ...notificationEn, ...rgEn } },
+      es: { translation: { ...commonEs, ...es, ...homeEs, ...notificationEs, ...rgEs } },
+      gl: { translation: { ...commonGl, ...gl, ...homeGl, ...notificationGl, ...rgGl } },
     },
     fallbackLng: 'en',
     supportedLngs: ['en', 'es', 'gl'],

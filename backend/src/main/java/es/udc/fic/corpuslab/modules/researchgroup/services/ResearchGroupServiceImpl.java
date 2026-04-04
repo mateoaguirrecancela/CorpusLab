@@ -16,6 +16,7 @@ import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
+import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.CreateResearchGroupRequestDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupInvitationDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupDetailDto;
@@ -50,6 +51,7 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
         private final ResearchGroupMemberRepository memberRepository;
         private final ResearchGroupInvitationRepository invitationRepository;
         private final EmailService emailService;
+        private final NotificationService notificationService;
         private final String frontendBaseUrl;
 
         public ResearchGroupServiceImpl(
@@ -58,12 +60,14 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                         ResearchGroupMemberRepository memberRepository,
                         ResearchGroupInvitationRepository invitationRepository,
                         EmailService emailService,
+                        NotificationService notificationService,
                         @Value("${app.frontend.base-url:http://localhost:5173}") String frontendBaseUrl) {
                 this.userRepository = userRepository;
                 this.researchGroupRepository = researchGroupRepository;
                 this.memberRepository = memberRepository;
                 this.invitationRepository = invitationRepository;
                 this.emailService = emailService;
+                this.notificationService = notificationService;
                 this.frontendBaseUrl = frontendBaseUrl;
         }
 
@@ -237,6 +241,14 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                 invitation.setExpiresAt(expiresAt);
                 invitation = saveInvitationWithUniqueToken(invitation);
 
+                if (invitedUser != null) {
+                        notificationService.createResearchGroupInvitationReceivedNotification(
+                                        invitedUser,
+                                        inviter,
+                                        group,
+                                        invitation.getId());
+                }
+
                 String inviterFullName = (inviter.getFirstName() + " " + inviter.getLastName()).trim();
                 String invitationUrl = frontendBaseUrl + "/home/invitations?token=" + invitation.getToken();
                 String signupUrl = frontendBaseUrl + "/auth/signup?invitationToken=" + invitation.getToken();
@@ -306,6 +318,14 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                 invitation.setInvitedUser(user);
                 invitation.setStatus(ResearchGroupInvitationStatus.ACCEPTED);
                 invitationRepository.save(invitation);
+
+                User inviter = invitation.getInviterUser();
+                if (inviter != null && !inviter.getId().equals(user.getId())) {
+                        notificationService.createResearchGroupInvitationAcceptedNotification(
+                                        inviter,
+                                        user,
+                                        group);
+                }
 
                 long memberCount = memberRepository.findActiveMemberEmailsByGroupId(group.getId()).size();
 

@@ -1,26 +1,61 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Bell, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
+import { toast } from 'sonner';
 import corpusLabLogo from '@/assets/CorpusLab.png';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Spinner } from '@/components/ui/spinner';
 import { getUserInitials } from '@/lib/user';
 import { SESSION_AUTH_TOKEN_STORAGE_KEY } from '@/modules/auth/constants/session';
 import { PROFILE_QUERY_KEY, useProfileQuery } from '@/modules/auth/hooks/useProfileQuery';
 import { getLogoutErrorMessage, logout } from '@/modules/auth/services/authService';
+import {
+  NOTIFICATIONS_QUERY_KEY,
+  useMarkAllNotificationsAsReadMutation,
+  useMarkNotificationAsReadMutation,
+  useNotificationsQuery,
+} from '@/modules/notification/hooks/useNotificationQueries';
+import {
+  getNotificationsErrorMessage,
+  getMarkAllNotificationsReadErrorMessage,
+  getMarkNotificationReadErrorMessage,
+} from '@/modules/notification/services/notificationService';
+import { type NotificationItem } from '@/modules/notification/types/notification';
 
-type AppTopbarProps = {
+type AppTopbarProps = Readonly<{
   isSidebarCollapsed: boolean;
   onToggleSidebar: () => void;
-};
+}>;
 
 export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProps) {
-  const { t } = useTranslation();
+  const notificationsLimit = 12;
+  const { i18n, t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { data: profile } = useProfileQuery();
+  const {
+    data: notificationsData,
+    isLoading: isNotificationsLoading,
+    isError: isNotificationsError,
+    error: notificationsError,
+  } = useNotificationsQuery(notificationsLimit);
+  const markNotificationAsReadMutation = useMarkNotificationAsReadMutation(notificationsLimit);
+  const markAllNotificationsAsReadMutation =
+    useMarkAllNotificationsAsReadMutation(notificationsLimit);
+
+  const notifications = notificationsData?.notifications ?? [];
+  const unreadCount = notificationsData?.unreadCount ?? 0;
+
+  useEffect(() => {
+    if (isNotificationsError) {
+      toast.error(getNotificationsErrorMessage(notificationsError), {
+        id: 'notifications-load-error',
+      });
+    }
+  }, [isNotificationsError, notificationsError]);
 
   const userLabel = useMemo(() => {
     const firstName = profile?.firstName?.trim() ?? '';
@@ -44,17 +79,73 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
     try {
       await logout();
     } catch (error) {
-      console.error(getLogoutErrorMessage(error));
+      toast.error(getLogoutErrorMessage(error));
     } finally {
       localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY);
       queryClient.removeQueries({ queryKey: PROFILE_QUERY_KEY });
+      queryClient.removeQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
       navigate('/auth/login', { replace: true });
       setIsLoggingOut(false);
     }
   };
 
+  const formatNotificationDate = (createdAt: string) => {
+    const locale = i18n.resolvedLanguage ?? i18n.language ?? 'en';
+
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(new Date(createdAt));
+  };
+
+  const getNotificationDestination = (notification: NotificationItem) => {
+    if (
+      notification.type === 'RESEARCH_GROUP_INVITATION_ACCEPTED' &&
+      notification.researchGroupId !== null
+    ) {
+      return `/home/research-groups/${notification.researchGroupId}`;
+    }
+
+    return '/home/research-groups';
+  };
+
+  const getNotificationTitle = (notification: NotificationItem) => {
+    return t(`notification.types.${notification.type}.title`);
+  };
+
+  const getNotificationDescription = (notification: NotificationItem) => {
+    return t(`notification.types.${notification.type}.description`, {
+      actor: notification.actorFullName ?? t('notification.unknownActor'),
+      group: notification.researchGroupName ?? t('notification.fallbackGroup'),
+    });
+  };
+
+  const handleNotificationClick = (notificationId: number, isRead: boolean) => {
+    if (isRead || markNotificationAsReadMutation.isPending) {
+      return;
+    }
+
+    markNotificationAsReadMutation.mutate(notificationId, {
+      onError: (error) => {
+        toast.error(getMarkNotificationReadErrorMessage(error));
+      },
+    });
+  };
+
+  const handleMarkAllAsRead = () => {
+    if (markAllNotificationsAsReadMutation.isPending) {
+      return;
+    }
+
+    markAllNotificationsAsReadMutation.mutate(undefined, {
+      onError: (error) => {
+        toast.error(getMarkAllNotificationsReadErrorMessage(error));
+      },
+    });
+  };
+
   return (
-    <header className="flex h-[72px] items-center border-b border-[color:var(--cl-line)] bg-white px-4 sm:px-6">
+    <header className="fixed inset-x-0 top-0 z-50 flex h-[72px] items-center border-b border-[color:var(--cl-line)] bg-white px-4 sm:px-6">
       <div className="flex items-center gap-3">
         <Link className="inline-flex items-center gap-2" to="/home">
           <img alt="CorpusLab" className="h-10 w-10 rounded-sm object-cover" src={corpusLabLogo} />
@@ -80,12 +171,88 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
       </div>
 
       <div className="ml-auto flex items-center justify-end gap-5">
-        <button
-          className="items-center justify-center rounded-md border border-transparent p-2 text-[color:var(--cl-primary)] transition hover:border-[color:var(--cl-line)] hover:bg-[color:var(--cl-primary-soft)] cursor-pointer"
-          type="button"
-        >
-          <Bell className="size-5" />
-        </button>
+        <Popover>
+          <PopoverTrigger
+            aria-label={t('notification.aria.openMenu')}
+            className="relative inline-flex items-center justify-center rounded-md border border-transparent p-2 text-[color:var(--cl-primary)] transition hover:border-[color:var(--cl-line)] hover:bg-[color:var(--cl-primary-soft)] cursor-pointer"
+          >
+            <Bell className="size-5" />
+            {unreadCount > 0 && (
+              <span
+                aria-hidden
+                className="absolute right-1 top-1 size-1.5 rounded-full bg-[color:var(--cl-primary)]"
+              />
+            )}
+          </PopoverTrigger>
+
+          <PopoverContent
+            align="end"
+            className="w-[360px] rounded-xl border border-[color:var(--cl-line)] bg-white p-0"
+          >
+            <div className="flex items-center justify-between border-b border-[color:var(--cl-line)] px-4 py-3">
+              <h3 className="text-sm font-semibold text-[color:var(--cl-neutral)]">
+                {t('notification.title')}
+              </h3>
+              <button
+                className="rounded-md px-2 py-1 text-xs font-medium text-[color:var(--cl-primary)] transition hover:bg-[color:var(--cl-primary-soft)] disabled:cursor-default disabled:opacity-50 disabled:bg-white cursor-pointer"
+                disabled={unreadCount === 0 || markAllNotificationsAsReadMutation.isPending}
+                onClick={handleMarkAllAsRead}
+                type="button"
+              >
+                {t('notification.markAllRead')}
+              </button>
+            </div>
+
+            <div className="max-h-[360px] overflow-y-auto p-2">
+              {isNotificationsLoading && (
+                <div className="px-3 py-4 text-sm text-[color:var(--cl-secondary)]">
+                  <span className="inline-flex items-center gap-2">
+                    <Spinner aria-hidden className="size-4" />
+                    {t('notification.loading')}
+                  </span>
+                </div>
+              )}
+
+              {!isNotificationsLoading && !isNotificationsError && notifications.length === 0 && (
+                <p className="px-3 py-4 text-sm text-[color:var(--cl-secondary)]">
+                  {t('notification.empty')}
+                </p>
+              )}
+
+              {!isNotificationsLoading && !isNotificationsError && notifications.length > 0 && (
+                <div className="space-y-1">
+                  {notifications.map((notification) => (
+                    <Link
+                      className="block rounded-lg"
+                      key={notification.id}
+                      onClick={() => handleNotificationClick(notification.id, notification.read)}
+                      to={getNotificationDestination(notification)}
+                    >
+                      <article
+                        className={[
+                          'rounded-lg border px-3 py-2 transition',
+                          notification.read
+                            ? 'border-transparent bg-white hover:bg-[color:var(--cl-primary-soft)]'
+                            : 'border-[color:var(--cl-primary)]/30 bg-[color:var(--cl-primary-soft)]/60 hover:bg-[color:var(--cl-primary-soft)]',
+                        ].join(' ')}
+                      >
+                        <p className="text-sm font-semibold text-[color:var(--cl-neutral)]">
+                          {getNotificationTitle(notification)}
+                        </p>
+                        <p className="mt-0.5 text-sm text-[color:var(--cl-secondary)]">
+                          {getNotificationDescription(notification)}
+                        </p>
+                        <p className="mt-1 text-xs text-[color:var(--cl-tertiary)]">
+                          {formatNotificationDate(notification.createdAt)}
+                        </p>
+                      </article>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         <div className="h-8 w-px bg-[color:var(--cl-line)]" />
 

@@ -9,6 +9,7 @@ export default function LogInPage() {
     canSubmit,
     isSubmitting,
     errorMessage,
+    successMessage,
     updateField,
     handleSubmit,
     handleOAuthClick,
@@ -25,6 +26,7 @@ export default function LogInPage() {
         errorMessage={errorMessage}
         form={form}
         isSubmitting={isSubmitting}
+        successMessage={successMessage}
         onFieldChange={updateField}
         onOAuthClick={handleOAuthClick}
         onSubmit={handleSubmit}

@@ -1,6 +1,7 @@
+import { useEffect } from 'react';
 import { Mail, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { FeedbackMessage } from '@/components/ui/feedback-message';
+import { toast } from 'sonner';
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { CreateResearchGroupDialog } from '@/modules/researchgroup/components/CreateResearchGroupDialog';
@@ -17,6 +18,12 @@ export default function ResearchGroupsPage() {
   const { data: groups = [], isLoading, isError, error } = useResearchGroupsQuery();
   const { data: invitations = [] } = useResearchGroupInvitationsQuery();
   const errorMessage = isError ? getResearchGroupsErrorMessage(error) : '';
+
+  useEffect(() => {
+    if (errorMessage.length > 0) {
+      toast.error(errorMessage, { id: 'research-groups-load-error' });
+    }
+  }, [errorMessage]);
 
   return (
     <section className="px-6 py-6 sm:px-8 sm:py-8">
@@ -65,14 +72,6 @@ export default function ResearchGroupsPage() {
               {t('researchGroup.loading')}
             </span>
           </div>
-        )}
-
-        {!isLoading && errorMessage.length > 0 && (
-          <FeedbackMessage
-            className="rounded-lg px-4 py-3"
-            message={errorMessage}
-            variant="error"
-          />
         )}
 
         {!isLoading && errorMessage.length === 0 && groups.length === 0 && (

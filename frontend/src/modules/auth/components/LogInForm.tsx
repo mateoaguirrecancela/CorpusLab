@@ -1,10 +1,10 @@
-import { type FormEvent } from 'react';
+import { type FormEvent, useEffect } from 'react';
 import { Github, Lock, Mail } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+import { toast } from 'sonner';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
-import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { SubmitButtonWithSpinner } from '@/components/ui/submit-button-with-spinner';
 import { type OAuthProvider } from '@/modules/auth/constants/session';
 import { type LoginFormState } from '@/modules/auth/types/login';
@@ -16,6 +16,7 @@ type LogInFormProps = {
   canSubmit: boolean;
   isSubmitting: boolean;
   errorMessage: string;
+  successMessage: string;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   onFieldChange: <K extends keyof LoginFormState>(field: K, value: LoginFormState[K]) => void;
   onOAuthClick: (provider: OAuthProvider) => void;
@@ -26,6 +27,7 @@ export function LogInForm({
   canSubmit,
   isSubmitting,
   errorMessage,
+  successMessage,
   onSubmit,
   onFieldChange,
   onOAuthClick,
@@ -33,6 +35,18 @@ export function LogInForm({
   const { t } = useTranslation();
   const trimmedEmail = form.email.trim();
   const isEmailInvalid = trimmedEmail.length > 0 && !EMAIL_REGEX.test(trimmedEmail);
+
+  useEffect(() => {
+    if (errorMessage.trim().length > 0) {
+      toast.error(errorMessage);
+    }
+  }, [errorMessage]);
+
+  useEffect(() => {
+    if (successMessage.trim().length > 0) {
+      toast.success(successMessage);
+    }
+  }, [successMessage]);
 
   return (
     <form className="mt-8 space-y-4" onSubmit={onSubmit}>
@@ -79,8 +93,6 @@ export function LogInForm({
         isSubmitting={isSubmitting}
         submittingLabel={t('auth.login.submitting')}
       />
-
-      <FeedbackMessage message={errorMessage} variant="error" />
 
       <div className="my-7 flex items-center gap-3 text-[0.67rem] font-bold tracking-[0.12em] text-[color:var(--cl-tertiary)] uppercase">
         <span className="h-px flex-1 bg-[color:var(--cl-line)]" />

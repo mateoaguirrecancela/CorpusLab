@@ -9,6 +9,7 @@ export default function SignUpPage() {
     canSubmit,
     isSubmitting,
     errorMessage,
+    successMessage,
     updateField,
     handleSubmit,
     handleOAuthClick,
@@ -25,6 +26,7 @@ export default function SignUpPage() {
         errorMessage={errorMessage}
         form={form}
         isSubmitting={isSubmitting}
+        successMessage={successMessage}
         onFieldChange={updateField}
         onOAuthClick={handleOAuthClick}
         onSubmit={handleSubmit}

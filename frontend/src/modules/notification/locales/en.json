@@ -1,0 +1,28 @@
+{
+  "notification": {
+    "title": "Notifications",
+    "empty": "You do not have notifications",
+    "markAllRead": "Read all",
+    "loading": "Loading notifications...",
+    "aria": {
+      "openMenu": "Open notifications menu"
+    },
+    "errors": {
+      "loadFailed": "Notifications could not be loaded.",
+      "markReadFailed": "Notification could not be marked as read.",
+      "markAllReadFailed": "All notifications could not be marked as read."
+    },
+    "types": {
+      "RESEARCH_GROUP_INVITATION_RECEIVED": {
+        "title": "You received an invitation",
+        "description": "{{actor}} invited you to {{group}}"
+      },
+      "RESEARCH_GROUP_INVITATION_ACCEPTED": {
+        "title": "Your invitation was accepted",
+        "description": "{{actor}} accepted your invitation to {{group}}"
+      }
+    },
+    "unknownActor": "Someone",
+    "fallbackGroup": "a group"
+  }
+}

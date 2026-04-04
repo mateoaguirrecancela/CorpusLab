@@ -1,0 +1,28 @@
+{
+  "notification": {
+    "title": "Notificaciones",
+    "empty": "No tienes notificaciones",
+    "markAllRead": "Leer todo",
+    "loading": "Cargando notificaciones...",
+    "aria": {
+      "openMenu": "Abrir menu de notificaciones"
+    },
+    "errors": {
+      "loadFailed": "No se pudieron cargar las notificaciones.",
+      "markReadFailed": "No se pudo marcar la notificación como leida.",
+      "markAllReadFailed": "No se pudieron marcar todas las notificaciones como leidas."
+    },
+    "types": {
+      "RESEARCH_GROUP_INVITATION_RECEIVED": {
+        "title": "Recibiste una invitación",
+        "description": "{{actor}} te invito a {{group}}"
+      },
+      "RESEARCH_GROUP_INVITATION_ACCEPTED": {
+        "title": "Aceptaron tu invitación",
+        "description": "{{actor}} acepto tu invitación a {{group}}"
+      }
+    },
+    "unknownActor": "Alguien",
+    "fallbackGroup": "un grupo"
+  }
+}

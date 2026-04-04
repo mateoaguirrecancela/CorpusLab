@@ -7,7 +7,7 @@ export function AuthHeader() {
   const { t } = useTranslation();
 
   return (
-    <header className="border-b border-[color:var(--cl-line)] bg-white/85 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-[color:var(--cl-line)] bg-white/85 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3">
         <Link
           to="/auth/login"

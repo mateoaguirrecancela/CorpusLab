@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { Spinner } from '@/components/ui/spinner';
 import { useUpdateResearchGroupMutation } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
 import { getUpdateGroupErrorMessage } from '@/modules/researchgroup/services/researchGroupService';
@@ -33,7 +33,6 @@ export function EditResearchGroupDialog({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription ?? '');
-  const [errorMessage, setErrorMessage] = useState('');
   const isSaving = updateGroupMutation.isPending;
 
   useEffect(() => {
@@ -50,7 +49,6 @@ export function EditResearchGroupDialog({
   const resetForm = () => {
     setName(initialName);
     setDescription(initialDescription ?? '');
-    setErrorMessage('');
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -65,8 +63,6 @@ export function EditResearchGroupDialog({
       return;
     }
 
-    setErrorMessage('');
-
     try {
       await updateGroupMutation.mutateAsync({
         name: name.trim(),
@@ -74,8 +70,9 @@ export function EditResearchGroupDialog({
       });
       setOpen(false);
       resetForm();
+      toast.success(t('common.actions.saveChanges'));
     } catch (error) {
-      setErrorMessage(getUpdateGroupErrorMessage(error));
+      toast.error(getUpdateGroupErrorMessage(error));
     }
   };
 
@@ -114,14 +111,6 @@ export function EditResearchGroupDialog({
             }}
             value={description}
           />
-
-          {errorMessage.length > 0 && (
-            <FeedbackMessage
-              className="rounded-lg px-4 py-3"
-              message={errorMessage}
-              variant="error"
-            />
-          )}
         </div>
 
         <DialogFooter>

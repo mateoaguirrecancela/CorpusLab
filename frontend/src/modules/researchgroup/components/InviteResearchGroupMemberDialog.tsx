@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,7 +12,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { Spinner } from '@/components/ui/spinner';
 import { useInviteResearchGroupMemberMutation } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
 import { getInviteResearcherErrorMessage } from '@/modules/researchgroup/services/researchGroupService';
@@ -40,8 +40,6 @@ export function InviteResearchGroupMemberDialog({
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<ResearchGroupMemberRole>('ANNOTATOR');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const [hasCopiedCode, setHasCopiedCode] = useState(false);
   const isSaving = inviteMutation.isPending;
 
@@ -53,8 +51,6 @@ export function InviteResearchGroupMemberDialog({
   const resetForm = () => {
     setEmail('');
     setRole('ANNOTATOR');
-    setErrorMessage('');
-    setSuccessMessage('');
     setHasCopiedCode(false);
   };
 
@@ -86,20 +82,17 @@ export function InviteResearchGroupMemberDialog({
       return;
     }
 
-    setErrorMessage('');
-    setSuccessMessage('');
-
     try {
       await inviteMutation.mutateAsync({
         email: email.trim(),
         role,
         expiresAt: getDefaultExpirationIsoString(),
       });
-      setSuccessMessage(t('researchGroup.invite.success'));
+      toast.success(t('researchGroup.invite.success'));
       setEmail('');
       setRole('ANNOTATOR');
     } catch (error) {
-      setErrorMessage(getInviteResearcherErrorMessage(error));
+      toast.error(getInviteResearcherErrorMessage(error));
     }
   };
 
@@ -158,22 +151,6 @@ export function InviteResearchGroupMemberDialog({
               </option>
             ))}
           </FormFieldControl>
-
-          {errorMessage.length > 0 && (
-            <FeedbackMessage
-              className="rounded-lg px-4 py-3"
-              message={errorMessage}
-              variant="error"
-            />
-          )}
-
-          {successMessage.length > 0 && (
-            <FeedbackMessage
-              className="rounded-lg px-4 py-3"
-              message={successMessage}
-              variant="success"
-            />
-          )}
         </div>
 
         <DialogFooter>

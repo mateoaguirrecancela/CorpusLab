@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { ShieldCheck, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FeedbackMessage } from '@/components/ui/feedback-message';
 import { Spinner } from '@/components/ui/spinner';
 import {
   useRemoveResearchGroupMemberMutation,
@@ -27,7 +27,6 @@ export function ManageResearchGroupMemberDialog({
 }: Readonly<ManageResearchGroupMemberDialogProps>) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
 
   const updateRoleMutation = useUpdateResearchGroupMemberRoleMutation(groupId);
   const removeMemberMutation = useRemoveResearchGroupMemberMutation(groupId);
@@ -39,9 +38,6 @@ export function ManageResearchGroupMemberDialog({
   const targetRole: 'ADMIN' | 'ANNOTATOR' = member.role === 'ADMIN' ? 'ANNOTATOR' : 'ADMIN';
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
-      setErrorMessage('');
-    }
     setOpen(nextOpen);
   };
 
@@ -50,16 +46,15 @@ export function ManageResearchGroupMemberDialog({
       return;
     }
 
-    setErrorMessage('');
-
     try {
       await updateRoleMutation.mutateAsync({
         memberUserId: member.userId,
         role: nextRole,
       });
       setOpen(false);
+      toast.success(t('researchGroup.detail.manage.updateSuccess'));
     } catch (error) {
-      setErrorMessage(getUpdateMemberRoleErrorMessage(error));
+      toast.error(getUpdateMemberRoleErrorMessage(error));
     }
   };
 
@@ -68,13 +63,12 @@ export function ManageResearchGroupMemberDialog({
       return;
     }
 
-    setErrorMessage('');
-
     try {
       await removeMemberMutation.mutateAsync(member.userId);
       setOpen(false);
+      toast.success(t('researchGroup.detail.manage.remove'));
     } catch (error) {
-      setErrorMessage(getRemoveMemberErrorMessage(error));
+      toast.error(getRemoveMemberErrorMessage(error));
     }
   };
 
@@ -117,14 +111,6 @@ export function ManageResearchGroupMemberDialog({
             ? t('researchGroup.detail.manage.removing')
             : t('researchGroup.detail.manage.remove')}
         </button>
-
-        {errorMessage.length > 0 && (
-          <FeedbackMessage
-            className="mt-2 rounded-lg px-3 py-2"
-            message={errorMessage}
-            variant="error"
-          />
-        )}
       </PopoverContent>
     </Popover>
   );

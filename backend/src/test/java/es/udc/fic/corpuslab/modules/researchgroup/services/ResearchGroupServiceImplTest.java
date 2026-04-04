@@ -24,6 +24,7 @@ import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
+import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupDetailDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupInvitationDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto;
@@ -66,6 +67,9 @@ class ResearchGroupServiceImplTest {
         @Mock
         private EmailService emailService;
 
+        @Mock
+        private NotificationService notificationService;
+
         private ResearchGroupService researchGroupService;
 
         @BeforeEach
@@ -76,6 +80,7 @@ class ResearchGroupServiceImplTest {
                                 memberRepository,
                                 invitationRepository,
                                 emailService,
+                                notificationService,
                                 "http://localhost:5173");
         }
 
