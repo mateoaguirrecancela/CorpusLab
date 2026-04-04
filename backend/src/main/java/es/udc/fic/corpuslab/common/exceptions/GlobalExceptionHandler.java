@@ -14,6 +14,7 @@ import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.InvalidCredentialsException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetEmailDeliveryException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetTokenNotFoundException;
+import es.udc.fic.corpuslab.modules.notification.exceptions.NotificationNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.InvalidResearchGroupInvitationRoleException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.InvalidResearchGroupMemberRoleException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationAlreadyExistsException;
@@ -260,6 +261,22 @@ public class GlobalExceptionHandler {
                 String translatedMessage = messageSource.getMessage(
                                 "researchgroup.member.notfound",
                                 new Object[] { ex.getGroupId(), ex.getUserId() },
+                                LocaleContextHolder.getLocale());
+
+                ApiErrorResponse response = new ApiErrorResponse(
+                                Instant.now(),
+                                HttpStatus.NOT_FOUND.value(),
+                                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                                translatedMessage,
+                                null);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+
+        @ExceptionHandler(NotificationNotFoundException.class)
+        public ResponseEntity<ApiErrorResponse> handleNotificationNotFound(NotificationNotFoundException ex) {
+                String translatedMessage = messageSource.getMessage(
+                                "notification.error.notfound",
+                                new Object[] { ex.getNotificationId() },
                                 LocaleContextHolder.getLocale());
 
                 ApiErrorResponse response = new ApiErrorResponse(

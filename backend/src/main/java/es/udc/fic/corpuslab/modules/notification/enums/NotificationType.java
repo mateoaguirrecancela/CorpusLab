@@ -1,0 +1,6 @@
+package es.udc.fic.corpuslab.modules.notification.enums;
+
+public enum NotificationType {
+    RESEARCH_GROUP_INVITATION_RECEIVED,
+    RESEARCH_GROUP_INVITATION_ACCEPTED
+}
