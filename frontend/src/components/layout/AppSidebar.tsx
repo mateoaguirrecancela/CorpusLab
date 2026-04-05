@@ -1,4 +1,3 @@
-import { Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router';
 import { APP_NAVIGATION_ITEMS } from '@/constants/appNavigation';
@@ -16,8 +15,8 @@ export function AppSidebar({ isCollapsed }: AppSidebarProps) {
         'z-30 flex shrink-0 flex-col bg-sidebar',
         'fixed top-[72px] bottom-0 left-0',
         isCollapsed
-          ? '-translate-x-full w-0 overflow-hidden border-r-0 pointer-events-none md:translate-x-0 md:w-[84px] md:border-r md:border-[color:var(--cl-line)] md:pointer-events-auto'
-          : 'translate-x-0 w-[260px] border-r border-[color:var(--cl-line)] shadow-[0_12px_30px_-22px_rgba(15,23,42,0.7)] md:shadow-none',
+          ? '-translate-x-full w-0 overflow-hidden border-r-0 pointer-events-none md:translate-x-0 md:w-[84px] md:border-r md:border-border md:pointer-events-auto'
+          : 'translate-x-0 w-[260px] border-r border-border shadow-[var(--shadow-sidebar)] md:shadow-none',
       ].join(' ')}
     >
       <nav className="flex flex-1 flex-col gap-1 px-4 py-4">
@@ -30,8 +29,8 @@ export function AppSidebar({ isCollapsed }: AppSidebarProps) {
                   'flex h-11 w-full items-center rounded-lg px-4 text-left text-sm font-medium',
                   isCollapsed ? 'justify-center gap-0' : 'gap-3',
                   isActive
-                    ? 'bg-[color:var(--cl-primary-soft)] text-[color:var(--cl-primary)]'
-                    : 'text-[color:var(--cl-secondary)] hover:bg-white hover:text-[color:var(--cl-primary)]',
+                    ? 'bg-accent text-primary'
+                    : 'text-muted-foreground hover:bg-surface-base hover:text-primary',
                 ].join(' ')
               }
               end={item.to === '/home'}
@@ -44,19 +43,6 @@ export function AppSidebar({ isCollapsed }: AppSidebarProps) {
           );
         })}
       </nav>
-
-      <div className="border-t border-[color:var(--cl-line)] px-3 py-3">
-        <button
-          className={[
-            'flex h-11 w-full items-center rounded-lg px-3 text-sm font-medium text-[color:var(--cl-secondary)] hover:bg-white hover:text-[color:var(--cl-primary)] cursor-pointer',
-            isCollapsed ? 'justify-center gap-0' : 'gap-3',
-          ].join(' ')}
-          type="button"
-        >
-          <Settings className="size-4" />
-          {!isCollapsed && <span>{t('home.nav.settings')}</span>}
-        </button>
-      </div>
     </aside>
   );
 }

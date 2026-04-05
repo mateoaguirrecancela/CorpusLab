@@ -9,8 +9,8 @@ type FeedbackMessageProps = {
 };
 
 const FEEDBACK_VARIANT_STYLES: Record<FeedbackVariant, string> = {
-  error: 'border-red-200 bg-red-50 text-red-700',
-  success: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  error: 'border-danger-border bg-danger-soft text-destructive',
+  success: 'border-success-border bg-success-soft text-success',
 };
 
 export function FeedbackMessage({ message, variant, className }: FeedbackMessageProps) {

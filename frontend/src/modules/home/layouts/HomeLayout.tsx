@@ -10,7 +10,7 @@ export default function HomeLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#f3f5ff]">
+    <div className="min-h-screen bg-background">
       <AppHeader
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebar={() => setIsSidebarCollapsed((current) => !current)}
@@ -21,7 +21,7 @@ export default function HomeLayout() {
       {!isSidebarCollapsed && (
         <button
           aria-label={t('common.aria.closeSidebar')}
-          className="fixed inset-0 top-[72px] z-20 bg-slate-900/20 md:hidden"
+          className="fixed inset-0 top-[72px] z-20 bg-overlay-scrim md:hidden"
           onClick={() => setIsSidebarCollapsed(true)}
           type="button"
         />

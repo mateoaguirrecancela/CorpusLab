@@ -7,11 +7,11 @@ export function AuthHeader() {
   const { t } = useTranslation();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[color:var(--cl-line)] bg-white/85 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-border bg-surface-soft backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3">
         <Link
           to="/auth/login"
-          className="group inline-flex items-center gap-2 text-[color:var(--cl-neutral)]"
+          className="group inline-flex items-center gap-2 text-foreground"
         >
           <img alt="CorpusLab" className="h-10 w-10 rounded-sm object-cover" src={corpusLabLogo} />
           <span className="text-lg font-semibold tracking-tight">{t('common.appName')}</span>
@@ -19,14 +19,14 @@ export function AuthHeader() {
 
         <nav className="flex items-center gap-3 text-sm font-medium">
           <Link
-            className="rounded-md px-3 py-1 text-[color:var(--cl-primary)] hover:bg-[color:var(--cl-primary-soft)]"
+            className="rounded-md px-3 py-1 text-primary hover:bg-accent"
             to="/auth/login"
           >
             {t('auth.header.login')}
           </Link>
           <Link to="/auth/signup">
             <Button
-              className="h-8 rounded-md bg-[color:var(--cl-primary)] px-4 text-xs font-semibold text-white hover:bg-[color:var(--cl-primary-deep)] cursor-pointer"
+              className="h-8 rounded-md bg-primary px-4 text-xs font-semibold text-white hover:bg-primary-strong cursor-pointer"
               type="button"
             >
               {t('auth.header.signup')}

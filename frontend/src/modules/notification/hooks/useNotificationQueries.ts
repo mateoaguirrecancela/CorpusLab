@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { invalidateQueryKeys } from '@/lib/queryInvalidation';
 import {
   getMyNotifications,
   markAllNotificationsAsRead,
@@ -17,22 +18,24 @@ export function useNotificationsQuery(limit = 12) {
 
 export function useMarkNotificationAsReadMutation(limit = 12) {
   const queryClient = useQueryClient();
+  const queryKey = [...NOTIFICATIONS_QUERY_KEY, limit] as const;
 
   return useMutation({
     mutationFn: (notificationId: number) => markNotificationAsRead(notificationId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [...NOTIFICATIONS_QUERY_KEY, limit] });
+      invalidateQueryKeys(queryClient, [queryKey]);
     },
   });
 }
 
 export function useMarkAllNotificationsAsReadMutation(limit = 12) {
   const queryClient = useQueryClient();
+  const queryKey = [...NOTIFICATIONS_QUERY_KEY, limit] as const;
 
   return useMutation({
     mutationFn: () => markAllNotificationsAsRead(),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [...NOTIFICATIONS_QUERY_KEY, limit] });
+      invalidateQueryKeys(queryClient, [queryKey]);
     },
   });
 }

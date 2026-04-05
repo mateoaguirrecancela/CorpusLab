@@ -38,254 +38,142 @@ public class GlobalExceptionHandler {
                 this.messageSource = messageSource;
         }
 
-        @ExceptionHandler(EmailAlreadyRegisteredException.class)
-        public ResponseEntity<ApiErrorResponse> handleEmailAlreadyRegistered(EmailAlreadyRegisteredException ex) {
+        private ResponseEntity<ApiErrorResponse> buildErrorResponse(
+                        HttpStatus status,
+                        String messageKey,
+                        Object[] args,
+                        Map<String, String> details) {
                 String translatedMessage = messageSource.getMessage(
-                                "auth.error.email.exists",
-                                new Object[] { ex.getEmail() },
+                                messageKey,
+                                args,
                                 LocaleContextHolder.getLocale());
 
                 ApiErrorResponse response = new ApiErrorResponse(
                                 Instant.now(),
-                                HttpStatus.CONFLICT.value(),
-                                HttpStatus.CONFLICT.getReasonPhrase(),
+                                status.value(),
+                                status.getReasonPhrase(),
                                 translatedMessage,
-                                null);
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+                                details);
+
+                return ResponseEntity.status(status).body(response);
+        }
+
+        private ResponseEntity<ApiErrorResponse> buildErrorResponse(HttpStatus status, String messageKey,
+                        Object[] args) {
+                return buildErrorResponse(status, messageKey, args, null);
+        }
+
+        @ExceptionHandler(EmailAlreadyRegisteredException.class)
+        public ResponseEntity<ApiErrorResponse> handleEmailAlreadyRegistered(EmailAlreadyRegisteredException ex) {
+                return buildErrorResponse(HttpStatus.CONFLICT, "auth.error.email.exists",
+                                new Object[] { ex.getEmail() });
         }
 
         @ExceptionHandler(InvalidCredentialsException.class)
         public ResponseEntity<ApiErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex) {
-                String translatedMessage = messageSource.getMessage(
-                                "auth.error.invalid.credentials",
-                                null,
-                                LocaleContextHolder.getLocale());
-
-                ApiErrorResponse response = new ApiErrorResponse(
-                                Instant.now(),
-                                HttpStatus.UNAUTHORIZED.value(),
-                                HttpStatus.UNAUTHORIZED.getReasonPhrase(),
-                                translatedMessage,
-                                null);
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+                return buildErrorResponse(HttpStatus.UNAUTHORIZED, "auth.error.invalid.credentials", null);
         }
 
         @ExceptionHandler(PasswordResetEmailDeliveryException.class)
         public ResponseEntity<ApiErrorResponse> handlePasswordResetEmailDelivery(
                         PasswordResetEmailDeliveryException ex) {
-                String translatedMessage = messageSource.getMessage(
-                                "auth.error.reset.email.delivery",
-                                null,
-                                LocaleContextHolder.getLocale());
-
-                ApiErrorResponse response = new ApiErrorResponse(
-                                Instant.now(),
-                                HttpStatus.SERVICE_UNAVAILABLE.value(),
-                                HttpStatus.SERVICE_UNAVAILABLE.getReasonPhrase(),
-                                translatedMessage,
-                                null);
-                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+                return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, "auth.error.reset.email.delivery", null);
         }
 
         @ExceptionHandler(EmailNotFoundException.class)
         public ResponseEntity<ApiErrorResponse> handleEmailNotFound(EmailNotFoundException ex) {
-                String translatedMessage = messageSource.getMessage(
-                                "auth.error.email.notfound",
-                                new Object[] { ex.getEmail() },
-                                LocaleContextHolder.getLocale());
-
-                ApiErrorResponse response = new ApiErrorResponse(
-                                Instant.now(),
-                                HttpStatus.NOT_FOUND.value(),
-                                HttpStatus.NOT_FOUND.getReasonPhrase(),
-                                translatedMessage,
-                                null);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                return buildErrorResponse(HttpStatus.NOT_FOUND, "auth.error.email.notfound",
+                                new Object[] { ex.getEmail() });
         }
 
         @ExceptionHandler(PasswordResetTokenNotFoundException.class)
         public ResponseEntity<ApiErrorResponse> handlePasswordResetTokenNotFound(
                         PasswordResetTokenNotFoundException ex) {
-                String translatedMessage = messageSource.getMessage(
-                                "auth.error.reset.token.notfound",
-                                null,
-                                LocaleContextHolder.getLocale());
-
-                ApiErrorResponse response = new ApiErrorResponse(
-                                Instant.now(),
-                                HttpStatus.NOT_FOUND.value(),
-                                HttpStatus.NOT_FOUND.getReasonPhrase(),
-                                translatedMessage,
-                                null);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                return buildErrorResponse(HttpStatus.NOT_FOUND, "auth.error.reset.token.notfound", null);
         }
 
         @ExceptionHandler(ResearchGroupNotFoundException.class)
         public ResponseEntity<ApiErrorResponse> handleResearchGroupNotFound(ResearchGroupNotFoundException ex) {
-                String translatedMessage = messageSource.getMessage(
-                                "researchgroup.error.notfound",
-                                new Object[] { ex.getId() },
-                                LocaleContextHolder.getLocale());
-
-                ApiErrorResponse response = new ApiErrorResponse(
-                                Instant.now(),
-                                HttpStatus.NOT_FOUND.value(),
-                                HttpStatus.NOT_FOUND.getReasonPhrase(),
-                                translatedMessage,
-                                null);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                return buildErrorResponse(HttpStatus.NOT_FOUND, "researchgroup.error.notfound",
+                                new Object[] { ex.getId() });
         }
 
         @ExceptionHandler(ResearchGroupInvitationAlreadyExistsException.class)
         public ResponseEntity<ApiErrorResponse> handleResearchGroupInvitationAlreadyExists(
                         ResearchGroupInvitationAlreadyExistsException ex) {
-                String translatedMessage = messageSource.getMessage(
+                return buildErrorResponse(
+                                HttpStatus.CONFLICT,
                                 "researchgroup.invitation.error.already.exists",
-                                new Object[] { ex.getEmail(), ex.getGroupId() },
-                                LocaleContextHolder.getLocale());
-
-                ApiErrorResponse response = new ApiErrorResponse(
-                                Instant.now(),
-                                HttpStatus.CONFLICT.value(),
-                                HttpStatus.CONFLICT.getReasonPhrase(),
-                                translatedMessage,
-                                null);
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+                                new Object[] { ex.getEmail(), ex.getGroupId() });
         }
 
         @ExceptionHandler(ResearchGroupMemberAlreadyExistsException.class)
         public ResponseEntity<ApiErrorResponse> handleResearchGroupMemberAlreadyExists(
                         ResearchGroupMemberAlreadyExistsException ex) {
-                String translatedMessage = messageSource.getMessage(
+                return buildErrorResponse(
+                                HttpStatus.CONFLICT,
                                 "researchgroup.invitation.error.already.member",
-                                new Object[] { ex.getEmail(), ex.getGroupId() },
-                                LocaleContextHolder.getLocale());
-
-                ApiErrorResponse response = new ApiErrorResponse(
-                                Instant.now(),
-                                HttpStatus.CONFLICT.value(),
-                                HttpStatus.CONFLICT.getReasonPhrase(),
-                                translatedMessage,
-                                null);
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+                                new Object[] { ex.getEmail(), ex.getGroupId() });
         }
 
         @ExceptionHandler(ResearchGroupInvitationEmailDeliveryException.class)
         public ResponseEntity<ApiErrorResponse> handleResearchGroupInvitationEmailDelivery(
                         ResearchGroupInvitationEmailDeliveryException ex) {
-                String translatedMessage = messageSource.getMessage(
-                                "researchgroup.invitation.error.email.delivery",
-                                null,
-                                LocaleContextHolder.getLocale());
-
-                ApiErrorResponse response = new ApiErrorResponse(
-                                Instant.now(),
-                                HttpStatus.SERVICE_UNAVAILABLE.value(),
-                                HttpStatus.SERVICE_UNAVAILABLE.getReasonPhrase(),
-                                translatedMessage,
-                                null);
-                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+                return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE,
+                                "researchgroup.invitation.error.email.delivery", null);
         }
 
         @ExceptionHandler(ResearchGroupInvitationCodeNotFoundException.class)
         public ResponseEntity<ApiErrorResponse> handleResearchGroupInvitationCodeNotFound(
                         ResearchGroupInvitationCodeNotFoundException ex) {
-                String translatedMessage = messageSource.getMessage(
+                return buildErrorResponse(
+                                HttpStatus.NOT_FOUND,
                                 "researchgroup.invitation.code.notfound",
-                                new Object[] { ex.getCode() },
-                                LocaleContextHolder.getLocale());
-
-                ApiErrorResponse response = new ApiErrorResponse(
-                                Instant.now(),
-                                HttpStatus.NOT_FOUND.value(),
-                                HttpStatus.NOT_FOUND.getReasonPhrase(),
-                                translatedMessage,
-                                null);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                                new Object[] { ex.getCode() });
         }
 
         @ExceptionHandler(ResearchGroupInvitationNotFoundException.class)
         public ResponseEntity<ApiErrorResponse> handleResearchGroupInvitationNotFound(
                         ResearchGroupInvitationNotFoundException ex) {
-                String translatedMessage = messageSource.getMessage(
+                return buildErrorResponse(
+                                HttpStatus.NOT_FOUND,
                                 "researchgroup.invitation.notfound",
-                                new Object[] { ex.getInvitationId() },
-                                LocaleContextHolder.getLocale());
-
-                ApiErrorResponse response = new ApiErrorResponse(
-                                Instant.now(),
-                                HttpStatus.NOT_FOUND.value(),
-                                HttpStatus.NOT_FOUND.getReasonPhrase(),
-                                translatedMessage,
-                                null);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                                new Object[] { ex.getInvitationId() });
         }
 
         @ExceptionHandler(InvalidResearchGroupInvitationRoleException.class)
         public ResponseEntity<ApiErrorResponse> handleInvalidResearchGroupInvitationRole(
                         InvalidResearchGroupInvitationRoleException ex) {
-                String translatedMessage = messageSource.getMessage(
+                return buildErrorResponse(
+                                HttpStatus.BAD_REQUEST,
                                 "researchgroup.invitation.role.invalid",
-                                new Object[] { ex.getRole().name() },
-                                LocaleContextHolder.getLocale());
-
-                ApiErrorResponse response = new ApiErrorResponse(
-                                Instant.now(),
-                                HttpStatus.BAD_REQUEST.value(),
-                                HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                                translatedMessage,
-                                null);
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+                                new Object[] { ex.getRole().name() });
         }
 
         @ExceptionHandler(InvalidResearchGroupMemberRoleException.class)
         public ResponseEntity<ApiErrorResponse> handleInvalidResearchGroupMemberRole(
                         InvalidResearchGroupMemberRoleException ex) {
-                String translatedMessage = messageSource.getMessage(
+                return buildErrorResponse(
+                                HttpStatus.BAD_REQUEST,
                                 "researchgroup.member.role.invalid",
-                                new Object[] { ex.getRole().name() },
-                                LocaleContextHolder.getLocale());
-
-                ApiErrorResponse response = new ApiErrorResponse(
-                                Instant.now(),
-                                HttpStatus.BAD_REQUEST.value(),
-                                HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                                translatedMessage,
-                                null);
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+                                new Object[] { ex.getRole().name() });
         }
 
         @ExceptionHandler(ResearchGroupMemberNotFoundException.class)
         public ResponseEntity<ApiErrorResponse> handleResearchGroupMemberNotFound(
                         ResearchGroupMemberNotFoundException ex) {
-                String translatedMessage = messageSource.getMessage(
+                return buildErrorResponse(
+                                HttpStatus.NOT_FOUND,
                                 "researchgroup.member.notfound",
-                                new Object[] { ex.getGroupId(), ex.getUserId() },
-                                LocaleContextHolder.getLocale());
-
-                ApiErrorResponse response = new ApiErrorResponse(
-                                Instant.now(),
-                                HttpStatus.NOT_FOUND.value(),
-                                HttpStatus.NOT_FOUND.getReasonPhrase(),
-                                translatedMessage,
-                                null);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                                new Object[] { ex.getGroupId(), ex.getUserId() });
         }
 
         @ExceptionHandler(NotificationNotFoundException.class)
         public ResponseEntity<ApiErrorResponse> handleNotificationNotFound(NotificationNotFoundException ex) {
-                String translatedMessage = messageSource.getMessage(
+                return buildErrorResponse(
+                                HttpStatus.NOT_FOUND,
                                 "notification.error.notfound",
-                                new Object[] { ex.getNotificationId() },
-                                LocaleContextHolder.getLocale());
-
-                ApiErrorResponse response = new ApiErrorResponse(
-                                Instant.now(),
-                                HttpStatus.NOT_FOUND.value(),
-                                HttpStatus.NOT_FOUND.getReasonPhrase(),
-                                translatedMessage,
-                                null);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                                new Object[] { ex.getNotificationId() });
         }
 
         @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -295,13 +183,6 @@ public class GlobalExceptionHandler {
                         details.put(error.getField(), error.getDefaultMessage());
                 }
 
-                ApiErrorResponse response = new ApiErrorResponse(
-                                Instant.now(),
-                                HttpStatus.BAD_REQUEST.value(),
-                                HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                                messageSource.getMessage("common.error.validation", null,
-                                                LocaleContextHolder.getLocale()),
-                                details);
-                return ResponseEntity.badRequest().body(response);
+                return buildErrorResponse(HttpStatus.BAD_REQUEST, "common.error.validation", null, details);
         }
 }

@@ -43,7 +43,7 @@ export function CountryCombobox({
       <PopoverTrigger
         render={
           <button
-            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-white px-3 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-surface-base px-3 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
             type="button"
           />
         }

@@ -4,6 +4,8 @@ import { CalendarDays, Globe, MapPin, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
+import { PageContainer } from '@/components/common/PageContainer';
+import { PageHeader } from '@/components/common/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { getCountryLabelByCode } from '@/lib/countries';
@@ -60,11 +62,11 @@ type ProfileRowProps = {
 
 function ProfileRow({ label, value }: Readonly<ProfileRowProps>) {
   return (
-    <div className="rounded-lg border border-[color:var(--cl-line)] bg-white/85 px-4 py-3">
-      <p className="text-[0.68rem] font-bold tracking-[0.12em] text-[color:var(--cl-secondary)] uppercase">
+    <div className="rounded-lg border border-border bg-surface-soft px-4 py-3">
+      <p className="text-[0.68rem] font-bold tracking-[0.12em] text-muted-foreground uppercase">
         {label}
       </p>
-      <p className="mt-1 text-sm font-medium text-[color:var(--cl-neutral)]">{value}</p>
+      <p className="mt-1 text-sm font-medium text-foreground">{value}</p>
     </div>
   );
 }
@@ -181,14 +183,12 @@ export default function ProfilePage() {
   };
 
   return (
-    <section className="px-6 py-6 sm:px-8 sm:py-8">
-      <h1 className="text-4xl font-black tracking-tight text-[color:var(--cl-primary)]">
-        {t('home.profile.title')}
-      </h1>
+    <PageContainer>
+      <PageHeader title={t('home.profile.title')} />
 
-      <div className="mt-6 rounded-2xl border border-[color:var(--cl-line)] bg-[#eef1fb] p-4 sm:p-6">
+      <div className="mt-6 rounded-2xl border border-border bg-surface-base p-4 sm:p-6">
         {isLoading && (
-          <div className="rounded-lg border border-[color:var(--cl-line)] bg-white px-4 py-6 text-sm text-[color:var(--cl-secondary)]">
+          <div className="rounded-lg border border-border bg-surface-base px-4 py-6 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2">
               <Spinner aria-hidden className="size-4" />
               {t('common.loading.profile')}
@@ -198,16 +198,16 @@ export default function ProfilePage() {
 
         {!isLoading && profile && (
           <div>
-            <div className="mb-4 flex items-center gap-4 rounded-xl border border-[color:var(--cl-line)] bg-white px-4 py-3">
-              <div className="flex size-16 items-center justify-center rounded-full border border-[color:var(--cl-line)] bg-[color:var(--cl-primary-soft)] text-lg font-bold text-[color:var(--cl-primary)]">
+            <div className="mb-4 flex items-center gap-4 rounded-xl border border-border bg-surface-base px-4 py-3">
+              <div className="flex size-16 items-center justify-center rounded-full border border-border bg-accent text-lg font-bold text-primary">
                 {userInitials}
               </div>
 
               <div>
-                <p className="text-xs font-bold tracking-[0.1em] text-[color:var(--cl-secondary)] uppercase">
+                <p className="text-xs font-bold tracking-[0.1em] text-muted-foreground uppercase">
                   {t('common.user')}
                 </p>
-                <p className="mt-1 text-lg font-semibold text-[color:var(--cl-primary)]">
+                <p className="mt-1 text-lg font-semibold text-primary">
                   {formatValue(profile.email)}
                 </p>
               </div>
@@ -244,7 +244,7 @@ export default function ProfilePage() {
 
                 <div className="mt-5 flex justify-center">
                   <Button
-                    className="h-10 min-w-32 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white hover:bg-[color:var(--cl-primary-deep)] cursor-pointer"
+                    className="h-10 min-w-32 rounded-md bg-primary text-sm font-semibold text-white hover:bg-primary-strong cursor-pointer"
                     onClick={handleStartEditing}
                     type="button"
                   >
@@ -258,7 +258,7 @@ export default function ProfilePage() {
               <div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <FormFieldControl
-                    controlClassName="bg-white"
+                    controlClassName="bg-surface-base"
                     icon={<UserRound className="size-4" />}
                     id="firstName"
                     inputProps={{
@@ -271,7 +271,7 @@ export default function ProfilePage() {
                   />
 
                   <FormFieldControl
-                    controlClassName="bg-white"
+                    controlClassName="bg-surface-base"
                     icon={<UserRound className="size-4" />}
                     id="lastName"
                     inputProps={{
@@ -284,7 +284,7 @@ export default function ProfilePage() {
                   />
 
                   <FormFieldControl
-                    controlClassName="bg-white"
+                    controlClassName="bg-surface-base"
                     icon={<CalendarDays className="size-4" />}
                     id="birth"
                     inputProps={{ autoComplete: 'off' }}
@@ -321,7 +321,7 @@ export default function ProfilePage() {
                   />
 
                   <FormFieldControl
-                    controlClassName="bg-white"
+                    controlClassName="bg-surface-base"
                     icon={<MapPin className="size-4" />}
                     id="city"
                     inputProps={{
@@ -336,14 +336,14 @@ export default function ProfilePage() {
 
                 <div className="mt-5 flex flex-wrap justify-center gap-3">
                   <Button
-                    className="h-10 min-w-32 rounded-md border border-[color:var(--cl-line)] bg-white text-sm font-semibold text-[color:var(--cl-neutral)] transition-colors hover:bg-[color:var(--cl-primary-soft)] cursor-pointer"
+                    className="h-10 min-w-32 rounded-md border border-border bg-surface-base text-sm font-semibold text-foreground transition-colors hover:bg-accent cursor-pointer"
                     onClick={handleCancelEditing}
                     type="button"
                   >
                     {t('common.actions.cancel')}
                   </Button>
                   <Button
-                    className="h-10 min-w-32 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white transition-colors hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer"
+                    className="h-10 min-w-32 rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-muted cursor-pointer"
                     disabled={!canSave}
                     onClick={() => void handleSaveProfile()}
                     type="button"
@@ -363,6 +363,6 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
-    </section>
+    </PageContainer>
   );
 }

@@ -1,15 +1,14 @@
-import { type FormEvent, useEffect } from 'react';
+import { type FormEventHandler } from 'react';
 import { Github, Lock, Mail } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { toast } from 'sonner';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { SubmitButtonWithSpinner } from '@/components/ui/submit-button-with-spinner';
 import { type OAuthProvider } from '@/modules/auth/constants/session';
 import { type LoginFormState } from '@/modules/auth/types/login';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { isEmailValid } from '@/modules/auth/utils/validation';
 
 type LogInFormProps = {
   form: LoginFormState;
@@ -17,7 +16,7 @@ type LogInFormProps = {
   isSubmitting: boolean;
   errorMessage: string;
   successMessage: string;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  onSubmit: FormEventHandler<HTMLFormElement>;
   onFieldChange: <K extends keyof LoginFormState>(field: K, value: LoginFormState[K]) => void;
   onOAuthClick: (provider: OAuthProvider) => void;
 };
@@ -31,22 +30,12 @@ export function LogInForm({
   onSubmit,
   onFieldChange,
   onOAuthClick,
-}: LogInFormProps) {
+}: Readonly<LogInFormProps>) {
   const { t } = useTranslation();
   const trimmedEmail = form.email.trim();
-  const isEmailInvalid = trimmedEmail.length > 0 && !EMAIL_REGEX.test(trimmedEmail);
+  const isEmailInvalid = trimmedEmail.length > 0 && !isEmailValid(trimmedEmail);
 
-  useEffect(() => {
-    if (errorMessage.trim().length > 0) {
-      toast.error(errorMessage);
-    }
-  }, [errorMessage]);
-
-  useEffect(() => {
-    if (successMessage.trim().length > 0) {
-      toast.success(successMessage);
-    }
-  }, [successMessage]);
+  useToastMessages({ errorMessage, successMessage });
 
   return (
     <form className="mt-8 space-y-4" onSubmit={onSubmit}>
@@ -78,7 +67,7 @@ export function LogInForm({
 
         <div className="flex items-end justify-end">
           <Link
-            className="text-xs font-semibold text-[color:var(--cl-tertiary)] hover:text-[color:var(--cl-primary)]"
+            className="text-xs font-semibold text-muted-foreground hover:text-primary"
             to="/auth/forgot-password"
           >
             {t('auth.login.forgotPassword')}
@@ -87,48 +76,45 @@ export function LogInForm({
       </div>
 
       <SubmitButtonWithSpinner
-        className="h-11 w-full rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white shadow-[0_8px_16px_-10px_rgba(49,46,129,0.95)] hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer"
+        className="h-11 w-full rounded-md bg-primary text-sm font-semibold text-white shadow-[var(--shadow-primary-action)] hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
         disabled={!canSubmit}
         idleLabel={t('auth.login.submit')}
         isSubmitting={isSubmitting}
         submittingLabel={t('auth.login.submitting')}
       />
 
-      <div className="my-7 flex items-center gap-3 text-[0.67rem] font-bold tracking-[0.12em] text-[color:var(--cl-tertiary)] uppercase">
-        <span className="h-px flex-1 bg-[color:var(--cl-line)]" />
+      <div className="my-7 flex items-center gap-3 text-[0.67rem] font-bold tracking-[0.12em] text-muted-foreground uppercase">
+        <span className="h-px flex-1 bg-border" />
         <span>{t('auth.login.orContinueWith')}</span>
-        <span className="h-px flex-1 bg-[color:var(--cl-line)]" />
+        <span className="h-px flex-1 bg-border" />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Button
-          className="h-10 rounded-md border border-[color:var(--cl-line)] bg-white text-sm font-semibold text-[color:var(--cl-neutral)] hover:bg-[color:var(--cl-primary-soft)] cursor-pointer"
+          className="h-10 rounded-md border border-border bg-surface-base text-sm font-semibold text-foreground hover:bg-accent cursor-pointer"
           disabled={isSubmitting}
           onClick={() => onOAuthClick('google')}
           type="button"
           variant="outline"
         >
           <span className="text-base text-red-500">G</span>
-          Google
+          <span>Google</span>
         </Button>
         <Button
-          className="h-10 rounded-md border border-[color:var(--cl-line)] bg-white text-sm font-semibold text-[color:var(--cl-neutral)] hover:bg-[color:var(--cl-primary-soft)] cursor-pointer"
+          className="h-10 rounded-md border border-border bg-surface-base text-sm font-semibold text-foreground hover:bg-accent cursor-pointer"
           disabled={isSubmitting}
           onClick={() => onOAuthClick('github')}
           type="button"
           variant="outline"
         >
           <Github className="size-4" />
-          GitHub
+          <span>GitHub</span>
         </Button>
       </div>
 
-      <p className="mt-8 text-center text-sm text-[color:var(--cl-secondary)]">
+      <p className="mt-8 text-center text-sm text-muted-foreground">
         {t('auth.login.newToLab')}{' '}
-        <Link
-          className="font-semibold text-[color:var(--cl-primary)] hover:underline"
-          to="/auth/signup"
-        >
+        <Link className="font-semibold text-primary hover:underline" to="/auth/signup">
           {t('auth.login.createAccount')}
         </Link>
       </p>

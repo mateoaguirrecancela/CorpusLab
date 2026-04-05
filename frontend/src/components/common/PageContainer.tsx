@@ -1,0 +1,11 @@
+import { type ReactNode } from 'react';
+import { cn } from '@/lib/utils';
+
+type PageContainerProps = {
+  children: ReactNode;
+  className?: string;
+};
+
+export function PageContainer({ children, className }: Readonly<PageContainerProps>) {
+  return <section className={cn('px-6 py-6 sm:px-8 sm:py-8', className)}>{children}</section>;
+}

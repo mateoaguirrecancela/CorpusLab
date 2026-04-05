@@ -99,7 +99,7 @@ export function CreateResearchGroupDialog({ trigger }: Readonly<CreateResearchGr
 
         <DialogFooter>
           <Button
-            className="h-10 min-w-28 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white transition-colors hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer"
+            className="h-10 min-w-28 rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
             disabled={!canSave}
             onClick={() => void handleSubmit()}
             type="button"

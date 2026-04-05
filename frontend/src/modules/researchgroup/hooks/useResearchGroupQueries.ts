@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { invalidateQueryKeys } from '@/lib/queryInvalidation';
 import { type CreateResearchGroupPayload } from '@/modules/researchgroup/types/createResearchGroup';
 import {
   acceptResearchGroupInvitation,
@@ -53,7 +54,7 @@ export function useCreateResearchGroupMutation() {
   return useMutation({
     mutationFn: (payload: CreateResearchGroupPayload) => createResearchGroup(payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: RESEARCH_GROUPS_QUERY_KEY });
+      invalidateQueryKeys(queryClient, [RESEARCH_GROUPS_QUERY_KEY]);
     },
   });
 }
@@ -64,8 +65,10 @@ export function useUpdateResearchGroupMutation(groupId: number) {
   return useMutation({
     mutationFn: (payload: UpdateResearchGroupPayload) => updateResearchGroup(groupId, payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: researchGroupDetailQueryKey(groupId) });
-      void queryClient.invalidateQueries({ queryKey: RESEARCH_GROUPS_QUERY_KEY });
+      invalidateQueryKeys(queryClient, [
+        researchGroupDetailQueryKey(groupId),
+        RESEARCH_GROUPS_QUERY_KEY,
+      ]);
     },
   });
 }
@@ -77,8 +80,10 @@ export function useInviteResearchGroupMemberMutation(groupId: number) {
     mutationFn: (payload: InviteResearchGroupMemberPayload) =>
       inviteResearchGroupMember(groupId, payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: researchGroupDetailQueryKey(groupId) });
-      void queryClient.invalidateQueries({ queryKey: RESEARCH_GROUPS_QUERY_KEY });
+      invalidateQueryKeys(queryClient, [
+        researchGroupDetailQueryKey(groupId),
+        RESEARCH_GROUPS_QUERY_KEY,
+      ]);
     },
   });
 }
@@ -89,8 +94,10 @@ export function useJoinResearchGroupByCodeMutation() {
   return useMutation({
     mutationFn: (code: string) => joinResearchGroupByCode(code),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: RESEARCH_GROUPS_QUERY_KEY });
-      void queryClient.invalidateQueries({ queryKey: RESEARCH_GROUP_INVITATIONS_QUERY_KEY });
+      invalidateQueryKeys(queryClient, [
+        RESEARCH_GROUPS_QUERY_KEY,
+        RESEARCH_GROUP_INVITATIONS_QUERY_KEY,
+      ]);
     },
   });
 }
@@ -101,8 +108,10 @@ export function useAcceptResearchGroupInvitationMutation() {
   return useMutation({
     mutationFn: (invitationId: number) => acceptResearchGroupInvitation(invitationId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: RESEARCH_GROUPS_QUERY_KEY });
-      void queryClient.invalidateQueries({ queryKey: RESEARCH_GROUP_INVITATIONS_QUERY_KEY });
+      invalidateQueryKeys(queryClient, [
+        RESEARCH_GROUPS_QUERY_KEY,
+        RESEARCH_GROUP_INVITATIONS_QUERY_KEY,
+      ]);
     },
   });
 }
@@ -113,7 +122,7 @@ export function useDeclineResearchGroupInvitationMutation() {
   return useMutation({
     mutationFn: (invitationId: number) => declineResearchGroupInvitation(invitationId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: RESEARCH_GROUP_INVITATIONS_QUERY_KEY });
+      invalidateQueryKeys(queryClient, [RESEARCH_GROUP_INVITATIONS_QUERY_KEY]);
     },
   });
 }
@@ -125,8 +134,10 @@ export function useUpdateResearchGroupMemberRoleMutation(groupId: number) {
     mutationFn: ({ memberUserId, role }: { memberUserId: number; role: 'ADMIN' | 'ANNOTATOR' }) =>
       updateResearchGroupMemberRole(groupId, memberUserId, { role }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: researchGroupDetailQueryKey(groupId) });
-      void queryClient.invalidateQueries({ queryKey: RESEARCH_GROUPS_QUERY_KEY });
+      invalidateQueryKeys(queryClient, [
+        researchGroupDetailQueryKey(groupId),
+        RESEARCH_GROUPS_QUERY_KEY,
+      ]);
     },
   });
 }
@@ -137,8 +148,10 @@ export function useRemoveResearchGroupMemberMutation(groupId: number) {
   return useMutation({
     mutationFn: (memberUserId: number) => removeResearchGroupMember(groupId, memberUserId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: researchGroupDetailQueryKey(groupId) });
-      void queryClient.invalidateQueries({ queryKey: RESEARCH_GROUPS_QUERY_KEY });
+      invalidateQueryKeys(queryClient, [
+        researchGroupDetailQueryKey(groupId),
+        RESEARCH_GROUPS_QUERY_KEY,
+      ]);
     },
   });
 }

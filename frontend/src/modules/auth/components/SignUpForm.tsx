@@ -1,43 +1,16 @@
-import { type FormEvent, useEffect, useMemo } from 'react';
+import { type FormEventHandler, useMemo } from 'react';
 import { CalendarDays, Github, Globe, Lock, Mail, MapPin, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { toast } from 'sonner';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { SubmitButtonWithSpinner } from '@/components/ui/submit-button-with-spinner';
 import { getCountryOptions, getGenderOptions } from '@/modules/auth/constants/signup';
 import { CountryCombobox } from '@/modules/auth/components/CountryCombobox';
 import { type OAuthProvider } from '@/modules/auth/constants/session';
 import { type RegisterFormState } from '@/modules/auth/types/signup';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function isAtLeast16YearsOld(birthDate: string): boolean {
-  if (!birthDate) {
-    return false;
-  }
-
-  const [yearText, monthText, dayText] = birthDate.split('-');
-  const year = Number(yearText);
-  const month = Number(monthText);
-  const day = Number(dayText);
-
-  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
-    return false;
-  }
-
-  const today = new Date();
-  let age = today.getFullYear() - year;
-  const currentMonth = today.getMonth() + 1;
-  const currentDay = today.getDate();
-
-  if (currentMonth < month || (currentMonth === month && currentDay < day)) {
-    age -= 1;
-  }
-
-  return age >= 16;
-}
+import { isAtLeast16YearsOld, isEmailValid } from '@/modules/auth/utils/validation';
 
 type SignUpFormProps = {
   form: RegisterFormState;
@@ -45,7 +18,7 @@ type SignUpFormProps = {
   isSubmitting: boolean;
   errorMessage: string;
   successMessage: string;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  onSubmit: FormEventHandler<HTMLFormElement>;
   onFieldChange: <K extends keyof RegisterFormState>(field: K, value: RegisterFormState[K]) => void;
   onOAuthClick: (provider: OAuthProvider) => void;
 };
@@ -59,10 +32,10 @@ export function SignUpForm({
   onSubmit,
   onFieldChange,
   onOAuthClick,
-}: SignUpFormProps) {
+}: Readonly<SignUpFormProps>) {
   const { t, i18n } = useTranslation();
   const trimmedEmail = form.email.trim();
-  const isEmailInvalid = trimmedEmail.length > 0 && !EMAIL_REGEX.test(trimmedEmail);
+  const isEmailInvalid = trimmedEmail.length > 0 && !isEmailValid(trimmedEmail);
   const isUnderage = form.birth.length > 0 && !isAtLeast16YearsOld(form.birth);
   const genderOptions = getGenderOptions(t);
   const countryOptions = useMemo(
@@ -70,17 +43,7 @@ export function SignUpForm({
     [i18n.language, i18n.resolvedLanguage],
   );
 
-  useEffect(() => {
-    if (errorMessage.trim().length > 0) {
-      toast.error(errorMessage);
-    }
-  }, [errorMessage]);
-
-  useEffect(() => {
-    if (successMessage.trim().length > 0) {
-      toast.success(successMessage);
-    }
-  }, [successMessage]);
+  useToastMessages({ errorMessage, successMessage });
 
   return (
     <form className="mt-8 space-y-3" onSubmit={onSubmit}>
@@ -188,48 +151,45 @@ export function SignUpForm({
       </div>
 
       <SubmitButtonWithSpinner
-        className="h-11 w-full rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white shadow-[0_8px_16px_-10px_rgba(49,46,129,0.95)] hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer"
+        className="h-11 w-full rounded-md bg-primary text-sm font-semibold text-white shadow-[var(--shadow-primary-action)] hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
         disabled={!canSubmit}
         idleLabel={t('auth.signup.submit')}
         isSubmitting={isSubmitting}
         submittingLabel={t('auth.signup.submitting')}
       />
 
-      <div className="my-8 flex items-center gap-3 text-[0.67rem] font-bold tracking-[0.12em] text-[color:var(--cl-tertiary)] uppercase">
-        <span className="h-px flex-1 bg-[color:var(--cl-line)]" />
+      <div className="my-8 flex items-center gap-3 text-[0.67rem] font-bold tracking-[0.12em] text-muted-foreground uppercase">
+        <span className="h-px flex-1 bg-border" />
         <span>{t('auth.signup.orContinueWith')}</span>
-        <span className="h-px flex-1 bg-[color:var(--cl-line)]" />
+        <span className="h-px flex-1 bg-border" />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Button
-          className="h-10 rounded-md border border-[color:var(--cl-line)] bg-white text-sm font-semibold text-[color:var(--cl-neutral)] hover:bg-[color:var(--cl-primary-soft)] cursor-pointer"
+          className="h-10 rounded-md border border-border bg-surface-base text-sm font-semibold text-foreground hover:bg-accent cursor-pointer"
           disabled={isSubmitting}
           onClick={() => onOAuthClick('google')}
           type="button"
           variant="outline"
         >
           <span className="text-base text-red-500">G</span>
-          Google
+          <span>Google</span>
         </Button>
         <Button
-          className="h-10 rounded-md border border-[color:var(--cl-line)] bg-white text-sm font-semibold text-[color:var(--cl-neutral)] hover:bg-[color:var(--cl-primary-soft)] cursor-pointer"
+          className="h-10 rounded-md border border-border bg-surface-base text-sm font-semibold text-foreground hover:bg-accent cursor-pointer"
           disabled={isSubmitting}
           onClick={() => onOAuthClick('github')}
           type="button"
           variant="outline"
         >
           <Github className="size-4" />
-          GitHub
+          <span>GitHub</span>
         </Button>
       </div>
 
-      <p className="mt-8 text-center text-sm text-[color:var(--cl-secondary)]">
+      <p className="mt-8 text-center text-sm text-muted-foreground">
         {t('auth.signup.alreadyInLab')}{' '}
-        <Link
-          className="font-semibold text-[color:var(--cl-primary)] hover:underline"
-          to="/auth/login"
-        >
+        <Link className="font-semibold text-primary hover:underline" to="/auth/login">
           {t('auth.signup.goToLogin')}
         </Link>
       </p>

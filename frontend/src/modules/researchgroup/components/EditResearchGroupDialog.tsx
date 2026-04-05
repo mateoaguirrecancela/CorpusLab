@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
@@ -34,13 +34,6 @@ export function EditResearchGroupDialog({
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription ?? '');
   const isSaving = updateGroupMutation.isPending;
-
-  useEffect(() => {
-    if (!open) {
-      setName(initialName);
-      setDescription(initialDescription ?? '');
-    }
-  }, [initialDescription, initialName, open]);
 
   const hasChanges =
     name.trim() !== initialName.trim() || description.trim() !== (initialDescription ?? '').trim();
@@ -115,7 +108,7 @@ export function EditResearchGroupDialog({
 
         <DialogFooter>
           <Button
-            className="h-10 min-w-28 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white transition-colors hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer"
+            className="h-10 min-w-28 rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
             disabled={!canSave}
             onClick={() => void handleSubmit()}
             type="button"
