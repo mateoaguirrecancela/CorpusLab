@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { Mail, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { PageContainer } from '@/components/common/PageContainer';
+import { PageHeader } from '@/components/common/PageHeader';
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { CreateResearchGroupDialog } from '@/modules/researchgroup/components/CreateResearchGroupDialog';
@@ -25,48 +27,46 @@ export default function ResearchGroupsPage() {
     }
   }, [errorMessage]);
 
+  const actions = (
+    <>
+      <ResearchGroupInvitationsDialog
+        trigger={
+          <Button
+            className="h-10 px-4 rounded-md border border-border bg-surface-base text-sm font-semibold text-foreground transition-colors hover:bg-accent cursor-pointer"
+            type="button"
+          >
+            <Mail className="size-4" />
+            {t('researchGroup.invitations')}
+            {invitations.length > 0 && (
+              <span className="inline-flex size-5 items-center justify-center rounded-full bg-foreground text-[11px] font-bold leading-none text-white">
+                {invitations.length}
+              </span>
+            )}
+          </Button>
+        }
+      />
+
+      <CreateResearchGroupDialog
+        trigger={
+          <Button
+            className="h-10 px-4 rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-muted cursor-pointer"
+            type="button"
+          >
+            <Plus className="size-4" />
+            {t('researchGroup.newGroup')}
+          </Button>
+        }
+      />
+    </>
+  );
+
   return (
-    <section className="px-6 py-6 sm:px-8 sm:py-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-4xl font-black tracking-tight text-[color:var(--cl-primary)]">
-          {t('researchGroup.title')}
-        </h1>
-
-        <div className="flex gap-3">
-          <ResearchGroupInvitationsDialog
-            trigger={
-              <Button
-                className="h-10 px-4 rounded-md border border-[color:var(--cl-line)] bg-white text-sm font-semibold text-[color:var(--cl-neutral)] transition-colors hover:bg-[color:var(--cl-primary-soft)] cursor-pointer"
-                type="button"
-              >
-                <Mail className="size-4" />
-                {t('researchGroup.invitations')}
-                {invitations.length > 0 && (
-                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-(--cl-neutral) text-[11px] font-bold leading-none text-white">
-                    {invitations.length}
-                  </span>
-                )}
-              </Button>
-            }
-          />
-
-          <CreateResearchGroupDialog
-            trigger={
-              <Button
-                className="h-10 px-4 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white transition-colors hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer"
-                type="button"
-              >
-                <Plus className="size-4" />
-                {t('researchGroup.newGroup')}
-              </Button>
-            }
-          />
-        </div>
-      </div>
+    <PageContainer>
+      <PageHeader actions={actions} title={t('researchGroup.title')} />
 
       <div className="mt-6">
         {isLoading && (
-          <div className="rounded-lg border border-[color:var(--cl-line)] bg-white px-4 py-6 text-sm text-[color:var(--cl-secondary)]">
+          <div className="rounded-lg border border-border bg-surface-base px-4 py-6 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2">
               <Spinner aria-hidden className="size-4" />
               {t('researchGroup.loading')}
@@ -75,7 +75,7 @@ export default function ResearchGroupsPage() {
         )}
 
         {!isLoading && errorMessage.length === 0 && groups.length === 0 && (
-          <div className="rounded-lg border border-[color:var(--cl-line)] bg-white px-4 py-6 text-center text-sm text-[color:var(--cl-secondary)]">
+          <div className="rounded-lg border border-border bg-surface-base px-4 py-6 text-center text-sm text-muted-foreground">
             {t('researchGroup.noGroups')}
           </div>
         )}
@@ -88,6 +88,6 @@ export default function ResearchGroupsPage() {
           </div>
         )}
       </div>
-    </section>
+    </PageContainer>
   );
 }

@@ -134,7 +134,7 @@ export function ResearchGroupInvitationsDialog({
               />
 
               <Button
-                className="h-10 min-w-28 cursor-pointer rounded-md bg-(--cl-primary) text-sm font-semibold text-white transition-colors hover:bg-(--cl-primary-deep) disabled:bg-(--cl-tertiary)"
+                className="h-10 min-w-28 cursor-pointer rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-muted"
                 disabled={!canJoinByCode}
                 onClick={() => void handleJoinByCode()}
                 type="button"
@@ -152,12 +152,12 @@ export function ResearchGroupInvitationsDialog({
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-(--cl-secondary) text-sm font-bold tracking-[0.08em] uppercase">
+            <h3 className="text-muted-foreground text-sm font-bold tracking-[0.08em] uppercase">
               {t('researchGroup.invitationsDialog.myInvitations')}
             </h3>
 
             {isLoading && (
-              <div className="text-(--cl-secondary) rounded-lg border border-(--cl-line) bg-white px-4 py-4 text-sm">
+              <div className="text-muted-foreground rounded-lg border border-border bg-surface-base px-4 py-4 text-sm">
                 <span className="inline-flex items-center gap-2">
                   <Spinner aria-hidden className="size-4" />
                   {t('researchGroup.invitationsDialog.loadingInvitations')}
@@ -168,7 +168,7 @@ export function ResearchGroupInvitationsDialog({
             {!isLoading &&
               invitationsErrorMessage.length === 0 &&
               sortedInvitations.length === 0 && (
-                <div className="text-(--cl-secondary) rounded-lg border border-(--cl-line) bg-white px-4 py-4 text-sm">
+                <div className="text-muted-foreground rounded-lg border border-border bg-surface-base px-4 py-4 text-sm">
                   {t('researchGroup.invitationsDialog.noInvitations')}
                 </div>
               )}
@@ -177,11 +177,11 @@ export function ResearchGroupInvitationsDialog({
               <div className="space-y-2">
                 {sortedInvitations.map((invitation) => (
                   <div
-                    className="flex items-center gap-2 rounded-lg border border-(--cl-line) bg-white px-4 py-3"
+                    className="flex items-center gap-2 rounded-lg border border-border bg-surface-base px-4 py-3"
                     key={invitation.id}
                   >
-                    <p className="text-(--cl-secondary) min-w-0 flex flex-1 items-center gap-8 overflow-hidden text-sm">
-                      <span className="text-(--cl-primary) shrink-0 font-semibold">
+                    <p className="text-muted-foreground min-w-0 flex flex-1 items-center gap-8 overflow-hidden text-sm">
+                      <span className="text-primary shrink-0 font-semibold">
                         {invitation.researchGroupName}
                       </span>
                       <span className="inline-flex min-w-0 items-center gap-2">
@@ -197,7 +197,7 @@ export function ResearchGroupInvitationsDialog({
                     <div className="flex shrink-0 items-center gap-2">
                       <Button
                         aria-label={t('researchGroup.invitationsDialog.acceptAria')}
-                        className="rounded-full border-emerald-600 bg-white text-emerald-600 hover:bg-emerald-600 hover:text-white cursor-pointer"
+                        className="rounded-full border-success bg-surface-base text-success hover:bg-success hover:text-white cursor-pointer"
                         disabled={isInvitationActionPending}
                         onClick={() => void handleAcceptInvitation(invitation.id)}
                         size="icon"
@@ -214,7 +214,7 @@ export function ResearchGroupInvitationsDialog({
 
                       <Button
                         aria-label={t('researchGroup.invitationsDialog.declineAria')}
-                        className="rounded-full border-rose-600 bg-white text-rose-600 hover:bg-rose-600 hover:text-white cursor-pointer"
+                        className="rounded-full border-destructive bg-surface-base text-destructive hover:bg-destructive hover:text-white cursor-pointer"
                         disabled={isInvitationActionPending}
                         onClick={() => void handleDeclineInvitation(invitation.id)}
                         size="icon"

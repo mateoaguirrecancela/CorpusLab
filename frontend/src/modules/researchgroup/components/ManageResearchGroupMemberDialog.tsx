@@ -78,10 +78,10 @@ export function ManageResearchGroupMemberDialog({
 
       <PopoverContent
         align="end"
-        className="w-64 rounded-xl border border-[color:var(--cl-line)] bg-white p-1.5"
+        className="w-64 rounded-xl border border-border bg-surface-base p-1.5"
       >
         <button
-          className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-[color:var(--cl-neutral)] transition hover:bg-[color:var(--cl-primary-soft)] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+          className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
           disabled={isBusy}
           onClick={() => void handleUpdateRole(targetRole)}
           type="button"
@@ -97,7 +97,7 @@ export function ManageResearchGroupMemberDialog({
         </button>
 
         <button
-          className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70 cursor-pointer"
+          className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-destructive transition-colors hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-70 cursor-pointer"
           disabled={isBusy}
           onClick={() => void handleRemoveMember()}
           type="button"

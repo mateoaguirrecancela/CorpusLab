@@ -7,9 +7,9 @@ import {
 } from '@/modules/researchgroup/types/researchGroup';
 
 const ROLE_BADGE_STYLES: Record<ResearchGroupMemberRole, string> = {
-  OWNER: 'bg-[color:var(--cl-primary)] text-white',
-  ADMIN: 'bg-[color:var(--cl-primary)] text-white',
-  ANNOTATOR: 'bg-[color:var(--cl-primary-soft)] text-[color:var(--cl-primary)]',
+  OWNER: 'bg-primary text-white',
+  ADMIN: 'bg-primary text-white',
+  ANNOTATOR: 'bg-accent text-primary',
 };
 
 type ResearchGroupCardProps = {
@@ -21,10 +21,10 @@ export function ResearchGroupCard({ group }: Readonly<ResearchGroupCardProps>) {
   const navigate = useNavigate();
 
   return (
-    <div className="stagger flex flex-col justify-between rounded-2xl border border-[color:var(--cl-line)] bg-white p-5 transition-shadow hover:shadow-md">
+    <div className="stagger flex flex-col justify-between rounded-2xl border border-border bg-surface-base p-5 transition-shadow hover:shadow-[var(--shadow-card-hover)]">
       <div>
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-base font-bold text-[color:var(--cl-primary)]">{group.name}</h3>
+          <h3 className="text-base font-bold text-primary">{group.name}</h3>
           <span
             className={[
               'rounded-md px-2.5 py-1 text-xs font-bold tracking-wider uppercase',
@@ -36,20 +36,20 @@ export function ResearchGroupCard({ group }: Readonly<ResearchGroupCardProps>) {
         </div>
 
         {group.description && (
-          <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-[color:var(--cl-secondary)]">
+          <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
             {group.description}
           </p>
         )}
       </div>
 
-      <div className="mt-5 flex items-center justify-between border-t border-[color:var(--cl-line)] pt-4">
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--cl-secondary)]">
+      <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
           <Users className="size-3.5" />
           {t('researchGroup.memberCount', { count: group.memberCount })}
         </span>
 
         <button
-          className="group inline-flex cursor-pointer items-center gap-1 text-sm font-semibold text-[color:var(--cl-primary)] transition-colors hover:text-[color:var(--cl-primary-deep)]"
+          className="group inline-flex cursor-pointer items-center gap-1 text-sm font-semibold text-primary transition-colors hover:text-primary-strong"
           onClick={() => navigate(`/home/research-groups/${group.id}`)}
           type="button"
         >

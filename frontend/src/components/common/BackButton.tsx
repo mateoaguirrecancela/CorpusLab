@@ -22,7 +22,7 @@ export function BackButton({ fallbackTo, className }: Readonly<BackButtonProps>)
   return (
     <Button
       className={[
-        'h-10 rounded-md border border-[color:var(--cl-line)] bg-white px-4 text-sm font-semibold text-[color:var(--cl-primary)] hover:bg-[color:var(--cl-primary-soft)] cursor-pointer',
+        'h-10 rounded-md border border-border bg-surface-base px-4 text-sm font-semibold text-primary hover:bg-accent cursor-pointer',
         className,
       ]
         .filter(Boolean)

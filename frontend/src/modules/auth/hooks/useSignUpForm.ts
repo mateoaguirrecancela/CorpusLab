@@ -1,51 +1,20 @@
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEventHandler, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { INITIAL_REGISTER_STATE } from '@/modules/auth/constants/signup';
+import { type OAuthProvider } from '@/modules/auth/constants/session';
 import {
-  type OAuthProvider,
-  SESSION_AUTH_TOKEN_STORAGE_KEY,
-} from '@/modules/auth/constants/session';
-import { PROFILE_QUERY_KEY } from '@/modules/auth/hooks/useProfileQuery';
-import {
-  getProfile,
   getLoginErrorMessage,
   getRegisterErrorMessage,
   login,
   redirectToOAuthAuthorization,
   signup,
 } from '@/modules/auth/services/authService';
+import { primeProfileCache } from '@/modules/auth/services/profileCache';
+import { storeSessionToken } from '@/modules/auth/services/sessionService';
 import { type RegisterFormState } from '@/modules/auth/types/signup';
-import { type ProfileResponse } from '@/modules/auth/types/profile';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function isAtLeast16YearsOld(birthDate: string): boolean {
-  if (!birthDate) {
-    return false;
-  }
-
-  const [yearText, monthText, dayText] = birthDate.split('-');
-  const year = Number(yearText);
-  const month = Number(monthText);
-  const day = Number(dayText);
-
-  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
-    return false;
-  }
-
-  const today = new Date();
-  let age = today.getFullYear() - year;
-  const currentMonth = today.getMonth() + 1;
-  const currentDay = today.getDate();
-
-  if (currentMonth < month || (currentMonth === month && currentDay < day)) {
-    age -= 1;
-  }
-
-  return age >= 16;
-}
+import { isAtLeast16YearsOld, isEmailValid } from '@/modules/auth/utils/validation';
 
 export function useSignUpForm() {
   const { t } = useTranslation();
@@ -60,7 +29,7 @@ export function useSignUpForm() {
     () =>
       form.firstName.trim().length > 0 &&
       form.lastName.trim().length > 0 &&
-      EMAIL_REGEX.test(form.email.trim()) &&
+      isEmailValid(form.email) &&
       form.password.length >= 8 &&
       isAtLeast16YearsOld(form.birth) &&
       form.gender.trim().length > 0 &&
@@ -77,7 +46,7 @@ export function useSignUpForm() {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
 
     if (form.birth.length > 0 && !isAtLeast16YearsOld(form.birth)) {
@@ -103,24 +72,12 @@ export function useSignUpForm() {
         password: form.password,
       });
 
-      localStorage.setItem(SESSION_AUTH_TOKEN_STORAGE_KEY, loginResponse.token);
-
-      try {
-        await queryClient.fetchQuery({
-          queryKey: PROFILE_QUERY_KEY,
-          queryFn: getProfile,
-        });
-      } catch {
-        queryClient.setQueryData<ProfileResponse>(PROFILE_QUERY_KEY, {
-          email: loginResponse.email,
-          firstName: loginResponse.firstName,
-          lastName: loginResponse.lastName,
-          birth: null,
-          gender: null,
-          countryCode: null,
-          city: null,
-        });
-      }
+      storeSessionToken(loginResponse.token);
+      await primeProfileCache(queryClient, {
+        email: loginResponse.email,
+        firstName: loginResponse.firstName,
+        lastName: loginResponse.lastName,
+      });
 
       setSuccessMessage(t('auth.signup.success', { name: loginResponse.firstName }));
       setForm(INITIAL_REGISTER_STATE);

@@ -138,7 +138,7 @@ export function FormFieldControl(props: FormFieldControlProps) {
           />
           <button
             aria-label={toggleAriaLabel}
-            className="absolute top-1/2 right-3 -translate-y-1/2 text-[color:var(--cl-tertiary)] transition hover:text-[color:var(--cl-primary)]"
+            className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground transition hover:text-primary"
             onClick={() => setIsPasswordVisible((current) => !current)}
             type="button"
           >
@@ -171,7 +171,7 @@ export function FormFieldControl(props: FormFieldControlProps) {
       </Field>
 
       {message ? (
-        <p className={cn('mt-2 text-xs text-red-700', messageClassName)}>{message}</p>
+        <p className={cn('mt-2 text-xs text-destructive', messageClassName)}>{message}</p>
       ) : null}
     </div>
   );

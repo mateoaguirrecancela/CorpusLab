@@ -12,6 +12,7 @@ import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserLoginRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
+import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.CreateResearchGroupRequestDto;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupInvitationRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupMemberRepository;
@@ -50,12 +51,16 @@ class ResearchGroupCreateIntegrationTest extends AbstractIntegrationTest {
         private ResearchGroupInvitationRepository invitationRepository;
 
         @Autowired
+        private NotificationRepository notificationRepository;
+
+        @Autowired
         private PasswordEncoder passwordEncoder;
 
         private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
 
         @BeforeEach
         void cleanData() {
+                notificationRepository.deleteAll();
                 invitationRepository.deleteAll();
                 memberRepository.deleteAll();
                 researchGroupRepository.deleteAll();

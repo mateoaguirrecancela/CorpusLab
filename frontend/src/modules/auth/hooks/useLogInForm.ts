@@ -1,25 +1,20 @@
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEventHandler, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { INITIAL_LOGIN_STATE } from '@/modules/auth/constants/login';
+import { type OAuthProvider } from '@/modules/auth/constants/session';
 import {
-  type OAuthProvider,
-  SESSION_AUTH_TOKEN_STORAGE_KEY,
-} from '@/modules/auth/constants/session';
-import { PROFILE_QUERY_KEY } from '@/modules/auth/hooks/useProfileQuery';
-import {
-  getProfile,
   getLoginErrorMessage,
   getLogoutErrorMessage,
   login,
   logout,
   redirectToOAuthAuthorization,
 } from '@/modules/auth/services/authService';
+import { primeProfileCache } from '@/modules/auth/services/profileCache';
+import { clearSession, storeSessionToken } from '@/modules/auth/services/sessionService';
 import { type LoginFormState } from '@/modules/auth/types/login';
-import { type ProfileResponse } from '@/modules/auth/types/profile';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { isEmailValid } from '@/modules/auth/utils/validation';
 
 export function useSignInForm() {
   const { t } = useTranslation();
@@ -32,7 +27,7 @@ export function useSignInForm() {
   const [successMessage, setSuccessMessage] = useState('');
 
   const canSubmit = useMemo(
-    () => EMAIL_REGEX.test(form.email.trim()) && form.password.length >= 8 && !isSubmitting,
+    () => isEmailValid(form.email) && form.password.length >= 8 && !isSubmitting,
     [form, isSubmitting],
   );
 
@@ -40,7 +35,7 @@ export function useSignInForm() {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
 
     if (!canSubmit) {
@@ -55,24 +50,12 @@ export function useSignInForm() {
 
     try {
       const response = await login(form);
-      localStorage.setItem(SESSION_AUTH_TOKEN_STORAGE_KEY, response.token);
-
-      try {
-        await queryClient.fetchQuery({
-          queryKey: PROFILE_QUERY_KEY,
-          queryFn: getProfile,
-        });
-      } catch {
-        queryClient.setQueryData<ProfileResponse>(PROFILE_QUERY_KEY, {
-          email: response.email,
-          firstName: response.firstName,
-          lastName: response.lastName,
-          birth: null,
-          gender: null,
-          countryCode: null,
-          city: null,
-        });
-      }
+      storeSessionToken(response.token);
+      await primeProfileCache(queryClient, {
+        email: response.email,
+        firstName: response.firstName,
+        lastName: response.lastName,
+      });
 
       setIsLoggedIn(true);
       setSuccessMessage(t('auth.login.welcome', { name: response.firstName }));
@@ -92,8 +75,7 @@ export function useSignInForm() {
 
     try {
       const response = await logout();
-      localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY);
-      queryClient.removeQueries({ queryKey: PROFILE_QUERY_KEY });
+      clearSession(queryClient);
       setIsLoggedIn(false);
       setSuccessMessage(response.message);
     } catch (error) {

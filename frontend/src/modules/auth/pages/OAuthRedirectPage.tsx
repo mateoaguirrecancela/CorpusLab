@@ -2,14 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
-import { toast } from 'sonner';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { Spinner } from '@/components/ui/spinner';
-import {
-  OAUTH_PROVIDER_LABEL,
-  SESSION_AUTH_TOKEN_STORAGE_KEY,
-} from '@/modules/auth/constants/session';
-import { PROFILE_QUERY_KEY } from '@/modules/auth/hooks/useProfileQuery';
+import { AuthCard } from '@/modules/auth/components/AuthCard';
+import { OAUTH_PROVIDER_LABEL } from '@/modules/auth/constants/session';
+import { PROFILE_QUERY_KEY } from '@/modules/auth/constants/queryKeys';
 import { getProfile } from '@/modules/auth/services/authService';
+import { clearSession, storeSessionToken } from '@/modules/auth/services/sessionService';
 
 function mapOAuthError(
   errorCode: string | null,
@@ -71,13 +70,13 @@ export default function OAuthRedirectPage() {
         return;
       }
 
-      localStorage.setItem(SESSION_AUTH_TOKEN_STORAGE_KEY, token);
+      storeSessionToken(token);
 
       try {
         const profile = await getProfile();
         queryClient.setQueryData(PROFILE_QUERY_KEY, profile);
       } catch {
-        localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY);
+        clearSession(queryClient);
         setErrorMessage(t('auth.oauth.errors.profileLoad'));
         globalThis.setTimeout(() => {
           navigate('/auth/login', { replace: true });
@@ -91,26 +90,21 @@ export default function OAuthRedirectPage() {
     void completeOAuthLogin();
   }, [navigate, oauthError, queryClient, t, token]);
 
-  useEffect(() => {
-    if (errorMessage.trim().length > 0) {
-      toast.error(errorMessage);
-    }
-  }, [errorMessage]);
+  useToastMessages({ errorMessage });
 
   return (
-    <section className="signup-card w-full max-w-md rounded-xl border border-[color:var(--cl-line)] bg-white/80 p-6 text-center shadow-[0_20px_60px_-45px_rgba(15,23,42,0.75)] backdrop-blur sm:p-8">
-      <h1 className="reveal text-3xl font-extrabold tracking-tight text-[color:var(--cl-primary)]">
-        {t('auth.oauth.title', { provider: providerLabel })}
-      </h1>
-
+    <AuthCard
+      className="max-w-md text-center"
+      title={t('auth.oauth.title', { provider: providerLabel })}
+    >
       {errorMessage.length > 0 ? (
-        <p className="mt-4 text-sm text-red-700">{errorMessage}</p>
+        <p className="mt-4 text-sm text-destructive">{errorMessage}</p>
       ) : (
-        <p className="mt-4 inline-flex items-center gap-2 text-sm text-[color:var(--cl-secondary)]">
+        <p className="mt-4 inline-flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner aria-hidden className="size-4" />
           {t('auth.oauth.completing')}
         </p>
       )}
-    </section>
+    </AuthCard>
   );
 }

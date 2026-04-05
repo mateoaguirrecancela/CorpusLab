@@ -113,7 +113,7 @@ export function InviteResearchGroupMemberDialog({
             renderControl={() => (
               <Button
                 aria-label={t('researchGroup.detail.copyCode')}
-                className="h-10 w-full justify-between rounded-md border-dashed border-[color:var(--cl-line)] bg-background px-4 text-sm font-semibold text-[color:var(--cl-secondary)] cursor-pointer"
+                className="h-10 w-full justify-between rounded-md border-dashed border-border bg-background px-4 text-sm font-semibold text-muted-foreground cursor-pointer"
                 onClick={() => void handleCopyInvitationCode()}
                 type="button"
               >
@@ -155,7 +155,7 @@ export function InviteResearchGroupMemberDialog({
 
         <DialogFooter>
           <Button
-            className="h-10 min-w-28 rounded-md bg-[color:var(--cl-primary)] text-sm font-semibold text-white transition-colors hover:bg-[color:var(--cl-primary-deep)] disabled:bg-[color:var(--cl-tertiary)] cursor-pointer"
+            className="h-10 min-w-28 rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
             disabled={!canSave}
             onClick={() => void handleSubmit()}
             type="button"
