@@ -15,6 +15,8 @@ import es.udc.fic.corpuslab.modules.auth.exceptions.InvalidCredentialsException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetEmailDeliveryException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetTokenNotFoundException;
 import es.udc.fic.corpuslab.modules.notification.exceptions.NotificationNotFoundException;
+import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectDatasetException;
+import es.udc.fic.corpuslab.modules.project.exceptions.ProjectNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.InvalidResearchGroupInvitationRoleException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.InvalidResearchGroupMemberRoleException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupInvitationAlreadyExistsException;
@@ -174,6 +176,22 @@ public class GlobalExceptionHandler {
                                 HttpStatus.NOT_FOUND,
                                 "notification.error.notfound",
                                 new Object[] { ex.getNotificationId() });
+        }
+
+        @ExceptionHandler(ProjectNotFoundException.class)
+        public ResponseEntity<ApiErrorResponse> handleProjectNotFound(ProjectNotFoundException ex) {
+                return buildErrorResponse(
+                                HttpStatus.NOT_FOUND,
+                                "project.error.notfound",
+                                new Object[] { ex.getId() });
+        }
+
+        @ExceptionHandler(InvalidProjectDatasetException.class)
+        public ResponseEntity<ApiErrorResponse> handleInvalidProjectDataset(InvalidProjectDatasetException ex) {
+                return buildErrorResponse(
+                                HttpStatus.BAD_REQUEST,
+                                "project.dataset.error.invalid",
+                                new Object[] { ex.getMessage() });
         }
 
         @ExceptionHandler(MethodArgumentNotValidException.class)

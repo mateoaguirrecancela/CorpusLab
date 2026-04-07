@@ -3,7 +3,12 @@
     "create": {
       "title": "Novo Proxecto",
       "pageTitle": "Crear Proxecto",
-      "pageDescription": "Define a configuración básica do proxecto con nome e descrición.",
+      "steps": {
+        "basicConfig": "Basic Config",
+        "dataset": "Dataset",
+        "taskDesign": "Task Design",
+        "assignment": "Assignment"
+      },
       "groupLabel": "Grupo de investigación",
       "nameLabel": "Nome",
       "namePlaceholder": "Nome do proxecto",
@@ -12,10 +17,23 @@
       "loadingGroups": "Cargando grupos dispoñibles...",
       "noGroups": "Non tes permisos de owner ou admin en ningún grupo para crear proxectos.",
       "submit": "Crear Proxecto",
-      "success": "Proxecto creado correctamente."
+      "nextStep": "Seguinte Paso",
+      "nextStepSimple": "Seguinte paso",
+      "previousStepSimple": "Paso anterior",
+      "success": "Proxecto creado correctamente.",
+      "datasetUploadSuccess": "Dataset subido correctamente.",
+      "datasetFormatsTitle": "Dataset do Proxecto",
+      "datasetFormatsDescription": "Podes subir arquivos PDF, TXT, JSON, imaxes, CSV e outros formatos para construír o dataset.",
+      "selectFiles": "Seleccionar arquivos",
+      "selectFilesHint": "Subiranse todos os arquivos seleccionados ao dataset do proxecto.",
+      "removeFile": "Eliminar arquivo",
+      "backToBasicConfig": "Volver á configuración básica",
+      "uploadingDataset": "Subindo dataset...",
+      "finishCreateProject": "Finalizar creación"
     },
     "errors": {
-      "createFailed": "Non se puido crear o proxecto. Téntao de novo."
+      "createFailed": "Non se puido crear o proxecto. Téntao de novo.",
+      "datasetUploadFailed": "Non se puido subir o dataset. Téntao de novo."
     }
   }
 }
