@@ -13,6 +13,9 @@ import homeGl from '@/modules/home/locales/gl.json';
 import notificationEn from '@/modules/notification/locales/en.json';
 import notificationEs from '@/modules/notification/locales/es.json';
 import notificationGl from '@/modules/notification/locales/gl.json';
+import projectEn from '@/modules/project/locales/en.json';
+import projectEs from '@/modules/project/locales/es.json';
+import projectGl from '@/modules/project/locales/gl.json';
 import rgEn from '@/modules/researchgroup/locales/en.json';
 import rgEs from '@/modules/researchgroup/locales/es.json';
 import rgGl from '@/modules/researchgroup/locales/gl.json';
@@ -22,9 +25,36 @@ void i18n
   .use(initReactI18next)
   .init({
     resources: {
-      en: { translation: { ...commonEn, ...en, ...homeEn, ...notificationEn, ...rgEn } },
-      es: { translation: { ...commonEs, ...es, ...homeEs, ...notificationEs, ...rgEs } },
-      gl: { translation: { ...commonGl, ...gl, ...homeGl, ...notificationGl, ...rgGl } },
+      en: {
+        translation: {
+          ...commonEn,
+          ...en,
+          ...homeEn,
+          ...notificationEn,
+          ...projectEn,
+          ...rgEn,
+        },
+      },
+      es: {
+        translation: {
+          ...commonEs,
+          ...es,
+          ...homeEs,
+          ...notificationEs,
+          ...projectEs,
+          ...rgEs,
+        },
+      },
+      gl: {
+        translation: {
+          ...commonGl,
+          ...gl,
+          ...homeGl,
+          ...notificationGl,
+          ...projectGl,
+          ...rgGl,
+        },
+      },
     },
     fallbackLng: 'en',
     supportedLngs: ['en', 'es', 'gl'],

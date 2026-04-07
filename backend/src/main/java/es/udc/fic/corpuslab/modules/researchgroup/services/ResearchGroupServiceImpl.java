@@ -17,6 +17,7 @@ import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
+import es.udc.fic.corpuslab.modules.project.repositories.ProjectRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.CreateResearchGroupRequestDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupInvitationDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupDetailDto;
@@ -50,6 +51,7 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
         private final ResearchGroupRepository researchGroupRepository;
         private final ResearchGroupMemberRepository memberRepository;
         private final ResearchGroupInvitationRepository invitationRepository;
+        private final ProjectRepository projectRepository;
         private final EmailService emailService;
         private final NotificationService notificationService;
         private final String frontendBaseUrl;
@@ -59,6 +61,7 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                         ResearchGroupRepository researchGroupRepository,
                         ResearchGroupMemberRepository memberRepository,
                         ResearchGroupInvitationRepository invitationRepository,
+                        ProjectRepository projectRepository,
                         EmailService emailService,
                         NotificationService notificationService,
                         @Value("${app.frontend.base-url:http://localhost:5173}") String frontendBaseUrl) {
@@ -66,6 +69,7 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                 this.researchGroupRepository = researchGroupRepository;
                 this.memberRepository = memberRepository;
                 this.invitationRepository = invitationRepository;
+                this.projectRepository = projectRepository;
                 this.emailService = emailService;
                 this.notificationService = notificationService;
                 this.frontendBaseUrl = frontendBaseUrl;
@@ -132,13 +136,15 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                         throw new AccessDeniedException("User is not a member of this research group");
                 }
 
+                long activeProjects = projectRepository.countByResearchGroupId(groupId);
+
                 return new ResearchGroupDetailDto(
                                 group.getId(),
                                 group.getName(),
                                 group.getDescription(),
                                 group.getInvitationCode(),
                                 members.size(),
-                                0L,
+                                activeProjects,
                                 group.getCreatedAt(),
                                 members);
         }
@@ -171,6 +177,7 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                 researchGroupRepository.save(group);
 
                 List<ResearchGroupMemberDto> members = memberRepository.findMembersByGroupId(groupId);
+                long activeProjects = projectRepository.countByResearchGroupId(groupId);
 
                 return new ResearchGroupDetailDto(
                                 group.getId(),
@@ -178,7 +185,7 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                                 group.getDescription(),
                                 group.getInvitationCode(),
                                 members.size(),
-                                0L,
+                                activeProjects,
                                 group.getCreatedAt(),
                                 members);
         }

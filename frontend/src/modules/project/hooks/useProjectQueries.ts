@@ -1,0 +1,28 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { invalidateQueryKeys } from '@/lib/queryInvalidation';
+import { createProject } from '@/modules/project/services/projectService';
+import {
+  RESEARCH_GROUPS_QUERY_KEY,
+  researchGroupDetailQueryKey,
+} from '@/modules/researchgroup/hooks/useResearchGroupQueries';
+import { type CreateProjectPayload } from '@/modules/project/types/project';
+
+type CreateProjectMutationInput = {
+  groupId: number;
+  payload: CreateProjectPayload;
+};
+
+export function useCreateProjectMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ groupId, payload }: CreateProjectMutationInput) =>
+      createProject(groupId, payload),
+    onSuccess: (_, variables) => {
+      invalidateQueryKeys(queryClient, [
+        researchGroupDetailQueryKey(variables.groupId),
+        RESEARCH_GROUPS_QUERY_KEY,
+      ]);
+    },
+  });
+}

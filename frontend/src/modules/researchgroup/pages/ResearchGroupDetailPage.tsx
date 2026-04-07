@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { FilePenLine, FlaskConical, MoreVertical, Plus, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { BackButton } from '@/components/common/BackButton';
 import { PageContainer } from '@/components/common/PageContainer';
@@ -41,6 +41,7 @@ function getRoleBadgeClasses(role: string): string {
 export default function ResearchGroupDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams();
+  const navigate = useNavigate();
   const { data: profile } = useProfileQuery();
 
   const numericGroupId = useMemo(() => Number(id), [id]);
@@ -66,6 +67,7 @@ export default function ResearchGroupDetailPage() {
       : undefined;
 
   const canManageResearchers = currentMember?.role === 'OWNER';
+  const canCreateProjects = currentMember?.role === 'OWNER' || currentMember?.role === 'ADMIN';
 
   return (
     <PageContainer className="py-4 sm:py-6">
@@ -139,21 +141,23 @@ export default function ResearchGroupDetailPage() {
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="inline-flex items-center gap-4 text-3xl font-black tracking-tight text-primary">
                 <FlaskConical className="size-7" />
-                {t('researchGroup.detail.experiments')}
+                {t('researchGroup.detail.projects')}
               </h2>
 
-              <Button
-                className="h-10 rounded-md bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-strong cursor-pointer"
-                disabled
-                type="button"
-              >
-                <Plus className="size-4" />
-                {t('researchGroup.detail.newExperiment')}
-              </Button>
+              {canCreateProjects && (
+                <Button
+                  className="h-10 rounded-md bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-strong cursor-pointer"
+                  onClick={() => navigate(`/home/experiments/create?groupId=${group.id}`)}
+                  type="button"
+                >
+                  <Plus className="size-4" />
+                  {t('researchGroup.detail.newProject')}
+                </Button>
+              )}
             </div>
 
             <p className="rounded-md border border-dashed border-border bg-surface-base px-4 py-5 text-sm text-muted-foreground">
-              {t('researchGroup.detail.experimentsDeferred')}
+              {t('researchGroup.detail.projectsListPending')}
             </p>
           </section>
 

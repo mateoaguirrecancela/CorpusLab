@@ -1,0 +1,21 @@
+{
+  "project": {
+    "create": {
+      "title": "New Project",
+      "pageTitle": "Create Project",
+      "pageDescription": "Define the project's basic setup with name and description.",
+      "groupLabel": "Research group",
+      "nameLabel": "Name",
+      "namePlaceholder": "Project name",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Briefly describe the project objective...",
+      "loadingGroups": "Loading available groups...",
+      "noGroups": "You do not have owner or admin permissions in any group to create projects.",
+      "submit": "Create Project",
+      "success": "Project created successfully."
+    },
+    "errors": {
+      "createFailed": "Could not create the project. Please try again."
+    }
+  }
+}

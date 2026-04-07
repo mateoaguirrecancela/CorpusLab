@@ -25,6 +25,7 @@ import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
+import es.udc.fic.corpuslab.modules.project.repositories.ProjectRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupDetailDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupInvitationDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto;
@@ -65,6 +66,9 @@ class ResearchGroupServiceImplTest {
         private ResearchGroupInvitationRepository invitationRepository;
 
         @Mock
+        private ProjectRepository projectRepository;
+
+        @Mock
         private EmailService emailService;
 
         @Mock
@@ -79,6 +83,7 @@ class ResearchGroupServiceImplTest {
                                 researchGroupRepository,
                                 memberRepository,
                                 invitationRepository,
+                                projectRepository,
                                 emailService,
                                 notificationService,
                                 "http://localhost:5173");
