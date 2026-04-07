@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { invalidateQueryKeys } from '@/lib/queryInvalidation';
-import { createProject } from '@/modules/project/services/projectService';
+import { createProject, uploadProjectDataset } from '@/modules/project/services/projectService';
 import {
   RESEARCH_GROUPS_QUERY_KEY,
   researchGroupDetailQueryKey,
@@ -18,6 +18,27 @@ export function useCreateProjectMutation() {
   return useMutation({
     mutationFn: ({ groupId, payload }: CreateProjectMutationInput) =>
       createProject(groupId, payload),
+    onSuccess: (_, variables) => {
+      invalidateQueryKeys(queryClient, [
+        researchGroupDetailQueryKey(variables.groupId),
+        RESEARCH_GROUPS_QUERY_KEY,
+      ]);
+    },
+  });
+}
+
+type UploadDatasetMutationInput = {
+  groupId: number;
+  projectId: number;
+  files: File[];
+};
+
+export function useUploadProjectDatasetMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ groupId, projectId, files }: UploadDatasetMutationInput) =>
+      uploadProjectDataset(groupId, projectId, files),
     onSuccess: (_, variables) => {
       invalidateQueryKeys(queryClient, [
         researchGroupDetailQueryKey(variables.groupId),
