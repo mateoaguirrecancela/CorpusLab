@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -19,11 +21,18 @@ import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
 import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.DatasetItemDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupLabelDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupRequestDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupResponseDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSummaryDto;
 import es.udc.fic.corpuslab.modules.project.dtos.UploadProjectDatasetResponseDto;
 import es.udc.fic.corpuslab.modules.project.entities.DatasetItem;
+import es.udc.fic.corpuslab.modules.project.entities.Guideline;
+import es.udc.fic.corpuslab.modules.project.entities.Label;
 import es.udc.fic.corpuslab.modules.project.entities.Project;
+import es.udc.fic.corpuslab.modules.project.enums.ProjectType;
 import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectDatasetException;
+import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectSetupException;
 import es.udc.fic.corpuslab.modules.project.exceptions.ProjectNotFoundException;
 import es.udc.fic.corpuslab.modules.project.repositories.DatasetItemRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.ProjectRepository;
@@ -36,6 +45,8 @@ import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupRepo
 
 @Service
 public class ProjectServiceImpl implements ProjectService {
+
+    private static final String NOT_MEMBER_ERROR = "User is not a member of this research group";
 
     private final UserRepository userRepository;
     private final ResearchGroupRepository researchGroupRepository;
@@ -70,7 +81,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         ResearchGroupMember requesterMembership = researchGroupMemberRepository
                 .findActiveMemberByGroupIdAndUserId(researchGroupId, user.getId())
-                .orElseThrow(() -> new AccessDeniedException("User is not a member of this research group"));
+                .orElseThrow(() -> new AccessDeniedException(NOT_MEMBER_ERROR));
 
         if (requesterMembership.getRole() != ResearchGroupMemberRole.OWNER
                 && requesterMembership.getRole() != ResearchGroupMemberRole.ADMIN) {
@@ -109,7 +120,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         ResearchGroupMember requesterMembership = researchGroupMemberRepository
                 .findActiveMemberByGroupIdAndUserId(researchGroupId, user.getId())
-                .orElseThrow(() -> new AccessDeniedException("User is not a member of this research group"));
+                .orElseThrow(() -> new AccessDeniedException(NOT_MEMBER_ERROR));
 
         if (requesterMembership.getRole() != ResearchGroupMemberRole.OWNER
                 && requesterMembership.getRole() != ResearchGroupMemberRole.ADMIN) {
@@ -154,6 +165,137 @@ public class ProjectServiceImpl implements ProjectService {
         List<DatasetItemDto> itemDtos = savedItems.stream().map(this::toDatasetItemDto).toList();
 
         return new UploadProjectDatasetResponseDto(projectId, itemDtos.size(), itemDtos);
+    }
+
+    @Override
+    @Transactional
+    public ProjectSetupResponseDto configureProjectSetup(
+            String authenticatedEmail,
+            Long researchGroupId,
+            Long projectId,
+            ProjectSetupRequestDto request) {
+        User user = findUserByEmail(authenticatedEmail);
+
+        Project project = projectRepository.findByIdAndResearchGroupId(projectId, researchGroupId)
+                .orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        ResearchGroupMember requesterMembership = researchGroupMemberRepository
+                .findActiveMemberByGroupIdAndUserId(researchGroupId, user.getId())
+                .orElseThrow(() -> new AccessDeniedException(NOT_MEMBER_ERROR));
+
+        if (requesterMembership.getRole() != ResearchGroupMemberRole.OWNER
+                && requesterMembership.getRole() != ResearchGroupMemberRole.ADMIN) {
+            throw new AccessDeniedException("Only owners or admins can configure project setup");
+        }
+
+        List<ProjectSetupLabelDto> normalizedLabels = normalizeLabels(request.labels());
+        validateSetupRequest(request.projectType(), normalizedLabels, request.guidelineText(),
+                request.guidelinePdfBase64());
+
+        project.setProjectType(request.projectType());
+        project.setSetupCompleted(true);
+
+        project.getLabels().clear();
+
+        for (ProjectSetupLabelDto labelInput : normalizedLabels) {
+            Label label = new Label();
+            label.setProject(project);
+            label.setName(labelInput.name());
+            label.setColor(labelInput.color());
+            project.getLabels().add(label);
+        }
+
+        Guideline guideline = project.getGuideline();
+        if (guideline == null) {
+            guideline = new Guideline();
+            guideline.setProject(project);
+            project.setGuideline(guideline);
+        }
+
+        String guidelineText = trimToNull(request.guidelineText());
+        String guidelinePdfBase64 = trimToNull(request.guidelinePdfBase64());
+        guideline.setContent(guidelineText);
+        guideline.setFileUrl(guidelinePdfBase64);
+
+        projectRepository.save(project);
+
+        return new ProjectSetupResponseDto(
+                project.getId(),
+                project.getProjectType(),
+                normalizedLabels,
+                guidelineText,
+                guidelinePdfBase64,
+                project.isSetupCompleted());
+    }
+
+    private List<ProjectSetupLabelDto> normalizeLabels(List<ProjectSetupLabelDto> labels) {
+        if (labels == null || labels.isEmpty()) {
+            return List.of();
+        }
+
+        List<ProjectSetupLabelDto> normalizedLabels = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+
+        for (ProjectSetupLabelDto label : labels) {
+            if (label != null) {
+                String normalizedName = trimToNull(label.name());
+                if (normalizedName != null) {
+                    String normalizedColor = normalizeHexColor(label.color());
+
+                    String key = normalizedName.toLowerCase();
+                    if (!seen.add(key)) {
+                        throw new InvalidProjectSetupException("Duplicated labels are not allowed");
+                    }
+
+                    normalizedLabels.add(new ProjectSetupLabelDto(normalizedName, normalizedColor));
+                }
+            }
+        }
+
+        return normalizedLabels;
+    }
+
+    private void validateSetupRequest(
+            ProjectType projectType,
+            List<ProjectSetupLabelDto> labels,
+            String guidelineText,
+            String guidelinePdfBase64) {
+        if (projectType == ProjectType.SEQ2SEQ && !labels.isEmpty()) {
+            throw new InvalidProjectSetupException("Seq2Seq projects do not allow labels");
+        }
+
+        if (projectType != ProjectType.SEQ2SEQ && labels.isEmpty()) {
+            throw new InvalidProjectSetupException("At least one label is required for this project type");
+        }
+
+        if (projectType == ProjectType.NER && labels.stream().anyMatch(label -> label.color() == null)) {
+            throw new InvalidProjectSetupException("NER labels require a color");
+        }
+
+        String normalizedGuidelineText = trimToNull(guidelineText);
+        String normalizedGuidelinePdf = trimToNull(guidelinePdfBase64);
+
+        if (normalizedGuidelineText == null && normalizedGuidelinePdf == null) {
+            throw new InvalidProjectSetupException("Provide either a guideline text or a guideline PDF");
+        }
+
+        if (normalizedGuidelineText != null && normalizedGuidelinePdf != null) {
+            throw new InvalidProjectSetupException("Guideline text and guideline PDF are mutually exclusive");
+        }
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String normalizeHexColor(String value) {
+        String trimmed = trimToNull(value);
+        return trimmed == null ? null : trimmed.toUpperCase();
     }
 
     private User findUserByEmail(String authenticatedEmail) {
