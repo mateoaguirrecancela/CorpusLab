@@ -52,3 +52,7 @@ export type ProjectSetupResponse = {
   guidelinePdfBase64: string | null;
   setupCompleted: boolean;
 };
+
+export type AssignProjectParticipantsPayload = {
+  participantUserIds: number[];
+};

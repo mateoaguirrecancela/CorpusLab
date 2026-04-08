@@ -62,12 +62,18 @@
       "guidelinePdfLabel": "Attach guideline PDF",
       "guidelinePdfHint": "Upload a single PDF file with the project guideline.",
       "guidelinePdfReadError": "Could not read the guideline PDF.",
-      "savingSetup": "Saving setup..."
+      "savingSetup": "Saving setup...",
+      "assignmentTitle": "Assign investigators",
+      "assignmentDescription": "Select which research team members will participate in this project. The creator is included automatically.",
+      "loadingMembers": "Loading team investigators...",
+      "noAssignableMembers": "There are no additional investigators available to assign.",
+      "assigningParticipants": "Assigning investigators..."
     },
     "errors": {
       "createFailed": "Could not create the project. Please try again.",
       "datasetUploadFailed": "Could not upload the dataset. Please try again.",
-      "setupFailed": "Could not save the project setup. Please try again."
+      "setupFailed": "Could not save the project setup. Please try again.",
+      "assignmentFailed": "Could not assign investigators. Please try again."
     }
   }
 }
