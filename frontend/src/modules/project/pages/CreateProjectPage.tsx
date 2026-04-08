@@ -8,6 +8,7 @@ import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { PageContainer } from '@/components/common/PageContainer';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { ProjectAssignmentStep } from '@/modules/project/components/ProjectAssignmentStep';
 import { ProjectSetupStep } from '@/modules/project/components/ProjectSetupStep';
 import { UploadDropzone } from '@/modules/project/components/UploadDropzone';
 import {
@@ -58,7 +59,7 @@ export default function CreateProjectPage() {
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
   const [createdProjectId, setCreatedProjectId] = useState<number | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
@@ -295,11 +296,30 @@ export default function CreateProjectPage() {
         </div>
       </div>
     );
-  } else if (createdProjectId !== null && Number.isFinite(numericGroupId) && numericGroupId > 0) {
+  } else if (
+    currentStep === 3 &&
+    createdProjectId !== null &&
+    Number.isFinite(numericGroupId) &&
+    numericGroupId > 0
+  ) {
     mainStepContent = (
       <ProjectSetupStep
         groupId={numericGroupId}
         onBack={() => setCurrentStep(2)}
+        onCompleted={() => setCurrentStep(4)}
+        projectId={createdProjectId}
+      />
+    );
+  } else if (
+    currentStep === 4 &&
+    createdProjectId !== null &&
+    Number.isFinite(numericGroupId) &&
+    numericGroupId > 0
+  ) {
+    mainStepContent = (
+      <ProjectAssignmentStep
+        groupId={numericGroupId}
+        onBack={() => setCurrentStep(3)}
         onCompleted={() => navigate(`/home/research-groups/${numericGroupId}`)}
         projectId={createdProjectId}
       />

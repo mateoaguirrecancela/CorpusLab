@@ -1,15 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { invalidateQueryKeys } from '@/lib/queryInvalidation';
 import {
+  assignProjectParticipants,
   configureProjectSetup,
   createProject,
   uploadProjectDataset,
 } from '@/modules/project/services/projectService';
+import { type CreateProjectPayload } from '@/modules/project/types/project';
 import {
   RESEARCH_GROUPS_QUERY_KEY,
   researchGroupDetailQueryKey,
 } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
-import { type CreateProjectPayload } from '@/modules/project/types/project';
 
 type CreateProjectMutationInput = {
   groupId: number;
@@ -73,6 +74,27 @@ export function useConfigureProjectSetupMutation() {
   return useMutation({
     mutationFn: ({ groupId, projectId, payload }: ConfigureProjectSetupMutationInput) =>
       configureProjectSetup(groupId, projectId, payload),
+    onSuccess: (_, variables) => {
+      invalidateQueryKeys(queryClient, [
+        researchGroupDetailQueryKey(variables.groupId),
+        RESEARCH_GROUPS_QUERY_KEY,
+      ]);
+    },
+  });
+}
+
+type AssignParticipantsMutationInput = {
+  groupId: number;
+  projectId: number;
+  participantUserIds: number[];
+};
+
+export function useAssignProjectParticipantsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ groupId, projectId, participantUserIds }: AssignParticipantsMutationInput) =>
+      assignProjectParticipants(groupId, projectId, { participantUserIds }),
     onSuccess: (_, variables) => {
       invalidateQueryKeys(queryClient, [
         researchGroupDetailQueryKey(variables.groupId),

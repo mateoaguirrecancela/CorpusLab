@@ -1,6 +1,7 @@
 import { api } from '@/lib/api';
 import i18n from '@/lib/i18n';
 import {
+  type AssignProjectParticipantsPayload,
   type ConfigureProjectSetupPayload,
   type CreateProjectPayload,
   type ProjectSetupResponse,
@@ -87,4 +88,16 @@ export async function configureProjectSetup(
 
 export function getProjectSetupErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, 'project.errors.setupFailed');
+}
+
+export async function assignProjectParticipants(
+  groupId: number,
+  projectId: number,
+  payload: AssignProjectParticipantsPayload,
+): Promise<void> {
+  await api.post(`/research-groups/${groupId}/projects/${projectId}/participants`, payload);
+}
+
+export function getAssignParticipantsErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'project.errors.assignmentFailed');
 }

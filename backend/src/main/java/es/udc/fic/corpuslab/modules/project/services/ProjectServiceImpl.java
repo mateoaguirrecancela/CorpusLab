@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,12 +31,17 @@ import es.udc.fic.corpuslab.modules.project.entities.DatasetItem;
 import es.udc.fic.corpuslab.modules.project.entities.Guideline;
 import es.udc.fic.corpuslab.modules.project.entities.Label;
 import es.udc.fic.corpuslab.modules.project.entities.Project;
+import es.udc.fic.corpuslab.modules.project.entities.ProjectParticipant;
+import es.udc.fic.corpuslab.modules.project.enums.ProjectParticipantRole;
 import es.udc.fic.corpuslab.modules.project.enums.ProjectType;
 import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectDatasetException;
+import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectParticipantsException;
 import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectSetupException;
 import es.udc.fic.corpuslab.modules.project.exceptions.ProjectNotFoundException;
 import es.udc.fic.corpuslab.modules.project.repositories.DatasetItemRepository;
+import es.udc.fic.corpuslab.modules.project.repositories.ProjectParticipantRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.ProjectRepository;
+import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroup;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroupMember;
 import es.udc.fic.corpuslab.modules.researchgroup.enums.ResearchGroupMemberRole;
@@ -52,6 +58,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final ResearchGroupRepository researchGroupRepository;
     private final ResearchGroupMemberRepository researchGroupMemberRepository;
     private final ProjectRepository projectRepository;
+    private final ProjectParticipantRepository projectParticipantRepository;
     private final DatasetItemRepository datasetItemRepository;
 
     public ProjectServiceImpl(
@@ -59,11 +66,13 @@ public class ProjectServiceImpl implements ProjectService {
             ResearchGroupRepository researchGroupRepository,
             ResearchGroupMemberRepository researchGroupMemberRepository,
             ProjectRepository projectRepository,
+            ProjectParticipantRepository projectParticipantRepository,
             DatasetItemRepository datasetItemRepository) {
         this.userRepository = userRepository;
         this.researchGroupRepository = researchGroupRepository;
         this.researchGroupMemberRepository = researchGroupMemberRepository;
         this.projectRepository = projectRepository;
+        this.projectParticipantRepository = projectParticipantRepository;
         this.datasetItemRepository = datasetItemRepository;
     }
 
@@ -97,6 +106,12 @@ public class ProjectServiceImpl implements ProjectService {
                         : null);
 
         project = projectRepository.save(project);
+
+        ProjectParticipant creatorParticipant = new ProjectParticipant();
+        creatorParticipant.setProject(project);
+        creatorParticipant.setUser(user);
+        creatorParticipant.setRole(ProjectParticipantRole.CREATOR);
+        projectParticipantRepository.save(creatorParticipant);
 
         return new ProjectSummaryDto(
                 project.getId(),
@@ -165,6 +180,73 @@ public class ProjectServiceImpl implements ProjectService {
         List<DatasetItemDto> itemDtos = savedItems.stream().map(this::toDatasetItemDto).toList();
 
         return new UploadProjectDatasetResponseDto(projectId, itemDtos.size(), itemDtos);
+    }
+
+    @Override
+    @Transactional
+    public void assignParticipants(
+            String authenticatedEmail,
+            Long researchGroupId,
+            Long projectId,
+            List<Long> participantUserIds) {
+        User requester = findUserByEmail(authenticatedEmail);
+
+        Project project = projectRepository.findByIdAndResearchGroupId(projectId, researchGroupId)
+                .orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        ResearchGroupMember requesterMembership = researchGroupMemberRepository
+                .findActiveMemberByGroupIdAndUserId(researchGroupId, requester.getId())
+                .orElseThrow(() -> new AccessDeniedException(NOT_MEMBER_ERROR));
+
+        if (requesterMembership.getRole() != ResearchGroupMemberRole.OWNER
+                && requesterMembership.getRole() != ResearchGroupMemberRole.ADMIN) {
+            throw new AccessDeniedException("Only owners or admins can assign investigators");
+        }
+
+        List<Long> requestedIds = participantUserIds == null
+                ? List.of()
+                : participantUserIds.stream()
+                        .filter(id -> id != null && id > 0)
+                        .distinct()
+                        .toList();
+
+        Set<Long> activeMemberIds = new HashSet<>(
+                researchGroupMemberRepository.findMembersByGroupId(researchGroupId)
+                        .stream()
+                        .map(ResearchGroupMemberDto::userId)
+                        .toList());
+
+        boolean hasIdsOutsideGroup = requestedIds.stream().anyMatch(id -> !activeMemberIds.contains(id));
+        if (hasIdsOutsideGroup) {
+            throw new InvalidProjectParticipantsException(
+                    "All selected investigators must be active members of the research group");
+        }
+
+        Long requesterId = requester.getId();
+        List<Long> filteredIds = requestedIds.stream()
+                .filter(id -> !id.equals(requesterId))
+                .toList();
+
+        projectParticipantRepository.deleteByProjectIdAndRole(projectId, ProjectParticipantRole.PARTICIPANT);
+
+        if (filteredIds.isEmpty()) {
+            return;
+        }
+
+        List<User> usersToAssign = userRepository.findAllById(filteredIds);
+        if (usersToAssign.size() != filteredIds.size()) {
+            throw new InvalidProjectParticipantsException("Some selected investigators do not exist");
+        }
+
+        List<ProjectParticipant> participants = usersToAssign.stream().map(user -> {
+            ProjectParticipant participant = new ProjectParticipant();
+            participant.setProject(project);
+            participant.setUser(user);
+            participant.setRole(ProjectParticipantRole.PARTICIPANT);
+            return participant;
+        }).toList();
+
+        projectParticipantRepository.saveAll(participants);
     }
 
     @Override

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import es.udc.fic.corpuslab.modules.project.dtos.AssignProjectParticipantsRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupResponseDto;
@@ -60,5 +61,19 @@ public class ProjectController {
             @PathVariable Long projectId,
             @Valid @RequestBody ProjectSetupRequestDto request) {
         return projectService.configureProjectSetup(authentication.getName(), groupId, projectId, request);
+    }
+
+    @PostMapping(path = "/{projectId}/participants")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void assignParticipants(
+            Authentication authentication,
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("projectId") Long projectId,
+            @RequestBody AssignProjectParticipantsRequestDto request) {
+        projectService.assignParticipants(
+                authentication.getName(),
+                groupId,
+                projectId,
+                request.participantUserIds());
     }
 }

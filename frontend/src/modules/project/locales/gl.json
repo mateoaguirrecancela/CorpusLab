@@ -62,12 +62,18 @@
       "guidelinePdfLabel": "Adxuntar guideline en PDF",
       "guidelinePdfHint": "Sube un único arquivo PDF co guideline do proxecto.",
       "guidelinePdfReadError": "Non se puido ler o PDF do guideline.",
-      "savingSetup": "Gardando configuración..."
+      "savingSetup": "Gardando configuración...",
+      "assignmentTitle": "Asignar investigadores",
+      "assignmentDescription": "Selecciona que investigadores do equipo participarán no proxecto. O creador engádese automaticamente.",
+      "loadingMembers": "Cargando investigadores do equipo...",
+      "noAssignableMembers": "Non hai investigadores adicionais dispoñibles para asignar.",
+      "assigningParticipants": "Asignando investigadores..."
     },
     "errors": {
       "createFailed": "Non se puido crear o proxecto. Téntao de novo.",
       "datasetUploadFailed": "Non se puido subir o dataset. Téntao de novo.",
-      "setupFailed": "Non se puido gardar a configuración do proxecto. Téntao de novo."
+      "setupFailed": "Non se puido gardar a configuración do proxecto. Téntao de novo.",
+      "assignmentFailed": "Non se puideron asignar os investigadores. Téntao de novo."
     }
   }
 }
