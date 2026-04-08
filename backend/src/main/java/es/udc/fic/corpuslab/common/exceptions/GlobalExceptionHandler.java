@@ -16,6 +16,7 @@ import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetEmailDeliveryEx
 import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetTokenNotFoundException;
 import es.udc.fic.corpuslab.modules.notification.exceptions.NotificationNotFoundException;
 import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectDatasetException;
+import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectParticipantsException;
 import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectSetupException;
 import es.udc.fic.corpuslab.modules.project.exceptions.ProjectNotFoundException;
 import es.udc.fic.corpuslab.modules.researchgroup.exceptions.InvalidResearchGroupInvitationRoleException;
@@ -200,6 +201,15 @@ public class GlobalExceptionHandler {
                 return buildErrorResponse(
                                 HttpStatus.BAD_REQUEST,
                                 "project.setup.error.invalid",
+                                new Object[] { ex.getMessage() });
+        }
+
+        @ExceptionHandler(InvalidProjectParticipantsException.class)
+        public ResponseEntity<ApiErrorResponse> handleInvalidProjectParticipants(
+                        InvalidProjectParticipantsException ex) {
+                return buildErrorResponse(
+                                HttpStatus.BAD_REQUEST,
+                                "project.participants.error.invalid",
                                 new Object[] { ex.getMessage() });
         }
 

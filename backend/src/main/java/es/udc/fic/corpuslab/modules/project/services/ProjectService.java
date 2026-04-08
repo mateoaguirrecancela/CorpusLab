@@ -24,4 +24,10 @@ public interface ProjectService {
             Long researchGroupId,
             Long projectId,
             ProjectSetupRequestDto request);
+
+    void assignParticipants(
+            String authenticatedEmail,
+            Long researchGroupId,
+            Long projectId,
+            List<Long> participantUserIds);
 }
