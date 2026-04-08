@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { FileUp, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
@@ -8,6 +8,8 @@ import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { PageContainer } from '@/components/common/PageContainer';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { ProjectSetupStep } from '@/modules/project/components/ProjectSetupStep';
+import { UploadDropzone } from '@/modules/project/components/UploadDropzone';
 import {
   useCreateProjectMutation,
   useUploadProjectDatasetMutation,
@@ -28,6 +30,7 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export default function CreateProjectPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -55,7 +58,7 @@ export default function CreateProjectPage() {
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [createdProjectId, setCreatedProjectId] = useState<number | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
@@ -86,6 +89,7 @@ export default function CreateProjectPage() {
     createdProjectId !== null &&
     selectedFiles.length > 0 &&
     !isUploadingDataset;
+
   const totalSteps = 4;
   const progressPercentage = ((currentStep - 1) / (totalSteps - 1)) * 100;
 
@@ -137,7 +141,7 @@ export default function CreateProjectPage() {
         files: selectedFiles,
       });
 
-      navigate(`/home/research-groups/${numericGroupId}`);
+      setCurrentStep(3);
     } catch (error) {
       toast.error(getUploadDatasetErrorMessage(error));
     }
@@ -220,7 +224,7 @@ export default function CreateProjectPage() {
         </div>
       </div>
     );
-  } else {
+  } else if (currentStep === 2) {
     mainStepContent = (
       <div className="mt-8 space-y-5">
         <div className="rounded-md border border-border bg-background p-4">
@@ -232,22 +236,13 @@ export default function CreateProjectPage() {
           </p>
         </div>
 
-        <label className="block cursor-pointer rounded-md border border-dashed border-border bg-background p-6 text-center hover:bg-accent/30">
-          <FileUp className="mx-auto size-8 text-primary" />
-          <p className="mt-3 text-sm font-semibold text-primary">
-            {t('project.create.selectFiles')}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {t('project.create.selectFilesHint')}
-          </p>
-          <input
-            accept=".pdf,.txt,.json,.csv,image/*"
-            className="hidden"
-            multiple
-            onChange={(event) => handleFilesSelected(event.target.files)}
-            type="file"
-          />
-        </label>
+        <UploadDropzone
+          accept=".pdf,.txt,.json,.csv,image/*"
+          description={t('project.create.selectFilesHint')}
+          multiple
+          onFilesChange={handleFilesSelected}
+          title={t('project.create.selectFiles')}
+        />
 
         {selectedFiles.length > 0 && (
           <div className="space-y-2 rounded-md border border-border bg-background p-3">
@@ -300,6 +295,17 @@ export default function CreateProjectPage() {
         </div>
       </div>
     );
+  } else if (createdProjectId !== null && Number.isFinite(numericGroupId) && numericGroupId > 0) {
+    mainStepContent = (
+      <ProjectSetupStep
+        groupId={numericGroupId}
+        onBack={() => setCurrentStep(2)}
+        onCompleted={() => navigate(`/home/research-groups/${numericGroupId}`)}
+        projectId={createdProjectId}
+      />
+    );
+  } else {
+    mainStepContent = null;
   }
 
   return (

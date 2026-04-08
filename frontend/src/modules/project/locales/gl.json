@@ -29,11 +29,45 @@
       "removeFile": "Eliminar arquivo",
       "backToBasicConfig": "Volver á configuración básica",
       "uploadingDataset": "Subindo dataset...",
-      "finishCreateProject": "Finalizar creación"
+      "finishCreateProject": "Finalizar creación",
+      "taskDesignTitle": "Crear etiquetas e guideline",
+      "taskDesignDescription": "Define o tipo de proxecto, as etiquetas necesarias e o guideline para o equipo.",
+      "projectTypeLabel": "Tipo de proxecto",
+      "projectTypes": {
+        "textClassificationSimple": "Clasificación de Texto Simple",
+        "textClassificationMultiLabel": "Clasificación de Texto Multietiqueta",
+        "ner": "Extracción de Entidades (NER)",
+        "seq2seq": "Xeración e Mapeo Sequence-to-Sequence (Seq2Seq)"
+      },
+      "labelsSectionTitle": "Etiquetas",
+      "labelsSectionDescription": "Engade as etiquetas que poderán asignarse no proxecto.",
+      "labelsSectionDescriptionNer": "Engade etiquetas de entidade e asigna unha cor a cada unha.",
+      "labelsEmptyState": "Aínda non hai etiquetas. Engade a primeira para continuar.",
+      "addLabel": "Engadir etiqueta",
+      "editLabel": "Editar etiqueta",
+      "removeLabel": "Eliminar etiqueta",
+      "labelName": "Nome da etiqueta",
+      "labelNamePlaceholder": "Ex: Persoa, Organización, Positivo...",
+      "labelColor": "Cor",
+      "createLabelTitle": "Crear etiqueta",
+      "editLabelTitle": "Editar etiqueta",
+      "saveLabel": "Gardar etiqueta",
+      "labelsDuplicateError": "Xa existe unha etiqueta con ese nome.",
+      "guidelineSectionTitle": "Guideline",
+      "guidelineSectionDescription": "Escribe un guideline ou sobe un PDF. Só se pode usar unha opción.",
+      "guidelineAsText": "Texto",
+      "guidelineAsPdf": "PDF",
+      "guidelineTextLabel": "Guideline en texto",
+      "guidelineTextPlaceholder": "Define criterios, exemplos e regras para anotar correctamente.",
+      "guidelinePdfLabel": "Adxuntar guideline en PDF",
+      "guidelinePdfHint": "Sube un único arquivo PDF co guideline do proxecto.",
+      "guidelinePdfReadError": "Non se puido ler o PDF do guideline.",
+      "savingSetup": "Gardando configuración..."
     },
     "errors": {
       "createFailed": "Non se puido crear o proxecto. Téntao de novo.",
-      "datasetUploadFailed": "Non se puido subir o dataset. Téntao de novo."
+      "datasetUploadFailed": "Non se puido subir o dataset. Téntao de novo.",
+      "setupFailed": "Non se puido gardar a configuración do proxecto. Téntao de novo."
     }
   }
 }

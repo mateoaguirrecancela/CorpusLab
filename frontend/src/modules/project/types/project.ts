@@ -25,3 +25,30 @@ export type UploadDatasetResponse = {
   uploadedItems: number;
   items: DatasetItem[];
 };
+
+export type ProjectType =
+  | 'TEXT_CLASSIFICATION_SIMPLE'
+  | 'TEXT_CLASSIFICATION_MULTILABEL'
+  | 'NER'
+  | 'SEQ2SEQ';
+
+export type ProjectSetupLabel = {
+  name: string;
+  color: string | null;
+};
+
+export type ConfigureProjectSetupPayload = {
+  projectType: ProjectType;
+  labels: ProjectSetupLabel[];
+  guidelineText?: string;
+  guidelinePdfBase64?: string;
+};
+
+export type ProjectSetupResponse = {
+  projectId: number;
+  projectType: ProjectType;
+  labels: ProjectSetupLabel[];
+  guidelineText: string | null;
+  guidelinePdfBase64: string | null;
+  setupCompleted: boolean;
+};
