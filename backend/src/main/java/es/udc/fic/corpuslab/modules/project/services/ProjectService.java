@@ -1,6 +1,8 @@
 package es.udc.fic.corpuslab.modules.project.services;
 
 import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupRequestDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupResponseDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSummaryDto;
 import es.udc.fic.corpuslab.modules.project.dtos.UploadProjectDatasetResponseDto;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,4 +18,10 @@ public interface ProjectService {
             Long researchGroupId,
             Long projectId,
             List<MultipartFile> files);
+
+    ProjectSetupResponseDto configureProjectSetup(
+            String authenticatedEmail,
+            Long researchGroupId,
+            Long projectId,
+            ProjectSetupRequestDto request);
 }
