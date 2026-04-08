@@ -1,0 +1,423 @@
+import { useEffect, useState } from 'react';
+import { FileText, FileUp, Plus, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { FormFieldControl } from '@/components/common/FormFieldControl';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { Textarea } from '@/components/ui/textarea';
+import { LabelEditorDialog } from '@/modules/project/components/LabelEditorDialog';
+import { LabelRow } from '@/modules/project/components/LabelRow';
+import { UploadDropzone } from '@/modules/project/components/UploadDropzone';
+import { LABEL_COLOR_PALETTE } from '@/modules/project/constants/labelColorPalette';
+import { useConfigureProjectSetupMutation } from '@/modules/project/hooks/useProjectQueries';
+import { getProjectSetupErrorMessage } from '@/modules/project/services/projectService';
+import { type ProjectSetupLabel, type ProjectType } from '@/modules/project/types/project';
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+type ProjectSetupStepProps = Readonly<{
+  groupId: number;
+  onBack: () => void;
+  onCompleted: () => void;
+  projectId: number;
+}>;
+
+export function ProjectSetupStep({
+  groupId,
+  onBack,
+  onCompleted,
+  projectId,
+}: ProjectSetupStepProps) {
+  const { t } = useTranslation();
+  const configureSetupMutation = useConfigureProjectSetupMutation();
+
+  const [projectType, setProjectType] = useState<ProjectType>('TEXT_CLASSIFICATION_SIMPLE');
+  const [labels, setLabels] = useState<ProjectSetupLabel[]>([]);
+  const [guidelineMode, setGuidelineMode] = useState<'TEXT' | 'PDF'>('TEXT');
+  const [guidelineText, setGuidelineText] = useState('');
+  const [guidelinePdfFile, setGuidelinePdfFile] = useState<File | null>(null);
+  const [isLabelEditorOpen, setIsLabelEditorOpen] = useState(false);
+  const [labelDialogMode, setLabelDialogMode] = useState<'create' | 'edit'>('create');
+  const [editingLabelIndex, setEditingLabelIndex] = useState<number | null>(null);
+  const [draftLabelName, setDraftLabelName] = useState('');
+  const [draftLabelColor, setDraftLabelColor] = useState(LABEL_COLOR_PALETTE[0]);
+
+  const isSavingSetup = configureSetupMutation.isPending;
+  const isNerProjectType = projectType === 'NER';
+  const requiresLabels = projectType !== 'SEQ2SEQ';
+
+  useEffect(() => {
+    if (projectType === 'SEQ2SEQ') {
+      setLabels([]);
+      return;
+    }
+
+    if (projectType === 'NER') {
+      setLabels((prev) =>
+        prev.map((label) => ({
+          ...label,
+          color: label.color ?? LABEL_COLOR_PALETTE[0],
+        })),
+      );
+      return;
+    }
+
+    setLabels((prev) => prev.map((label) => ({ ...label, color: null })));
+  }, [projectType]);
+
+  const hasValidGuideline =
+    guidelineMode === 'TEXT' ? guidelineText.trim().length > 0 : guidelinePdfFile !== null;
+  const canSaveSetup =
+    hasValidGuideline && (!requiresLabels || labels.length > 0) && !isSavingSetup;
+
+  const handleGuidelinePdfSelected = (files: FileList | null) => {
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    setGuidelinePdfFile(files[0]);
+    setGuidelineText('');
+  };
+
+  const openCreateLabelDialog = () => {
+    setLabelDialogMode('create');
+    setEditingLabelIndex(null);
+    setDraftLabelName('');
+    setDraftLabelColor(LABEL_COLOR_PALETTE[0]);
+    setIsLabelEditorOpen(true);
+  };
+
+  const openEditLabelDialog = (index: number) => {
+    const target = labels[index];
+    if (!target) {
+      return;
+    }
+
+    setLabelDialogMode('edit');
+    setEditingLabelIndex(index);
+    setDraftLabelName(target.name);
+    setDraftLabelColor(target.color ?? LABEL_COLOR_PALETTE[0]);
+    setIsLabelEditorOpen(true);
+  };
+
+  const removeLabelAt = (index: number) => {
+    setLabels((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const saveLabelFromDialog = () => {
+    const normalizedName = draftLabelName.trim();
+    if (normalizedName.length === 0) {
+      return;
+    }
+
+    const duplicated = labels.some((label, index) => {
+      if (labelDialogMode === 'edit' && editingLabelIndex === index) {
+        return false;
+      }
+      return label.name.toLowerCase() === normalizedName.toLowerCase();
+    });
+
+    if (duplicated) {
+      toast.error(t('project.create.labelsDuplicateError'));
+      return;
+    }
+
+    const candidate: ProjectSetupLabel = {
+      name: normalizedName,
+      color: isNerProjectType ? draftLabelColor : null,
+    };
+
+    if (labelDialogMode === 'create') {
+      setLabels((prev) => [...prev, candidate]);
+    } else if (editingLabelIndex !== null) {
+      setLabels((prev) =>
+        prev.map((label, index) => (index === editingLabelIndex ? candidate : label)),
+      );
+    }
+
+    setIsLabelEditorOpen(false);
+  };
+
+  const readFileAsBase64 = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        const result = reader.result;
+        if (typeof result !== 'string') {
+          reject(new Error('Invalid file content'));
+          return;
+        }
+
+        const commaIndex = result.indexOf(',');
+        resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
+      };
+
+      reader.onerror = () => reject(new Error('Could not read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleSaveProjectSetup = async () => {
+    if (!canSaveSetup) {
+      return;
+    }
+
+    let guidelinePdfBase64: string | undefined;
+
+    if (guidelineMode === 'PDF' && guidelinePdfFile) {
+      try {
+        guidelinePdfBase64 = await readFileAsBase64(guidelinePdfFile);
+      } catch {
+        toast.error(t('project.create.guidelinePdfReadError'));
+        return;
+      }
+    }
+
+    try {
+      await configureSetupMutation.mutateAsync({
+        groupId,
+        projectId,
+        payload: {
+          projectType,
+          labels,
+          guidelineText: guidelineMode === 'TEXT' ? guidelineText.trim() : undefined,
+          guidelinePdfBase64,
+        },
+      });
+
+      onCompleted();
+    } catch (error) {
+      toast.error(getProjectSetupErrorMessage(error));
+    }
+  };
+
+  return (
+    <div className="mt-8 space-y-6">
+      <div className="rounded-md border border-border bg-background p-4">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          {t('project.create.taskDesignTitle')}
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t('project.create.taskDesignDescription')}
+        </p>
+      </div>
+
+      <FormFieldControl
+        controlType="select"
+        id="create-project-type"
+        label={t('project.create.projectTypeLabel')}
+        onValueChange={(value) => setProjectType(value as ProjectType)}
+        options={[
+          {
+            label: t('project.create.projectTypes.textClassificationSimple'),
+            value: 'TEXT_CLASSIFICATION_SIMPLE',
+          },
+          {
+            label: t('project.create.projectTypes.textClassificationMultiLabel'),
+            value: 'TEXT_CLASSIFICATION_MULTILABEL',
+          },
+          {
+            label: t('project.create.projectTypes.ner'),
+            value: 'NER',
+          },
+          {
+            label: t('project.create.projectTypes.seq2seq'),
+            value: 'SEQ2SEQ',
+          },
+        ]}
+        required
+        selectProps={{ required: true }}
+        value={projectType}
+      />
+
+      {requiresLabels && (
+        <section className="rounded-xl border border-border bg-surface-base p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                {t('project.create.labelsSectionTitle')}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {isNerProjectType
+                  ? t('project.create.labelsSectionDescriptionNer')
+                  : t('project.create.labelsSectionDescription')}
+              </p>
+            </div>
+
+            <Button
+              className="h-9 rounded-md bg-primary px-3 text-sm font-semibold text-white hover:bg-primary-strong"
+              onClick={openCreateLabelDialog}
+              type="button"
+            >
+              <Plus className="mr-1 size-4" />
+              {t('project.create.addLabel')}
+            </Button>
+          </div>
+
+          <div className="mt-4">
+            {labels.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border bg-background px-4 py-5 text-sm text-muted-foreground">
+                {t('project.create.labelsEmptyState')}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {labels.map((label, index) => (
+                  <LabelRow
+                    editLabelText={t('project.create.editLabel')}
+                    isNerProjectType={isNerProjectType}
+                    key={`${label.name}-${index}`}
+                    label={label}
+                    onEdit={() => openEditLabelDialog(index)}
+                    onRemove={() => removeLabelAt(index)}
+                    removeLabelText={t('project.create.removeLabel')}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      <section className="space-y-3">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          {t('project.create.guidelineSectionTitle')}
+        </p>
+
+        <div className="overflow-hidden rounded-xl border border-border bg-surface-base">
+          <div className="grid grid-cols-2 border-b border-border bg-background">
+            <button
+              className={[
+                'inline-flex items-center justify-center gap-2 border-r border-border px-4 py-3 text-xs font-bold tracking-wider uppercase text-muted-foreground transition-colors sm:justify-start sm:px-8',
+                guidelineMode === 'TEXT'
+                  ? 'bg-surface-base shadow-[inset_0_-2px_0_0] shadow-primary'
+                  : 'hover:bg-accent/40',
+              ].join(' ')}
+              onClick={() => {
+                setGuidelineMode('TEXT');
+                setGuidelinePdfFile(null);
+              }}
+              type="button"
+            >
+              <FileText className="size-3.5 text-muted-foreground" />
+              {t('project.create.guidelineAsText')}
+            </button>
+            <button
+              className={[
+                'inline-flex items-center justify-center gap-2 px-4 py-3 text-xs font-bold tracking-wider uppercase text-muted-foreground transition-colors sm:justify-start sm:px-8',
+                guidelineMode === 'PDF'
+                  ? 'bg-surface-base shadow-[inset_0_-2px_0_0] shadow-primary'
+                  : 'hover:bg-accent/40',
+              ].join(' ')}
+              onClick={() => {
+                setGuidelineMode('PDF');
+                setGuidelineText('');
+              }}
+              type="button"
+            >
+              <FileUp className="size-3.5 text-muted-foreground" />
+              {t('project.create.guidelineAsPdf')}
+            </button>
+          </div>
+
+          <div className="bg-slate-50/40 p-4 sm:p-6">
+            {guidelineMode === 'TEXT' ? (
+              <Textarea
+                id="project-guideline-text"
+                maxLength={5000}
+                onChange={(event) => setGuidelineText(event.target.value)}
+                placeholder={t('project.create.guidelineTextPlaceholder')}
+                required
+                value={guidelineText}
+              />
+            ) : (
+              <>
+                <UploadDropzone
+                  accept=".pdf,application/pdf"
+                  description={t('project.create.guidelinePdfHint')}
+                  onFilesChange={handleGuidelinePdfSelected}
+                  title={t('project.create.guidelinePdfLabel')}
+                />
+
+                {guidelinePdfFile && (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-primary">
+                        {guidelinePdfFile.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatFileSize(guidelinePdfFile.size)}
+                      </p>
+                    </div>
+                    <button
+                      aria-label={t('project.create.removeFile')}
+                      className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                      onClick={() => setGuidelinePdfFile(null)}
+                      type="button"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <div className="flex justify-end gap-3">
+        <Button
+          className="h-10 rounded-md border border-border bg-surface-base px-6 text-sm font-semibold text-primary hover:bg-accent cursor-pointer"
+          onClick={onBack}
+          type="button"
+          variant="outline"
+        >
+          {t('project.create.previousStepSimple')}
+        </Button>
+        <Button
+          className="h-10 min-w-44 rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
+          disabled={!canSaveSetup}
+          onClick={() => void handleSaveProjectSetup()}
+          type="button"
+        >
+          {isSavingSetup ? (
+            <span className="inline-flex items-center gap-2">
+              <Spinner aria-hidden className="size-4" />
+              {t('project.create.savingSetup')}
+            </span>
+          ) : (
+            t('project.create.finishCreateProject')
+          )}
+        </Button>
+      </div>
+
+      <LabelEditorDialog
+        colorLabel={t('project.create.labelColor')}
+        currentColor={draftLabelColor}
+        currentName={draftLabelName}
+        inputLabel={t('project.create.labelName')}
+        isNerProjectType={isNerProjectType}
+        isOpen={isLabelEditorOpen}
+        mode={labelDialogMode}
+        onColorChange={setDraftLabelColor}
+        onNameChange={setDraftLabelName}
+        onOpenChange={setIsLabelEditorOpen}
+        onSave={saveLabelFromDialog}
+        placeholder={t('project.create.labelNamePlaceholder')}
+        saveCreateText={t('project.create.addLabel')}
+        saveEditText={t('project.create.saveLabel')}
+        titleCreate={t('project.create.createLabelTitle')}
+        titleEdit={t('project.create.editLabelTitle')}
+      />
+    </div>
+  );
+}

@@ -1,6 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { invalidateQueryKeys } from '@/lib/queryInvalidation';
-import { createProject, uploadProjectDataset } from '@/modules/project/services/projectService';
+import {
+  configureProjectSetup,
+  createProject,
+  uploadProjectDataset,
+} from '@/modules/project/services/projectService';
 import {
   RESEARCH_GROUPS_QUERY_KEY,
   researchGroupDetailQueryKey,
@@ -39,6 +43,36 @@ export function useUploadProjectDatasetMutation() {
   return useMutation({
     mutationFn: ({ groupId, projectId, files }: UploadDatasetMutationInput) =>
       uploadProjectDataset(groupId, projectId, files),
+    onSuccess: (_, variables) => {
+      invalidateQueryKeys(queryClient, [
+        researchGroupDetailQueryKey(variables.groupId),
+        RESEARCH_GROUPS_QUERY_KEY,
+      ]);
+    },
+  });
+}
+
+type ConfigureProjectSetupMutationInput = {
+  groupId: number;
+  projectId: number;
+  payload: {
+    projectType:
+      | 'TEXT_CLASSIFICATION_SIMPLE'
+      | 'TEXT_CLASSIFICATION_MULTILABEL'
+      | 'NER'
+      | 'SEQ2SEQ';
+    labels: Array<{ name: string; color: string | null }>;
+    guidelineText?: string;
+    guidelinePdfBase64?: string;
+  };
+};
+
+export function useConfigureProjectSetupMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ groupId, projectId, payload }: ConfigureProjectSetupMutationInput) =>
+      configureProjectSetup(groupId, projectId, payload),
     onSuccess: (_, variables) => {
       invalidateQueryKeys(queryClient, [
         researchGroupDetailQueryKey(variables.groupId),

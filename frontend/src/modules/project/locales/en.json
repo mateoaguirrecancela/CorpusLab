@@ -29,11 +29,45 @@
       "removeFile": "Remove file",
       "backToBasicConfig": "Back to basic config",
       "uploadingDataset": "Uploading dataset...",
-      "finishCreateProject": "Finish creation"
+      "finishCreateProject": "Finish creation",
+      "taskDesignTitle": "Create labels and guideline",
+      "taskDesignDescription": "Define the project type, required labels, and the guideline for the team.",
+      "projectTypeLabel": "Project type",
+      "projectTypes": {
+        "textClassificationSimple": "Simple Text Classification",
+        "textClassificationMultiLabel": "Multi-label Text Classification",
+        "ner": "Named Entity Recognition (NER)",
+        "seq2seq": "Sequence-to-Sequence Generation and Mapping (Seq2Seq)"
+      },
+      "labelsSectionTitle": "Labels",
+      "labelsSectionDescription": "Add the labels that can be assigned in the project.",
+      "labelsSectionDescriptionNer": "Add entity labels and assign a color to each one.",
+      "labelsEmptyState": "There are no labels yet. Add the first one to continue.",
+      "addLabel": "Add label",
+      "editLabel": "Edit label",
+      "removeLabel": "Remove label",
+      "labelName": "Label name",
+      "labelNamePlaceholder": "Ex: Person, Organization, Positive...",
+      "labelColor": "Color",
+      "createLabelTitle": "Create label",
+      "editLabelTitle": "Edit label",
+      "saveLabel": "Save label",
+      "labelsDuplicateError": "A label with that name already exists.",
+      "guidelineSectionTitle": "Guideline",
+      "guidelineSectionDescription": "Write a guideline or upload a PDF. Only one option can be used.",
+      "guidelineAsText": "Text",
+      "guidelineAsPdf": "PDF",
+      "guidelineTextLabel": "Guideline as text",
+      "guidelineTextPlaceholder": "Define criteria, examples, and rules to annotate correctly.",
+      "guidelinePdfLabel": "Attach guideline PDF",
+      "guidelinePdfHint": "Upload a single PDF file with the project guideline.",
+      "guidelinePdfReadError": "Could not read the guideline PDF.",
+      "savingSetup": "Saving setup..."
     },
     "errors": {
       "createFailed": "Could not create the project. Please try again.",
-      "datasetUploadFailed": "Could not upload the dataset. Please try again."
+      "datasetUploadFailed": "Could not upload the dataset. Please try again.",
+      "setupFailed": "Could not save the project setup. Please try again."
     }
   }
 }

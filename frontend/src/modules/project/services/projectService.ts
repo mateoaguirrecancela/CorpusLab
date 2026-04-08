@@ -1,7 +1,9 @@
 import { api } from '@/lib/api';
 import i18n from '@/lib/i18n';
 import {
+  type ConfigureProjectSetupPayload,
   type CreateProjectPayload,
+  type ProjectSetupResponse,
   type ProjectSummary,
   type UploadDatasetResponse,
 } from '@/modules/project/types/project';
@@ -61,4 +63,28 @@ export async function uploadProjectDataset(
 
 export function getUploadDatasetErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, 'project.errors.datasetUploadFailed');
+}
+
+export async function configureProjectSetup(
+  groupId: number,
+  projectId: number,
+  payload: ConfigureProjectSetupPayload,
+): Promise<ProjectSetupResponse> {
+  const body = {
+    projectType: payload.projectType,
+    labels: payload.labels,
+    guidelineText: payload.guidelineText?.trim() || undefined,
+    guidelinePdfBase64: payload.guidelinePdfBase64?.trim() || undefined,
+  };
+
+  const response = await api.put<ProjectSetupResponse>(
+    `/research-groups/${groupId}/projects/${projectId}/setup`,
+    body,
+  );
+
+  return response.data;
+}
+
+export function getProjectSetupErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'project.errors.setupFailed');
 }
