@@ -1,8 +1,22 @@
 export type ProjectSummary = {
   id: number;
   researchGroupId: number;
+  researchGroupName?: string;
   name: string;
   description: string | null;
+  createdAt: string;
+};
+
+export type ProjectParticipantRole = 'CREATOR' | 'PARTICIPANT';
+
+export type ProjectAssignedSummary = {
+  id: number;
+  researchGroupId: number;
+  researchGroupName: string;
+  name: string;
+  description: string | null;
+  setupCompleted: boolean;
+  participantRole: ProjectParticipantRole;
   createdAt: string;
 };
 
@@ -55,4 +69,20 @@ export type ProjectSetupResponse = {
 
 export type AssignProjectParticipantsPayload = {
   participantUserIds: number[];
+};
+
+export type ProjectDetail = {
+  id: number;
+  researchGroupId: number;
+  researchGroupName: string;
+  name: string;
+  description: string | null;
+  projectType: ProjectType;
+  setupCompleted: boolean;
+  participantRole: ProjectParticipantRole;
+  labels: ProjectSetupLabel[];
+  guidelineText: string | null;
+  guidelinePdfBase64: string | null;
+  datasetItemsCount: number;
+  createdAt: string;
 };

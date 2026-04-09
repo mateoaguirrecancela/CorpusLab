@@ -1,5 +1,40 @@
 {
   "project": {
+    "list": {
+      "pageTitle": "Os meus proxectos",
+      "loading": "Cargando os teus proxectos asignados...",
+      "empty": "Aínda non tes proxectos asignados.",
+      "columns": {
+        "name": "Proxecto",
+        "group": "Grupo",
+        "role": "Rol",
+        "status": "Estado",
+        "createdAt": "Creado"
+      },
+      "roles": {
+        "creator": "Creador",
+        "participant": "Participante"
+      },
+      "status": {
+        "ready": "Listo",
+        "pendingSetup": "Configuración pendente"
+      }
+    },
+    "detail": {
+      "loading": "Cargando detalle do proxecto...",
+      "invalidId": "O identificador do proxecto non é válido.",
+      "cards": {
+        "role": "Rol",
+        "status": "Estado",
+        "datasetItems": "Items de dataset",
+        "createdAt": "Creado"
+      },
+      "labelsTitle": "Etiquetas",
+      "noLabels": "Este proxecto non ten etiquetas definidas.",
+      "guidelineTitle": "Guideline",
+      "guidelinePdfAttached": "Este proxecto ten un guideline adxunto en PDF.",
+      "noGuideline": "Este proxecto non ten guideline dispoñible."
+    },
     "create": {
       "title": "Novo Proxecto",
       "pageTitle": "Crear Proxecto",
@@ -70,6 +105,8 @@
       "assigningParticipants": "Asignando investigadores..."
     },
     "errors": {
+      "loadFailed": "Non se puideron cargar os proxectos. Téntao de novo.",
+      "detailLoadFailed": "Non se puido cargar o detalle do proxecto. Téntao de novo.",
       "createFailed": "Non se puido crear o proxecto. Téntao de novo.",
       "datasetUploadFailed": "Non se puido subir o dataset. Téntao de novo.",
       "setupFailed": "Non se puido gardar a configuración do proxecto. Téntao de novo.",

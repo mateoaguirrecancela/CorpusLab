@@ -1,9 +1,12 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { invalidateQueryKeys } from '@/lib/queryInvalidation';
 import {
   assignProjectParticipants,
   configureProjectSetup,
   createProject,
+  getAssignedProjectsByGroup,
+  getMyAssignedProjects,
+  getProjectDetail,
   uploadProjectDataset,
 } from '@/modules/project/services/projectService';
 import { type CreateProjectPayload } from '@/modules/project/types/project';
@@ -25,6 +28,8 @@ export function useCreateProjectMutation() {
       createProject(groupId, payload),
     onSuccess: (_, variables) => {
       invalidateQueryKeys(queryClient, [
+        myAssignedProjectsQueryKey(),
+        assignedProjectsByGroupQueryKey(variables.groupId),
         researchGroupDetailQueryKey(variables.groupId),
         RESEARCH_GROUPS_QUERY_KEY,
       ]);
@@ -46,6 +51,9 @@ export function useUploadProjectDatasetMutation() {
       uploadProjectDataset(groupId, projectId, files),
     onSuccess: (_, variables) => {
       invalidateQueryKeys(queryClient, [
+        myAssignedProjectsQueryKey(),
+        assignedProjectsByGroupQueryKey(variables.groupId),
+        projectDetailQueryKey(variables.projectId),
         researchGroupDetailQueryKey(variables.groupId),
         RESEARCH_GROUPS_QUERY_KEY,
       ]);
@@ -76,6 +84,9 @@ export function useConfigureProjectSetupMutation() {
       configureProjectSetup(groupId, projectId, payload),
     onSuccess: (_, variables) => {
       invalidateQueryKeys(queryClient, [
+        myAssignedProjectsQueryKey(),
+        assignedProjectsByGroupQueryKey(variables.groupId),
+        projectDetailQueryKey(variables.projectId),
         researchGroupDetailQueryKey(variables.groupId),
         RESEARCH_GROUPS_QUERY_KEY,
       ]);
@@ -97,9 +108,47 @@ export function useAssignProjectParticipantsMutation() {
       assignProjectParticipants(groupId, projectId, { participantUserIds }),
     onSuccess: (_, variables) => {
       invalidateQueryKeys(queryClient, [
+        myAssignedProjectsQueryKey(),
+        assignedProjectsByGroupQueryKey(variables.groupId),
+        projectDetailQueryKey(variables.projectId),
         researchGroupDetailQueryKey(variables.groupId),
         RESEARCH_GROUPS_QUERY_KEY,
       ]);
     },
+  });
+}
+
+export function myAssignedProjectsQueryKey() {
+  return ['projects', 'my'] as const;
+}
+
+export function assignedProjectsByGroupQueryKey(groupId: number) {
+  return ['projects', 'group', groupId, 'my'] as const;
+}
+
+export function projectDetailQueryKey(projectId: number) {
+  return ['projects', 'detail', projectId] as const;
+}
+
+export function useMyAssignedProjectsQuery() {
+  return useQuery({
+    queryKey: myAssignedProjectsQueryKey(),
+    queryFn: getMyAssignedProjects,
+  });
+}
+
+export function useAssignedProjectsByGroupQuery(groupId: number) {
+  return useQuery({
+    queryKey: assignedProjectsByGroupQueryKey(groupId),
+    queryFn: () => getAssignedProjectsByGroup(groupId),
+    enabled: Number.isFinite(groupId) && groupId > 0,
+  });
+}
+
+export function useProjectDetailQuery(projectId: number) {
+  return useQuery({
+    queryKey: projectDetailQueryKey(projectId),
+    queryFn: () => getProjectDetail(projectId),
+    enabled: Number.isFinite(projectId) && projectId > 0,
   });
 }

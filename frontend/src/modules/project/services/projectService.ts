@@ -4,6 +4,8 @@ import {
   type AssignProjectParticipantsPayload,
   type ConfigureProjectSetupPayload,
   type CreateProjectPayload,
+  type ProjectAssignedSummary,
+  type ProjectDetail,
   type ProjectSetupResponse,
   type ProjectSummary,
   type UploadDatasetResponse,
@@ -100,4 +102,31 @@ export async function assignProjectParticipants(
 
 export function getAssignParticipantsErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, 'project.errors.assignmentFailed');
+}
+
+export async function getAssignedProjectsByGroup(
+  groupId: number,
+): Promise<ProjectAssignedSummary[]> {
+  const response = await api.get<ProjectAssignedSummary[]>(
+    `/research-groups/${groupId}/projects/my`,
+  );
+  return response.data;
+}
+
+export async function getMyAssignedProjects(): Promise<ProjectAssignedSummary[]> {
+  const response = await api.get<ProjectAssignedSummary[]>('/projects/my');
+  return response.data;
+}
+
+export async function getProjectDetail(projectId: number): Promise<ProjectDetail> {
+  const response = await api.get<ProjectDetail>(`/projects/${projectId}`);
+  return response.data;
+}
+
+export function getProjectsLoadErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'project.errors.loadFailed');
+}
+
+export function getProjectDetailLoadErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'project.errors.detailLoadFailed');
 }

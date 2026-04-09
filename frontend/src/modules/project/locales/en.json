@@ -1,5 +1,40 @@
 {
   "project": {
+    "list": {
+      "pageTitle": "My projects",
+      "loading": "Loading your assigned projects...",
+      "empty": "You do not have assigned projects yet.",
+      "columns": {
+        "name": "Project",
+        "group": "Group",
+        "role": "Role",
+        "status": "Status",
+        "createdAt": "Created"
+      },
+      "roles": {
+        "creator": "Creator",
+        "participant": "Participant"
+      },
+      "status": {
+        "ready": "Ready",
+        "pendingSetup": "Setup pending"
+      }
+    },
+    "detail": {
+      "loading": "Loading project detail...",
+      "invalidId": "The project identifier is invalid.",
+      "cards": {
+        "role": "Role",
+        "status": "Status",
+        "datasetItems": "Dataset items",
+        "createdAt": "Created"
+      },
+      "labelsTitle": "Labels",
+      "noLabels": "This project has no labels defined.",
+      "guidelineTitle": "Guideline",
+      "guidelinePdfAttached": "This project has an attached PDF guideline.",
+      "noGuideline": "This project has no guideline available."
+    },
     "create": {
       "title": "New Project",
       "pageTitle": "Create Project",
@@ -70,6 +105,8 @@
       "assigningParticipants": "Assigning investigators..."
     },
     "errors": {
+      "loadFailed": "Could not load projects. Please try again.",
+      "detailLoadFailed": "Could not load project detail. Please try again.",
       "createFailed": "Could not create the project. Please try again.",
       "datasetUploadFailed": "Could not upload the dataset. Please try again.",
       "setupFailed": "Could not save the project setup. Please try again.",

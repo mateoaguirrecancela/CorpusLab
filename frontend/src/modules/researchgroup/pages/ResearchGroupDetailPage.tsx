@@ -16,6 +16,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useProfileQuery } from '@/modules/auth/hooks/useProfileQuery';
+import { useAssignedProjectsByGroupQuery } from '@/modules/project/hooks/useProjectQueries';
+import { getProjectsLoadErrorMessage } from '@/modules/project/services/projectService';
 import { EditResearchGroupDialog } from '@/modules/researchgroup/components/EditResearchGroupDialog';
 import { InviteResearchGroupMemberDialog } from '@/modules/researchgroup/components/InviteResearchGroupMemberDialog';
 import { ManageResearchGroupMemberDialog } from '@/modules/researchgroup/components/ManageResearchGroupMemberDialog';
@@ -68,6 +70,20 @@ export default function ResearchGroupDetailPage() {
 
   const canManageResearchers = currentMember?.role === 'OWNER';
   const canCreateProjects = currentMember?.role === 'OWNER' || currentMember?.role === 'ADMIN';
+  const {
+    data: assignedProjects = [],
+    isLoading: isLoadingProjects,
+    isError: isProjectsError,
+    error: projectsError,
+  } = useAssignedProjectsByGroupQuery(numericGroupId);
+
+  const projectsErrorMessage = isProjectsError ? getProjectsLoadErrorMessage(projectsError) : '';
+
+  useEffect(() => {
+    if (projectsErrorMessage.length > 0) {
+      toast.error(projectsErrorMessage, { id: 'group-projects-load-error' });
+    }
+  }, [projectsErrorMessage]);
 
   return (
     <PageContainer className="py-4 sm:py-6">
@@ -147,7 +163,7 @@ export default function ResearchGroupDetailPage() {
               {canCreateProjects && (
                 <Button
                   className="h-10 rounded-md bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-strong cursor-pointer"
-                  onClick={() => navigate(`/home/experiments/create?groupId=${group.id}`)}
+                  onClick={() => navigate(`/home/projects/create?groupId=${group.id}`)}
                   type="button"
                 >
                   <Plus className="size-4" />
@@ -156,9 +172,69 @@ export default function ResearchGroupDetailPage() {
               )}
             </div>
 
-            <p className="rounded-md border border-dashed border-border bg-surface-base px-4 py-5 text-sm text-muted-foreground">
-              {t('researchGroup.detail.projectsListPending')}
-            </p>
+            {isLoadingProjects && (
+              <div className="rounded-md border border-border bg-surface-base px-4 py-6 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-2">
+                  <Spinner aria-hidden className="size-4" />
+                  {t('project.list.loading')}
+                </span>
+              </div>
+            )}
+
+            {!isLoadingProjects && assignedProjects.length === 0 && (
+              <p className="rounded-md border border-dashed border-border bg-surface-base px-4 py-5 text-sm text-muted-foreground">
+                {t('project.list.empty')}
+              </p>
+            )}
+
+            {!isLoadingProjects && assignedProjects.length > 0 && (
+              <div className="rounded-md border border-border bg-surface-base">
+                <Table>
+                  <TableHeader className="bg-muted/40">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="px-4 py-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                        {t('project.list.columns.name')}
+                      </TableHead>
+                      <TableHead className="px-4 py-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                        {t('project.list.columns.role')}
+                      </TableHead>
+                      <TableHead className="px-4 py-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                        {t('project.list.columns.status')}
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+
+                  <TableBody>
+                    {assignedProjects.map((project) => (
+                      <TableRow
+                        className="cursor-pointer hover:bg-accent/40"
+                        key={project.id}
+                        onClick={() => navigate(`/home/projects/${project.id}`)}
+                      >
+                        <TableCell className="px-4 py-3">
+                          <p className="text-sm font-semibold text-primary">{project.name}</p>
+                          {project.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-1">
+                              {project.description}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-sm text-muted-foreground">
+                          {project.participantRole === 'CREATOR'
+                            ? t('project.list.roles.creator')
+                            : t('project.list.roles.participant')}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-sm text-muted-foreground">
+                          {project.setupCompleted
+                            ? t('project.list.status.ready')
+                            : t('project.list.status.pendingSetup')}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </section>
 
           <section>
