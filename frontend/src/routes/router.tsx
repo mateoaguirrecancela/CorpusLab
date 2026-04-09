@@ -13,6 +13,8 @@ import CreateProjectPage from '@/modules/project/pages/CreateProjectPage';
 import ResearchGroupDetailPage from '@/modules/researchgroup/pages/ResearchGroupDetailPage';
 import ResearchGroupsPage from '@/modules/researchgroup/pages/ResearchGroupsPage';
 import { PublicOnly, RequireSession } from '@/routes/guards';
+import ProjectsPage from '@/modules/project/pages/ProjectsPage';
+import ProjectDetailPage from '@/modules/project/pages/ProjectDetailPage';
 
 export const router = createBrowserRouter([
   {
@@ -74,12 +76,16 @@ export const router = createBrowserRouter([
             element: <ResearchGroupDetailPage />,
           },
           {
-            path: 'experiments',
-            element: <Navigate replace to="/home/experiments/create" />,
+            path: 'projects',
+            element: <ProjectsPage />,
           },
           {
-            path: 'experiments/create',
+            path: 'projects/create',
             element: <CreateProjectPage />,
+          },
+          {
+            path: 'projects/:projectId',
+            element: <ProjectDetailPage />,
           },
           {
             path: 'laboratories',

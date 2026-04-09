@@ -9,5 +9,5 @@ export type AppNavigationItem = {
 export const APP_NAVIGATION_ITEMS: AppNavigationItem[] = [
   { key: 'dashboard', to: '/home', icon: LayoutGrid },
   { key: 'researchGroups', to: '/home/research-groups', icon: Microscope },
-  { key: 'experiments', to: '/home/experiments', icon: TestTubeDiagonal },
+  { key: 'projects', to: '/home/projects', icon: TestTubeDiagonal },
 ];

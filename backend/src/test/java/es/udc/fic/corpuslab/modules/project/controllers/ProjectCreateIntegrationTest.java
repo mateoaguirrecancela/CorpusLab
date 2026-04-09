@@ -26,6 +26,7 @@ import es.udc.fic.corpuslab.modules.auth.fixtures.UserLoginRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
+import es.udc.fic.corpuslab.modules.project.repositories.ProjectParticipantRepository;
 import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.repositories.ProjectRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroup;
@@ -62,6 +63,9 @@ class ProjectCreateIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private ProjectRepository projectRepository;
 
+        @Autowired
+        private ProjectParticipantRepository projectParticipantRepository;
+
     @Autowired
     private PasswordEncoder passwordEncoder;
 
@@ -72,6 +76,7 @@ class ProjectCreateIntegrationTest extends AbstractIntegrationTest {
         notificationRepository.deleteAll();
         invitationRepository.deleteAll();
         memberRepository.deleteAll();
+                projectParticipantRepository.deleteAll();
         projectRepository.deleteAll();
         researchGroupRepository.deleteAll();
         userRepository.deleteAll();
