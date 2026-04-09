@@ -22,6 +22,8 @@ import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
 import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.DatasetItemDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectAssignedSummaryDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectDetailDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupLabelDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupResponseDto;
@@ -74,6 +76,71 @@ public class ProjectServiceImpl implements ProjectService {
         this.projectRepository = projectRepository;
         this.projectParticipantRepository = projectParticipantRepository;
         this.datasetItemRepository = datasetItemRepository;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProjectAssignedSummaryDto> findAssignedProjectsByResearchGroup(
+            String authenticatedEmail,
+            Long researchGroupId) {
+        User user = findUserByEmail(authenticatedEmail);
+
+        researchGroupMemberRepository
+                .findActiveMemberByGroupIdAndUserId(researchGroupId, user.getId())
+                .orElseThrow(() -> new AccessDeniedException(NOT_MEMBER_ERROR));
+
+        return projectParticipantRepository
+                .findByProjectResearchGroupIdAndUserIdOrderByProjectCreatedAtDesc(researchGroupId, user.getId())
+                .stream()
+                .map(this::toAssignedSummaryDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProjectAssignedSummaryDto> findMyAssignedProjects(String authenticatedEmail) {
+        User user = findUserByEmail(authenticatedEmail);
+
+        return projectParticipantRepository.findByUserIdOrderByProjectCreatedAtDesc(user.getId())
+                .stream()
+                .map(this::toAssignedSummaryDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProjectDetailDto getAssignedProjectDetail(String authenticatedEmail, Long projectId) {
+        User user = findUserByEmail(authenticatedEmail);
+
+        ProjectParticipant participant = projectParticipantRepository.findByProjectIdAndUserId(projectId, user.getId())
+                .orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        Project project = participant.getProject();
+        Guideline guideline = project.getGuideline();
+
+        List<ProjectSetupLabelDto> labels = project.getLabels().stream()
+                .map(label -> new ProjectSetupLabelDto(label.getName(), label.getColor()))
+                .toList();
+
+        String guidelineText = guideline != null ? guideline.getContent() : null;
+        String guidelinePdfBase64 = guideline != null ? guideline.getFileUrl() : null;
+
+        long datasetItemsCount = datasetItemRepository.countByProjectId(projectId);
+
+        return new ProjectDetailDto(
+                project.getId(),
+                project.getResearchGroup().getId(),
+                project.getResearchGroup().getName(),
+                project.getName(),
+                project.getDescription(),
+                project.getProjectType(),
+                project.isSetupCompleted(),
+                participant.getRole(),
+                labels,
+                guidelineText,
+                guidelinePdfBase64,
+                datasetItemsCount,
+                project.getCreatedAt());
     }
 
     @Override
@@ -415,5 +482,18 @@ public class ProjectServiceImpl implements ProjectService {
         } catch (NumberFormatException ex) {
             return 0L;
         }
+    }
+
+    private ProjectAssignedSummaryDto toAssignedSummaryDto(ProjectParticipant participant) {
+        Project project = participant.getProject();
+        return new ProjectAssignedSummaryDto(
+                project.getId(),
+                project.getResearchGroup().getId(),
+                project.getResearchGroup().getName(),
+                project.getName(),
+                project.getDescription(),
+                project.isSetupCompleted(),
+                participant.getRole(),
+                project.getCreatedAt());
     }
 }
