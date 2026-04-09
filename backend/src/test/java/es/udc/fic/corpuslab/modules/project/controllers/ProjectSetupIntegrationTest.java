@@ -31,6 +31,7 @@ import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupRequestDto;
 import es.udc.fic.corpuslab.modules.project.entities.Project;
 import es.udc.fic.corpuslab.modules.project.enums.ProjectType;
 import es.udc.fic.corpuslab.modules.project.repositories.DatasetItemRepository;
+import es.udc.fic.corpuslab.modules.project.repositories.ProjectParticipantRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.ProjectRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroup;
 import es.udc.fic.corpuslab.modules.researchgroup.enums.ResearchGroupMemberRole;
@@ -72,6 +73,9 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
         private DatasetItemRepository datasetItemRepository;
 
         @Autowired
+        private ProjectParticipantRepository projectParticipantRepository;
+
+        @Autowired
         private PasswordEncoder passwordEncoder;
 
         private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
@@ -82,6 +86,7 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
                 invitationRepository.deleteAll();
                 memberRepository.deleteAll();
                 datasetItemRepository.deleteAll();
+                projectParticipantRepository.deleteAll();
                 projectRepository.deleteAll();
                 researchGroupRepository.deleteAll();
                 userRepository.deleteAll();

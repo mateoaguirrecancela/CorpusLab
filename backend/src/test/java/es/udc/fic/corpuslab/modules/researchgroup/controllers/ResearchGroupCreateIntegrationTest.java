@@ -13,6 +13,9 @@ import es.udc.fic.corpuslab.modules.auth.fixtures.UserLoginRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
+import es.udc.fic.corpuslab.modules.project.repositories.DatasetItemRepository;
+import es.udc.fic.corpuslab.modules.project.repositories.ProjectParticipantRepository;
+import es.udc.fic.corpuslab.modules.project.repositories.ProjectRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.CreateResearchGroupRequestDto;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupInvitationRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupMemberRepository;
@@ -54,6 +57,15 @@ class ResearchGroupCreateIntegrationTest extends AbstractIntegrationTest {
         private NotificationRepository notificationRepository;
 
         @Autowired
+        private DatasetItemRepository datasetItemRepository;
+
+        @Autowired
+        private ProjectParticipantRepository projectParticipantRepository;
+
+        @Autowired
+        private ProjectRepository projectRepository;
+
+        @Autowired
         private PasswordEncoder passwordEncoder;
 
         private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
@@ -63,6 +75,9 @@ class ResearchGroupCreateIntegrationTest extends AbstractIntegrationTest {
                 notificationRepository.deleteAll();
                 invitationRepository.deleteAll();
                 memberRepository.deleteAll();
+                datasetItemRepository.deleteAll();
+                projectParticipantRepository.deleteAll();
+                projectRepository.deleteAll();
                 researchGroupRepository.deleteAll();
                 userRepository.deleteAll();
         }
