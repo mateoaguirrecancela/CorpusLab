@@ -4,28 +4,21 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -37,6 +30,8 @@ import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
 
 @Component
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
+
+    private static final String EMAIL_ATTRIBUTE = "email";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -52,8 +47,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             JwtTokenService jwtTokenService,
             ObjectProvider<OAuth2AuthorizedClientService> authorizedClientServiceProvider,
             @Value("${app.oauth2.success-redirect-url:http://localhost:5173/oauth2/redirect}") String successRedirectUrl,
-            @Value("${app.oauth2.failure-redirect-url:http://localhost:5173/auth/login}") String failureRedirectUrl
-    ) {
+            @Value("${app.oauth2.failure-redirect-url:http://localhost:5173/auth/login}") String failureRedirectUrl) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenService = jwtTokenService;
@@ -68,8 +62,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     public void onAuthenticationSuccess(
             HttpServletRequest request,
             HttpServletResponse response,
-            Authentication authentication
-    ) throws IOException, ServletException {
+            Authentication authentication) throws IOException, ServletException {
         if (!(authentication.getPrincipal() instanceof OAuth2User oAuth2User)) {
             response.sendRedirect(failureRedirectUrl + "?oauthError=invalid_principal");
             return;
@@ -85,34 +78,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         String normalizedEmail = EmailNormalizer.normalize(email);
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
-            .orElseGet(() -> createUserFromOAuthAttributes(normalizedEmail, oAuth2User.getAttributes()));
-
-        establishApplicationSession(request, user);
+                .orElseGet(() -> createUserFromOAuthAttributes(normalizedEmail, oAuth2User.getAttributes()));
 
         String token = jwtTokenService.generateToken(user.getEmail());
         String encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
         response.sendRedirect(successRedirectUrl + "?token=" + encodedToken);
     }
 
-    private void establishApplicationSession(HttpServletRequest request, User user) {
-        UsernamePasswordAuthenticationToken appAuthentication = UsernamePasswordAuthenticationToken.authenticated(
-                user.getEmail(),
-                null,
-                List.of(new SimpleGrantedAuthority("ROLE_USER"))
-        );
-
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(appAuthentication);
-        SecurityContextHolder.setContext(context);
-
-        HttpSession session = request.getSession(true);
-        session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
-    }
-
     private User createUserFromOAuthAttributes(
             String email,
-            Map<String, Object> attributes
-    ) {
+            Map<String, Object> attributes) {
         User user = new User();
         user.setEmail(email);
         user.setFirstName(resolveFirstName(attributes));
@@ -133,7 +108,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     }
 
     private String extractEmail(Authentication authentication, String registrationId, Map<String, Object> attributes) {
-        Object email = attributes.get("email");
+        Object email = attributes.get(EMAIL_ATTRIBUTE);
         if (email instanceof String emailValue && !emailValue.isBlank()) {
             return emailValue;
         }
@@ -161,8 +136,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         OAuth2AuthorizedClient authorizedClient = authorizedClientService.loadAuthorizedClient(
                 registrationId,
-                authentication.getName()
-        );
+                authentication.getName());
 
         if (authorizedClient == null || authorizedClient.getAccessToken() == null) {
             return null;
@@ -182,14 +156,15 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             for (Map<String, Object> item : emails) {
                 Object primary = item.get("primary");
                 Object verified = item.get("verified");
-                Object email = item.get("email");
-                if (Boolean.TRUE.equals(primary) && Boolean.TRUE.equals(verified) && email instanceof String emailValue) {
+                Object email = item.get(EMAIL_ATTRIBUTE);
+                if (Boolean.TRUE.equals(primary) && Boolean.TRUE.equals(verified)
+                        && email instanceof String emailValue) {
                     return emailValue;
                 }
             }
 
             for (Map<String, Object> item : emails) {
-                Object email = item.get("email");
+                Object email = item.get(EMAIL_ATTRIBUTE);
                 if (email instanceof String emailValue && !emailValue.isBlank()) {
                     return emailValue;
                 }

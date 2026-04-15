@@ -16,6 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useProfileQuery } from '@/modules/auth/hooks/useProfileQuery';
+import { ProjectCard } from '@/modules/project/components/ProjectCard';
 import { useAssignedProjectsByGroupQuery } from '@/modules/project/hooks/useProjectQueries';
 import { getProjectsLoadErrorMessage } from '@/modules/project/services/projectService';
 import { EditResearchGroupDialog } from '@/modules/researchgroup/components/EditResearchGroupDialog';
@@ -188,51 +189,15 @@ export default function ResearchGroupDetailPage() {
             )}
 
             {!isLoadingProjects && assignedProjects.length > 0 && (
-              <div className="rounded-md border border-border bg-surface-base">
-                <Table>
-                  <TableHeader className="bg-muted/40">
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="px-4 py-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                        {t('project.list.columns.name')}
-                      </TableHead>
-                      <TableHead className="px-4 py-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                        {t('project.list.columns.role')}
-                      </TableHead>
-                      <TableHead className="px-4 py-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                        {t('project.list.columns.status')}
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-
-                  <TableBody>
-                    {assignedProjects.map((project) => (
-                      <TableRow
-                        className="cursor-pointer hover:bg-accent/40"
-                        key={project.id}
-                        onClick={() => navigate(`/home/projects/${project.id}`)}
-                      >
-                        <TableCell className="px-4 py-3">
-                          <p className="text-sm font-semibold text-primary">{project.name}</p>
-                          {project.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-1">
-                              {project.description}
-                            </p>
-                          )}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-sm text-muted-foreground">
-                          {project.participantRole === 'CREATOR'
-                            ? t('project.list.roles.creator')
-                            : t('project.list.roles.participant')}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-sm text-muted-foreground">
-                          {project.setupCompleted
-                            ? t('project.list.status.ready')
-                            : t('project.list.status.pendingSetup')}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {assignedProjects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    onOpen={(projectId) => navigate(`/home/projects/${projectId}`)}
+                    project={project}
+                    showGroupName={false}
+                  />
+                ))}
               </div>
             )}
           </section>

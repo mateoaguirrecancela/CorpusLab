@@ -4,6 +4,9 @@
       "pageTitle": "My projects",
       "loading": "Loading your assigned projects...",
       "empty": "You do not have assigned projects yet.",
+      "newProject": "New project",
+      "openProject": "Open project",
+      "noDescription": "No description.",
       "columns": {
         "name": "Project",
         "group": "Group",
@@ -15,24 +18,40 @@
         "creator": "Creator",
         "participant": "Participant"
       },
+      "completionBadge": "{{value}}% completed",
       "status": {
         "ready": "Ready",
-        "pendingSetup": "Setup pending"
+        "pendingSetup": "Pending"
       }
     },
     "detail": {
+      "backToProjects": "Projects",
       "loading": "Loading project detail...",
       "invalidId": "The project identifier is invalid.",
       "cards": {
         "role": "Role",
-        "status": "Status",
+        "group": "Research Group",
+        "type": "Type",
+        "completion": "Completed",
         "datasetItems": "Dataset items",
         "createdAt": "Created"
       },
+      "participantsTitle": "Participants",
+      "participantInfo": "Your participation in this project:",
+      "myRole": "My Role",
+      "participantsName": "Participant",
+      "participantsRole": "Role",
+      "participantsCompletion": "Completed",
+      "participantsEmpty": "There are no participants assigned to this project.",
+      "completionValue": "{{value}}% completed",
       "labelsTitle": "Labels",
       "noLabels": "This project has no labels defined.",
       "guidelineTitle": "Guideline",
       "guidelinePdfAttached": "This project has an attached PDF guideline.",
+      "guidelineDocument": "Guideline Document",
+      "guidelinePdfFile": "PDF file attached",
+      "openGuidelinePdf": "Open guideline PDF",
+      "openGuidelinePdfError": "Could not open the guideline PDF.",
       "noGuideline": "This project has no guideline available."
     },
     "create": {
@@ -69,10 +88,10 @@
       "taskDesignDescription": "Define the project type, required labels, and the guideline for the team.",
       "projectTypeLabel": "Project type",
       "projectTypes": {
-        "textClassificationSimple": "Simple Text Classification",
-        "textClassificationMultiLabel": "Multi-label Text Classification",
+        "textClassificationSimple": "Simple Classification",
+        "textClassificationMultiLabel": "Multi-label Classification",
         "ner": "Named Entity Recognition (NER)",
-        "seq2seq": "Sequence-to-Sequence Generation and Mapping (Seq2Seq)"
+        "seq2seq": "Sequence-to-Sequence (Seq2Seq)"
       },
       "labelsSectionTitle": "Labels",
       "labelsSectionDescription": "Add the labels that can be assigned in the project.",
@@ -92,10 +111,14 @@
       "guidelineSectionDescription": "Write a guideline or upload a PDF. Only one option can be used.",
       "guidelineAsText": "Text",
       "guidelineAsPdf": "PDF",
+      "guidelineWriteTab": "Text",
+      "guidelineUploadTab": "Upload PDF",
       "guidelineTextLabel": "Guideline as text",
       "guidelineTextPlaceholder": "Define criteria, examples, and rules to annotate correctly.",
       "guidelinePdfLabel": "Attach guideline PDF",
+      "guidelineUploadTitle": "Drag and drop protocol documentation",
       "guidelinePdfHint": "Upload a single PDF file with the project guideline.",
+      "guidelineBrowseFiles": "Browse files",
       "guidelinePdfReadError": "Could not read the guideline PDF.",
       "savingSetup": "Saving setup...",
       "assignmentTitle": "Assign investigators",

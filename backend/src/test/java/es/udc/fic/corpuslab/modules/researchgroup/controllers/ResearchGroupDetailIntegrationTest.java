@@ -31,7 +31,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -88,7 +87,7 @@ class ResearchGroupDetailIntegrationTest extends AbstractIntegrationTest {
                 userRepository.deleteAll();
         }
 
-        private MockHttpSession loginAs(String email) throws Exception {
+        private String loginAs(String email) throws Exception {
                 MvcResult result = mockMvc.perform(post("/api/auth/login")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(
@@ -98,7 +97,7 @@ class ResearchGroupDetailIntegrationTest extends AbstractIntegrationTest {
                                 .andExpect(status().isOk())
                                 .andReturn();
 
-                return (MockHttpSession) result.getRequest().getSession(false);
+                return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
         }
 
         @Test
@@ -123,9 +122,9 @@ class ResearchGroupDetailIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build());
 
-                MockHttpSession session = loginAs("member@example.com");
+                String session = loginAs("member@example.com");
 
-                mockMvc.perform(get("/api/research-groups/" + group.getId()).session(session))
+                mockMvc.perform(get("/api/research-groups/" + group.getId()).header("Authorization", "Bearer " + session))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.id").value(group.getId()))
                                 .andExpect(jsonPath("$.name").value("CITIC - NLP UDC"))
@@ -158,9 +157,9 @@ class ResearchGroupDetailIntegrationTest extends AbstractIntegrationTest {
                                 .withResearchGroup(group)
                                 .build());
 
-                MockHttpSession session = loginAs("usera@example.com");
+                String session = loginAs("usera@example.com");
 
-                mockMvc.perform(get("/api/research-groups/" + group.getId()).session(session))
+                mockMvc.perform(get("/api/research-groups/" + group.getId()).header("Authorization", "Bearer " + session))
                                 .andExpect(status().isForbidden());
         }
 
@@ -172,9 +171,9 @@ class ResearchGroupDetailIntegrationTest extends AbstractIntegrationTest {
                                 .build();
                 userRepository.save(user);
 
-                MockHttpSession session = loginAs("user@example.com");
+                String session = loginAs("user@example.com");
 
-                mockMvc.perform(get("/api/research-groups/999").session(session))
+                mockMvc.perform(get("/api/research-groups/999").header("Authorization", "Bearer " + session))
                                 .andExpect(status().isNotFound());
         }
 
@@ -220,9 +219,9 @@ class ResearchGroupDetailIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.ADMIN)
                                 .build());
 
-                MockHttpSession session = loginAs("owner.contract@example.com");
+                String session = loginAs("owner.contract@example.com");
 
-                mockMvc.perform(get("/api/research-groups/" + group.getId()).session(session))
+                mockMvc.perform(get("/api/research-groups/" + group.getId()).header("Authorization", "Bearer " + session))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.id").value(group.getId()))
                                 .andExpect(jsonPath("$.name").value("Contract Group"))
@@ -273,9 +272,9 @@ class ResearchGroupDetailIntegrationTest extends AbstractIntegrationTest {
                 removedMember.setDeletedAt(Instant.now());
                 memberRepository.save(removedMember);
 
-                MockHttpSession session = loginAs("owner.softdelete@example.com");
+                String session = loginAs("owner.softdelete@example.com");
 
-                mockMvc.perform(get("/api/research-groups/" + group.getId()).session(session))
+                mockMvc.perform(get("/api/research-groups/" + group.getId()).header("Authorization", "Bearer " + session))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.totalMembers").value(1))
                                 .andExpect(jsonPath("$.members.length()").value(1))

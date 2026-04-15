@@ -1,4 +1,5 @@
 import { ArrowLeft } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 
@@ -8,6 +9,7 @@ type BackButtonProps = {
 };
 
 export function BackButton({ fallbackTo, className }: Readonly<BackButtonProps>) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const handleClick = () => {
@@ -32,7 +34,7 @@ export function BackButton({ fallbackTo, className }: Readonly<BackButtonProps>)
       variant="outline"
     >
       <ArrowLeft className="size-4" />
-      Volver
+      {t('common.actions.goBack')}
     </Button>
   );
 }

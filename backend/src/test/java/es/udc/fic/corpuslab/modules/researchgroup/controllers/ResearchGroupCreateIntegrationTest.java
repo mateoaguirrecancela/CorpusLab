@@ -27,7 +27,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -82,7 +81,7 @@ class ResearchGroupCreateIntegrationTest extends AbstractIntegrationTest {
                 userRepository.deleteAll();
         }
 
-        private MockHttpSession loginAs(String email) throws Exception {
+        private String loginAs(String email) throws Exception {
                 MvcResult result = mockMvc.perform(post("/api/auth/login")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(
@@ -92,7 +91,7 @@ class ResearchGroupCreateIntegrationTest extends AbstractIntegrationTest {
                                 .andExpect(status().isOk())
                                 .andReturn();
 
-                return (MockHttpSession) result.getRequest().getSession(false);
+                return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
         }
 
         private void createUser(String email) {
@@ -106,13 +105,13 @@ class ResearchGroupCreateIntegrationTest extends AbstractIntegrationTest {
         @Test
         void shouldCreateGroupAndReturnSummaryWithOwnerRole() throws Exception {
                 createUser("creator@example.com");
-                MockHttpSession session = loginAs("creator@example.com");
+                String session = loginAs("creator@example.com");
 
                 CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
                                 "NLP Research Lab", "Computational linguistics research");
 
                 mockMvc.perform(post("/api/research-groups")
-                                .session(session)
+                                .header("Authorization", "Bearer " + session)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isCreated())
@@ -127,13 +126,13 @@ class ResearchGroupCreateIntegrationTest extends AbstractIntegrationTest {
         @Test
         void shouldCreateGroupWithNullDescription() throws Exception {
                 createUser("nodesc@example.com");
-                MockHttpSession session = loginAs("nodesc@example.com");
+                String session = loginAs("nodesc@example.com");
 
                 CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
                                 "Minimal Group", null);
 
                 mockMvc.perform(post("/api/research-groups")
-                                .session(session)
+                                .header("Authorization", "Bearer " + session)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isCreated())
@@ -146,13 +145,13 @@ class ResearchGroupCreateIntegrationTest extends AbstractIntegrationTest {
         @Test
         void shouldTrimNameAndDescription() throws Exception {
                 createUser("trim@example.com");
-                MockHttpSession session = loginAs("trim@example.com");
+                String session = loginAs("trim@example.com");
 
                 CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
                                 "  Trimmed Name  ", "  Trimmed Desc  ");
 
                 mockMvc.perform(post("/api/research-groups")
-                                .session(session)
+                                .header("Authorization", "Bearer " + session)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isCreated())
@@ -163,18 +162,18 @@ class ResearchGroupCreateIntegrationTest extends AbstractIntegrationTest {
         @Test
         void shouldAppearInListAfterCreation() throws Exception {
                 createUser("lister@example.com");
-                MockHttpSession session = loginAs("lister@example.com");
+                String session = loginAs("lister@example.com");
 
                 CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
                                 "Listed Group", "Should appear in my groups");
 
                 mockMvc.perform(post("/api/research-groups")
-                                .session(session)
+                                .header("Authorization", "Bearer " + session)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isCreated());
 
-                mockMvc.perform(get("/api/research-groups").session(session))
+                mockMvc.perform(get("/api/research-groups").header("Authorization", "Bearer " + session))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.length()").value(1))
                                 .andExpect(jsonPath("$[0].name").value("Listed Group"))
@@ -184,13 +183,13 @@ class ResearchGroupCreateIntegrationTest extends AbstractIntegrationTest {
         @Test
         void shouldRejectBlankName() throws Exception {
                 createUser("blank@example.com");
-                MockHttpSession session = loginAs("blank@example.com");
+                String session = loginAs("blank@example.com");
 
                 CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
                                 "   ", "Some description");
 
                 mockMvc.perform(post("/api/research-groups")
-                                .session(session)
+                                .header("Authorization", "Bearer " + session)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isBadRequest());
@@ -199,10 +198,10 @@ class ResearchGroupCreateIntegrationTest extends AbstractIntegrationTest {
         @Test
         void shouldRejectMissingName() throws Exception {
                 createUser("missing@example.com");
-                MockHttpSession session = loginAs("missing@example.com");
+                String session = loginAs("missing@example.com");
 
                 mockMvc.perform(post("/api/research-groups")
-                                .session(session)
+                                .header("Authorization", "Bearer " + session)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"description\": \"No name\"}"))
                                 .andExpect(status().isBadRequest());
@@ -222,14 +221,14 @@ class ResearchGroupCreateIntegrationTest extends AbstractIntegrationTest {
         @Test
         void shouldRejectDescriptionTooLong() throws Exception {
                 createUser("longdesc@example.com");
-                MockHttpSession session = loginAs("longdesc@example.com");
+                String session = loginAs("longdesc@example.com");
 
                 String tooLongDescription = "a".repeat(2049);
                 CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
                                 "Group With Long Desc", tooLongDescription);
 
                 mockMvc.perform(post("/api/research-groups")
-                                .session(session)
+                                .header("Authorization", "Bearer " + session)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isBadRequest());

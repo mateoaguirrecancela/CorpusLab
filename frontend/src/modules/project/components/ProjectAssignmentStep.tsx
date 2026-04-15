@@ -1,5 +1,4 @@
 import { type ReactNode, useMemo, useState } from 'react';
-import { Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -65,7 +64,7 @@ export function ProjectAssignmentStep({
         {members.map((member) => {
           const isSelected = selectedSet.has(member.userId);
           const cardClass = isSelected
-            ? 'border-primary bg-primary/5 shadow-sm shadow-primary/10'
+            ? 'border-primary bg-primary/5 shadow-sm shadow-primary/10 ring-2 ring-primary/20'
             : 'border-border bg-background hover:border-primary/40 hover:bg-accent/30';
 
           return (
@@ -75,29 +74,16 @@ export function ProjectAssignmentStep({
               onClick={() => toggleSelection(member.userId)}
               type="button"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                    {initials(member.firstName, member.lastName)}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-primary">
-                      {member.firstName} {member.lastName}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">{member.email}</p>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                  {initials(member.firstName, member.lastName)}
                 </div>
-
-                <span
-                  className={[
-                    'inline-flex size-5 items-center justify-center rounded border transition-colors',
-                    isSelected
-                      ? 'border-primary bg-primary text-white'
-                      : 'border-border bg-surface-base text-transparent',
-                  ].join(' ')}
-                >
-                  <Check className="size-3" />
-                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-primary">
+                    {member.firstName} {member.lastName}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">{member.email}</p>
+                </div>
               </div>
             </button>
           );
@@ -126,15 +112,10 @@ export function ProjectAssignmentStep({
   };
 
   return (
-    <div className="mt-8 space-y-6">
-      <section className="rounded-xl border border-border bg-surface-base p-4 sm:p-5">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          {t('project.create.assignmentTitle')}
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t('project.create.assignmentDescription')}
-        </p>
-      </section>
+    <div className="mt-8 space-y-3">
+      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        {t('project.create.steps.assignment')} *
+      </p>
 
       {membersContent}
 

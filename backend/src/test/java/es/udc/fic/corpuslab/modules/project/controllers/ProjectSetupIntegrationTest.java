@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -100,7 +99,7 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
                 userRepository.save(user);
         }
 
-        private MockHttpSession loginAs(String email) throws Exception {
+        private String loginAs(String email) throws Exception {
                 MvcResult result = mockMvc.perform(post("/api/auth/login")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(
@@ -108,7 +107,7 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
                                 .andExpect(status().isOk())
                                 .andReturn();
 
-                return (MockHttpSession) result.getRequest().getSession(false);
+                return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
         }
 
         @Test
@@ -128,7 +127,7 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
                 project.setName("Setup Project");
                 project = projectRepository.save(project);
 
-                MockHttpSession session = loginAs("owner.setup@example.com");
+                String session = loginAs("owner.setup@example.com");
 
                 ProjectSetupRequestDto request = new ProjectSetupRequestDto(
                                 ProjectType.TEXT_CLASSIFICATION_SIMPLE,
@@ -140,7 +139,7 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
 
                 mockMvc.perform(put("/api/research-groups/{groupId}/projects/{projectId}/setup", group.getId(),
                                 project.getId())
-                                .session(session)
+                                .header("Authorization", "Bearer " + session)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isOk())
@@ -169,7 +168,7 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
                 project.setName("Seq2Seq Setup Project");
                 project = projectRepository.save(project);
 
-                MockHttpSession session = loginAs("owner.seq2seq@example.com");
+                String session = loginAs("owner.seq2seq@example.com");
 
                 ProjectSetupRequestDto request = new ProjectSetupRequestDto(
                                 ProjectType.SEQ2SEQ,
@@ -179,7 +178,7 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
 
                 mockMvc.perform(put("/api/research-groups/{groupId}/projects/{projectId}/setup", group.getId(),
                                 project.getId())
-                                .session(session)
+                                .header("Authorization", "Bearer " + session)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isBadRequest());
@@ -202,7 +201,7 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
                 project.setName("NER Setup Project");
                 project = projectRepository.save(project);
 
-                MockHttpSession session = loginAs("owner.ner@example.com");
+                String session = loginAs("owner.ner@example.com");
 
                 ProjectSetupRequestDto request = new ProjectSetupRequestDto(
                                 ProjectType.NER,
@@ -214,7 +213,7 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
 
                 mockMvc.perform(put("/api/research-groups/{groupId}/projects/{projectId}/setup", group.getId(),
                                 project.getId())
-                                .session(session)
+                                .header("Authorization", "Bearer " + session)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isOk())

@@ -39,7 +39,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -98,7 +97,7 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                 userRepository.deleteAll();
         }
 
-        private MockHttpSession loginAs(String email) throws Exception {
+        private String loginAs(String email) throws Exception {
                 MvcResult result = mockMvc.perform(post("/api/auth/login")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(
@@ -108,7 +107,7 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .andExpect(status().isOk())
                                 .andReturn();
 
-                return (MockHttpSession) result.getRequest().getSession(false);
+                return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
         }
 
         private String invitationPayload(String email, ResearchGroupMemberRole role, Instant expiresAt) {
@@ -147,11 +146,11 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build());
 
-                MockHttpSession ownerSession = loginAs("owner@example.com");
+                String ownerSession = loginAs("owner@example.com");
                 Instant expiresAt = Instant.now().plusSeconds(86400);
 
                 mockMvc.perform(post("/api/research-groups/" + group.getId() + "/invitations")
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(invitationPayload("invitee@example.com", ResearchGroupMemberRole.ANNOTATOR,
                                                 expiresAt)))
@@ -168,9 +167,9 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 eq("Owner Admin"),
                                 anyString());
 
-                MockHttpSession inviteeSession = loginAs("invitee@example.com");
+                String inviteeSession = loginAs("invitee@example.com");
 
-                mockMvc.perform(get("/api/research-groups/my-invitations").session(inviteeSession))
+                mockMvc.perform(get("/api/research-groups/my-invitations").header("Authorization", "Bearer " + inviteeSession))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.length()").value(1))
                                 .andExpect(jsonPath("$[0].researchGroupName").value("NLP Group"))
@@ -200,11 +199,11 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.ADMIN)
                                 .build());
 
-                MockHttpSession adminSession = loginAs("admin@example.com");
+                String adminSession = loginAs("admin@example.com");
                 Instant expiresAt = Instant.now().plusSeconds(86400);
 
                 mockMvc.perform(post("/api/research-groups/" + group.getId() + "/invitations")
-                                .session(adminSession)
+                                .header("Authorization", "Bearer " + adminSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(invitationPayload("new.researcher@example.com", ResearchGroupMemberRole.ADMIN,
                                                 expiresAt)))
@@ -246,11 +245,11 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                 invitation.setExpiresAt(Instant.now().plusSeconds(86400));
                 invitationRepository.save(invitation);
 
-                MockHttpSession ownerSession = loginAs("owner2@example.com");
+                String ownerSession = loginAs("owner2@example.com");
                 Instant expiresAt = Instant.now().plusSeconds(86400);
 
                 mockMvc.perform(post("/api/research-groups/" + group.getId() + "/invitations")
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(invitationPayload("duplicate@example.com", ResearchGroupMemberRole.ANNOTATOR,
                                                 expiresAt)))
@@ -285,11 +284,11 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.ANNOTATOR)
                                 .build());
 
-                MockHttpSession ownerSession = loginAs("owner3@example.com");
+                String ownerSession = loginAs("owner3@example.com");
                 Instant expiresAt = Instant.now().plusSeconds(86400);
 
                 mockMvc.perform(post("/api/research-groups/" + group.getId() + "/invitations")
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(invitationPayload("member@example.com", ResearchGroupMemberRole.ANNOTATOR,
                                                 expiresAt)))
@@ -313,11 +312,11 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.ANNOTATOR)
                                 .build());
 
-                MockHttpSession session = loginAs("annotator@example.com");
+                String session = loginAs("annotator@example.com");
                 Instant expiresAt = Instant.now().plusSeconds(86400);
 
                 mockMvc.perform(post("/api/research-groups/" + group.getId() + "/invitations")
-                                .session(session)
+                                .header("Authorization", "Bearer " + session)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(invitationPayload("target@example.com", ResearchGroupMemberRole.ANNOTATOR,
                                                 expiresAt)))
@@ -357,11 +356,11 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                                 eq("Failure Group"),
                                                 eq("Owner Failure"), anyString());
 
-                MockHttpSession ownerSession = loginAs("owner4@example.com");
+                String ownerSession = loginAs("owner4@example.com");
                 Instant expiresAt = Instant.now().plusSeconds(86400);
 
                 mockMvc.perform(post("/api/research-groups/" + group.getId() + "/invitations")
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(invitationPayload("invitee2@example.com", ResearchGroupMemberRole.ANNOTATOR,
                                                 expiresAt)))
@@ -393,10 +392,10 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build());
 
-                MockHttpSession joinerSession = loginAs("joiner@example.com");
+                String joinerSession = loginAs("joiner@example.com");
 
                 mockMvc.perform(post("/api/research-groups/join-by-code")
-                                .session(joinerSession)
+                                .header("Authorization", "Bearer " + joinerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"code\":\"" + group.getInvitationCode() + "\"}"))
                                 .andExpect(status().isOk())
@@ -421,10 +420,10 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.ADMIN)
                                 .build());
 
-                MockHttpSession session = loginAs("member.join@example.com");
+                String session = loginAs("member.join@example.com");
 
                 mockMvc.perform(post("/api/research-groups/join-by-code")
-                                .session(session)
+                                .header("Authorization", "Bearer " + session)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"code\":\"" + group.getInvitationCode() + "\"}"))
                                 .andExpect(status().isConflict());
@@ -438,10 +437,10 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .build();
                 userRepository.save(user);
 
-                MockHttpSession session = loginAs("unknown.code@example.com");
+                String session = loginAs("unknown.code@example.com");
 
                 mockMvc.perform(post("/api/research-groups/join-by-code")
-                                .session(session)
+                                .header("Authorization", "Bearer " + session)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"code\":\"DOESNOTEXIST\"}"))
                                 .andExpect(status().isNotFound());
@@ -483,16 +482,16 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                 invitation.setExpiresAt(Instant.now().plusSeconds(86400));
                 invitation = invitationRepository.save(invitation);
 
-                MockHttpSession inviteeSession = loginAs("invitee.accept@example.com");
+                String inviteeSession = loginAs("invitee.accept@example.com");
 
                 mockMvc.perform(post("/api/research-groups/my-invitations/" + invitation.getId() + "/accept")
-                                .session(inviteeSession)
+                                .header("Authorization", "Bearer " + inviteeSession)
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.id").value(group.getId()))
                                 .andExpect(jsonPath("$.role").value("ADMIN"));
 
-                mockMvc.perform(get("/api/research-groups/my-invitations").session(inviteeSession))
+                mockMvc.perform(get("/api/research-groups/my-invitations").header("Authorization", "Bearer " + inviteeSession))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.length()").value(0));
 
@@ -536,14 +535,14 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                 invitation.setExpiresAt(Instant.now().plusSeconds(86400));
                 invitation = invitationRepository.save(invitation);
 
-                MockHttpSession inviteeSession = loginAs("invitee.decline@example.com");
+                String inviteeSession = loginAs("invitee.decline@example.com");
 
                 mockMvc.perform(post("/api/research-groups/my-invitations/" + invitation.getId() + "/decline")
-                                .session(inviteeSession)
+                                .header("Authorization", "Bearer " + inviteeSession)
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isNoContent());
 
-                mockMvc.perform(get("/api/research-groups/my-invitations").session(inviteeSession))
+                mockMvc.perform(get("/api/research-groups/my-invitations").header("Authorization", "Bearer " + inviteeSession))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.length()").value(0));
 
@@ -559,10 +558,10 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .build();
                 userRepository.save(invitee);
 
-                MockHttpSession inviteeSession = loginAs("invitee.notfound@example.com");
+                String inviteeSession = loginAs("invitee.notfound@example.com");
 
                 mockMvc.perform(post("/api/research-groups/my-invitations/999999/accept")
-                                .session(inviteeSession)
+                                .header("Authorization", "Bearer " + inviteeSession)
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isNotFound());
         }
@@ -603,15 +602,15 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                 invitation.setExpiresAt(Instant.now().plusSeconds(86400));
                 invitation = invitationRepository.save(invitation);
 
-                MockHttpSession joinerSession = loginAs("joiner.pending@example.com");
+                String joinerSession = loginAs("joiner.pending@example.com");
 
                 mockMvc.perform(post("/api/research-groups/join-by-code")
-                                .session(joinerSession)
+                                .header("Authorization", "Bearer " + joinerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"code\":\"" + group.getInvitationCode() + "\"}"))
                                 .andExpect(status().isOk());
 
-                mockMvc.perform(get("/api/research-groups/my-invitations").session(joinerSession))
+                mockMvc.perform(get("/api/research-groups/my-invitations").header("Authorization", "Bearer " + joinerSession))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.length()").value(0));
 
@@ -648,10 +647,10 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.ANNOTATOR)
                                 .build());
 
-                MockHttpSession ownerSession = loginAs("owner9@example.com");
+                String ownerSession = loginAs("owner9@example.com");
 
                 mockMvc.perform(post("/api/research-groups/" + group.getId() + "/members/" + member.getId() + "/role")
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"role\":\"ADMIN\"}"))
                                 .andExpect(status().isOk())
@@ -698,10 +697,10 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.ANNOTATOR)
                                 .build());
 
-                MockHttpSession adminSession = loginAs("admin.role@example.com");
+                String adminSession = loginAs("admin.role@example.com");
 
                 mockMvc.perform(post("/api/research-groups/" + group.getId() + "/members/" + member.getId() + "/role")
-                                .session(adminSession)
+                                .header("Authorization", "Bearer " + adminSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"role\":\"ADMIN\"}"))
                                 .andExpect(status().isForbidden());
@@ -735,14 +734,14 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.ANNOTATOR)
                                 .build());
 
-                MockHttpSession ownerSession = loginAs("owner11@example.com");
+                String ownerSession = loginAs("owner11@example.com");
 
                 mockMvc.perform(post("/api/research-groups/" + group.getId() + "/members/" + member.getId() + "/remove")
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isNoContent());
 
-                mockMvc.perform(get("/api/research-groups/" + group.getId()).session(ownerSession))
+                mockMvc.perform(get("/api/research-groups/" + group.getId()).header("Authorization", "Bearer " + ownerSession))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.members.length()").value(1));
         }
@@ -786,10 +785,10 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.ANNOTATOR)
                                 .build());
 
-                MockHttpSession adminSession = loginAs("admin.remove@example.com");
+                String adminSession = loginAs("admin.remove@example.com");
 
                 mockMvc.perform(post("/api/research-groups/" + group.getId() + "/members/" + member.getId() + "/remove")
-                                .session(adminSession)
+                                .header("Authorization", "Bearer " + adminSession)
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isForbidden());
         }
@@ -822,10 +821,10 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.ADMIN)
                                 .build());
 
-                MockHttpSession ownerSession = loginAs("owner13@example.com");
+                String ownerSession = loginAs("owner13@example.com");
 
                 mockMvc.perform(post("/api/research-groups/" + group.getId() + "/members/" + member.getId() + "/role")
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"role\":\"OWNER\"}"))
                                 .andExpect(status().isBadRequest());
@@ -859,11 +858,11 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build());
 
-                MockHttpSession ownerSession = loginAs("owner14@example.com");
+                String ownerSession = loginAs("owner14@example.com");
 
                 mockMvc.perform(post(
                                 "/api/research-groups/" + group.getId() + "/members/" + ownerTarget.getId() + "/remove")
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isBadRequest());
         }
@@ -885,10 +884,10 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build());
 
-                MockHttpSession ownerSession = loginAs("owner15@example.com");
+                String ownerSession = loginAs("owner15@example.com");
 
                 mockMvc.perform(post("/api/research-groups/" + group.getId() + "/members/999999/role")
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"role\":\"ADMIN\"}"))
                                 .andExpect(status().isNotFound());
@@ -911,10 +910,10 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build());
 
-                MockHttpSession ownerSession = loginAs("owner16@example.com");
+                String ownerSession = loginAs("owner16@example.com");
 
                 mockMvc.perform(post("/api/research-groups/" + group.getId() + "/members/999999/remove")
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isNotFound());
         }

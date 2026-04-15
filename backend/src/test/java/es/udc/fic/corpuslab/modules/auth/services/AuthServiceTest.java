@@ -14,18 +14,12 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginResponseDto;
@@ -79,12 +73,8 @@ class AuthServiceTest {
                 passwordEncoder,
                 passwordResetTokenRepository,
                 emailService,
-                jwtTokenService);
-    }
-
-    @AfterEach
-    void clearSecurityContext() {
-        SecurityContextHolder.clearContext();
+                jwtTokenService,
+                "http://frontend.test");
     }
 
     @Test
@@ -165,8 +155,7 @@ class AuthServiceTest {
     }
 
     @Test
-    void loginShouldAuthenticateAndStoreSecurityContextInSession() {
-        MockHttpServletRequest httpRequest = new MockHttpServletRequest();
+    void loginShouldAuthenticateAndReturnToken() {
 
         User user = UserTestBuilder.validUser().withEmail("new.user@example.com").build();
         setId(user, 99L);
@@ -180,47 +169,35 @@ class AuthServiceTest {
         when(passwordEncoder.matches("strong-password", user.getPasswordHash())).thenReturn(true);
         when(jwtTokenService.generateToken("new.user@example.com")).thenReturn("jwt-token");
 
-        UserLoginResponseDto response = authService.login(request, httpRequest);
+        UserLoginResponseDto response = authService.login(request);
 
         assertThat(response.id()).isEqualTo(99L);
         assertThat(response.email()).isEqualTo("new.user@example.com");
         assertThat(response.firstName()).isEqualTo("New");
         assertThat(response.lastName()).isEqualTo("User");
         assertThat(response.token()).isEqualTo("jwt-token");
-
-        HttpSession session = httpRequest.getSession(false);
-        assertThat(session).isNotNull();
-
-        Object sessionContext = session.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
-        assertThat(sessionContext).isInstanceOf(SecurityContext.class);
-        assertThat(((SecurityContext) sessionContext).getAuthentication().isAuthenticated()).isTrue();
-        assertThat(((SecurityContext) sessionContext).getAuthentication().getName()).isEqualTo("new.user@example.com");
     }
 
     @Test
     void loginShouldFailWhenUserDoesNotExist() {
-        MockHttpServletRequest httpRequest = new MockHttpServletRequest();
         UserLoginRequestDto request = UserLoginRequestTestBuilder.validRequest().build();
 
         when(userRepository.findByEmailIgnoreCase("new.user@example.com")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.login(request, httpRequest))
+        assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(InvalidCredentialsException.class)
                 .hasMessage("Invalid email or password");
-
-        assertThat(httpRequest.getSession(false)).isNull();
     }
 
     @Test
     void loginShouldFailWhenPasswordDoesNotMatch() {
-        MockHttpServletRequest httpRequest = new MockHttpServletRequest();
         User user = UserTestBuilder.validUser().build();
         UserLoginRequestDto request = UserLoginRequestTestBuilder.validRequest().build();
 
         when(userRepository.findByEmailIgnoreCase("new.user@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("strong-password", user.getPasswordHash())).thenReturn(false);
 
-        assertThatThrownBy(() -> authService.login(request, httpRequest))
+        assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(InvalidCredentialsException.class)
                 .hasMessage("Invalid email or password");
     }
@@ -315,36 +292,18 @@ class AuthServiceTest {
     }
 
     @Test
-    void logoutShouldInvalidateSessionAndClearContext() {
-        MockHttpServletRequest httpRequest = new MockHttpServletRequest();
-        httpRequest.getSession(true);
-        SecurityContextHolder.getContext().setAuthentication(
-                org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(
-                        "new.user@example.com",
-                        null,
-                        java.util.List.of()));
-
-        UserLogoutResponseDto response = authService.logout(httpRequest);
-
+    void logoutShouldReturnSuccessMessage() {
+        UserLogoutResponseDto response = authService.logout();
         assertThat(response.message()).isEqualTo("Logged out successfully");
-        assertThat(httpRequest.getSession(false)).isNull();
-        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
     @Test
-    void logoutShouldClearContextWhenSessionDoesNotExist() {
-        MockHttpServletRequest httpRequest = new MockHttpServletRequest();
-        SecurityContextHolder.getContext().setAuthentication(
-                org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(
-                        "new.user@example.com",
-                        null,
-                        java.util.List.of()));
+    void logoutShouldBeIdempotent() {
+        UserLogoutResponseDto firstResponse = authService.logout();
+        UserLogoutResponseDto secondResponse = authService.logout();
 
-        UserLogoutResponseDto response = authService.logout(httpRequest);
-
-        assertThat(response.message()).isEqualTo("Logged out successfully");
-        assertThat(httpRequest.getSession(false)).isNull();
-        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        assertThat(firstResponse.message()).isEqualTo("Logged out successfully");
+        assertThat(secondResponse.message()).isEqualTo("Logged out successfully");
     }
 
     @Test

@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -105,7 +104,7 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
         return userRepository.save(user);
     }
 
-    private MockHttpSession loginAs(String email) throws Exception {
+    private String loginAs(String email) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(
@@ -113,7 +112,7 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        return (MockHttpSession) result.getRequest().getSession(false);
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
     }
 
     private ResearchGroup createGroup(String name) {
@@ -170,9 +169,9 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
         assign(projectB, alice, ProjectParticipantRole.PARTICIPANT);
         assign(projectC, bob, ProjectParticipantRole.PARTICIPANT);
 
-        MockHttpSession session = loginAs("alice.projects@example.com");
+        String session = loginAs("alice.projects@example.com");
 
-        mockMvc.perform(get("/api/projects/my").session(session))
+        mockMvc.perform(get("/api/projects/my").header("Authorization", "Bearer " + session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[*].id", containsInAnyOrder(
@@ -180,7 +179,7 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
                         Math.toIntExact(projectB.getId()))))
                 .andExpect(jsonPath("$[0].participantRole").isNotEmpty())
                 .andExpect(jsonPath("$[0].researchGroupName").isNotEmpty())
-                .andExpect(jsonPath("$[0].setupCompleted").isBoolean());
+                .andExpect(jsonPath("$[0].completionPercentage").isNumber());
     }
 
     @Test
@@ -205,10 +204,10 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
         assign(groupAProject, user, ProjectParticipantRole.CREATOR);
         assign(groupBProject, user, ProjectParticipantRole.PARTICIPANT);
 
-        MockHttpSession session = loginAs("group.viewer@example.com");
+        String session = loginAs("group.viewer@example.com");
 
         mockMvc.perform(get("/api/research-groups/{groupId}/projects/my", groupA.getId())
-                .session(session))
+                .header("Authorization", "Bearer " + session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].id").value(groupAProject.getId()))
@@ -218,13 +217,13 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturnForbiddenWhenListingProjectsByGroupAsNonMember() throws Exception {
-        User outsider = createUser("outsider.group.viewer@example.com");
+        createUser("outsider.group.viewer@example.com");
         ResearchGroup group = createGroup("Private Group");
 
-        MockHttpSession session = loginAs("outsider.group.viewer@example.com");
+        String session = loginAs("outsider.group.viewer@example.com");
 
         mockMvc.perform(get("/api/research-groups/{groupId}/projects/my", group.getId())
-                .session(session))
+                .header("Authorization", "Bearer " + session))
                 .andExpect(status().isForbidden());
     }
 
@@ -245,8 +244,6 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
 
         Project project = createProject(group, "Detail Project", "Detailed description");
         project.setProjectType(ProjectType.NER);
-        project.setSetupCompleted(true);
-
         Label labelA = new Label();
         labelA.setProject(project);
         labelA.setName("PERSON");
@@ -274,19 +271,23 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
         DatasetItem item1 = new DatasetItem();
         item1.setProject(project);
         item1.setItemIndex(0);
-        item1.setContent(Map.of("text", "Alice works at OpenAI"));
+        item1.setContent(Map.of(
+                "text", "Alice works at OpenAI",
+                "completedAnnotations", 1));
 
         DatasetItem item2 = new DatasetItem();
         item2.setProject(project);
         item2.setItemIndex(1);
-        item2.setContent(Map.of("text", "Bob moved to Paris"));
+        item2.setContent(Map.of(
+                "text", "Bob moved to Paris",
+                "completedAnnotations", 2));
 
         datasetItemRepository.save(item1);
         datasetItemRepository.save(item2);
 
-        MockHttpSession session = loginAs("investigator.detail@example.com");
+        String session = loginAs("investigator.detail@example.com");
 
-        mockMvc.perform(get("/api/projects/{projectId}", project.getId()).session(session))
+        mockMvc.perform(get("/api/projects/{projectId}", project.getId()).header("Authorization", "Bearer " + session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(project.getId()))
                 .andExpect(jsonPath("$.researchGroupId").value(group.getId()))
@@ -294,8 +295,12 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.name").value("Detail Project"))
                 .andExpect(jsonPath("$.description").value("Detailed description"))
                 .andExpect(jsonPath("$.projectType").value("NER"))
-                .andExpect(jsonPath("$.setupCompleted").value(true))
+                .andExpect(jsonPath("$.completionPercentage").value(0))
                 .andExpect(jsonPath("$.participantRole").value("PARTICIPANT"))
+                .andExpect(jsonPath("$.participants", hasSize(2)))
+                .andExpect(jsonPath("$.participants[*].role", containsInAnyOrder("CREATOR", "PARTICIPANT")))
+                .andExpect(jsonPath("$.participants[0].completionPercentage").value(0))
+                .andExpect(jsonPath("$.participants[1].completionPercentage").value(0))
                 .andExpect(jsonPath("$.labels", hasSize(2)))
                 .andExpect(jsonPath("$.guidelineText").value("Annotate named entities."))
                 .andExpect(jsonPath("$.guidelinePdfBase64").isEmpty())
@@ -306,7 +311,7 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
     @Test
     void shouldReturnNotFoundWhenReadingProjectDetailWithoutAssignment() throws Exception {
         User owner = createUser("owner.only@example.com");
-        User outsider = createUser("outsider.detail@example.com");
+        createUser("outsider.detail@example.com");
 
         ResearchGroup group = createGroup("No Access Group");
         addMembership(owner, group, ResearchGroupMemberRole.OWNER);
@@ -314,9 +319,9 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
         Project project = createProject(group, "Owner Project", "private detail");
         assign(project, owner, ProjectParticipantRole.CREATOR);
 
-        MockHttpSession session = loginAs("outsider.detail@example.com");
+        String session = loginAs("outsider.detail@example.com");
 
-        mockMvc.perform(get("/api/projects/{projectId}", project.getId()).session(session))
+        mockMvc.perform(get("/api/projects/{projectId}", project.getId()).header("Authorization", "Bearer " + session))
                 .andExpect(status().isNotFound());
     }
 }

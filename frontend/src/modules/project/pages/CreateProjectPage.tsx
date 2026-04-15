@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
@@ -55,24 +55,31 @@ export default function CreateProjectPage() {
   );
 
   const isGroupLocked = hasInitialGroupId && Boolean(lockedGroup);
+  const backFallbackPath =
+    isGroupLocked && lockedGroup ? `/home/research-groups/${lockedGroup.id}` : '/home/projects';
 
-  const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [customSelectedGroupId, setCustomSelectedGroupId] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
   const [createdProjectId, setCreatedProjectId] = useState<number | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
-  useEffect(() => {
+  const selectedGroupId = useMemo(() => {
     if (isGroupLocked && lockedGroup) {
-      setSelectedGroupId(String(lockedGroup.id));
-      return;
+      return String(lockedGroup.id);
     }
 
-    if (selectedGroupId.length === 0 && manageableGroups.length > 0) {
-      setSelectedGroupId(String(manageableGroups[0].id));
+    if (customSelectedGroupId.length > 0) {
+      return customSelectedGroupId;
     }
-  }, [isGroupLocked, lockedGroup, manageableGroups, selectedGroupId]);
+
+    if (manageableGroups.length > 0) {
+      return String(manageableGroups[0].id);
+    }
+
+    return '';
+  }, [customSelectedGroupId, isGroupLocked, lockedGroup, manageableGroups]);
 
   const numericGroupId = Number(selectedGroupId);
   const isSavingProject = createProjectMutation.isPending;
@@ -171,7 +178,7 @@ export default function CreateProjectPage() {
           controlType="select"
           id="create-project-group"
           label={t('project.create.groupLabel')}
-          onValueChange={setSelectedGroupId}
+          onValueChange={setCustomSelectedGroupId}
           options={manageableGroups.map((group) => ({
             label: group.name,
             value: String(group.id),
@@ -227,15 +234,10 @@ export default function CreateProjectPage() {
     );
   } else if (currentStep === 2) {
     mainStepContent = (
-      <div className="mt-8 space-y-5">
-        <div className="rounded-md border border-border bg-background p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            {t('project.create.datasetFormatsTitle')}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t('project.create.datasetFormatsDescription')}
-          </p>
-        </div>
+      <div className="mt-8 space-y-3">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          {t('project.create.steps.dataset')} *
+        </p>
 
         <UploadDropzone
           accept=".pdf,.txt,.json,.csv,image/*"
@@ -320,7 +322,14 @@ export default function CreateProjectPage() {
       <ProjectAssignmentStep
         groupId={numericGroupId}
         onBack={() => setCurrentStep(3)}
-        onCompleted={() => navigate(`/home/research-groups/${numericGroupId}`)}
+        onCompleted={() => {
+          if (isGroupLocked) {
+            navigate(`/home/research-groups/${numericGroupId}`);
+            return;
+          }
+
+          navigate(`/home/projects/${createdProjectId}`);
+        }}
         projectId={createdProjectId}
       />
     );
@@ -332,7 +341,7 @@ export default function CreateProjectPage() {
     <PageContainer className="py-4 sm:py-6">
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <BackButton fallbackTo="/home/research-groups" />
+          <BackButton fallbackTo={backFallbackPath} />
         </div>
 
         <section className="rounded-md border border-border bg-surface-base p-6 sm:p-7">
@@ -341,11 +350,11 @@ export default function CreateProjectPage() {
           </h1>
 
           <div className="mt-8">
-            <div className="relative mb-6 px-2">
-              <div className="absolute top-1/2 left-2 right-2 h-px -translate-y-1/2 bg-border" />
+            <div className="relative mb-6">
+              <div className="absolute top-1/2 left-0 right-0 h-px -translate-y-1/2 bg-border" />
               <div
-                className="absolute top-1/2 left-2 h-px -translate-y-1/2 bg-primary transition-all"
-                style={{ width: `calc(${progressPercentage}% - 0.5rem)` }}
+                className="absolute top-1/2 left-0 h-px -translate-y-1/2 bg-primary transition-all duration-500"
+                style={{ width: `${progressPercentage}%` }}
               />
 
               <div className="relative flex items-center justify-between">
@@ -355,7 +364,7 @@ export default function CreateProjectPage() {
                   return (
                     <div
                       className={[
-                        'size-4 rounded-full border-2 transition-colors',
+                        'size-4 rounded-full border-2 transition-colors duration-500 z-10',
                         isCompleted ? 'border-primary bg-primary' : 'border-border bg-surface-base',
                       ].join(' ')}
                       key={step}

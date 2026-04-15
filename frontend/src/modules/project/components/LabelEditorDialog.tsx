@@ -21,6 +21,7 @@ type LabelEditorDialogProps = Readonly<{
   onNameChange: (nextName: string) => void;
   onOpenChange: (open: boolean) => void;
   onSave: () => void;
+  isSaveDisabled?: boolean;
   placeholder: string;
   saveCreateText: string;
   saveEditText: string;
@@ -40,6 +41,7 @@ export function LabelEditorDialog({
   onNameChange,
   onOpenChange,
   onSave,
+  isSaveDisabled = false,
   placeholder,
   saveCreateText,
   saveEditText,
@@ -74,7 +76,6 @@ export function LabelEditorDialog({
                 {colorLabel} *
               </p>
 
-              {/* Paleta curada SaaS */}
               <div className="flex flex-wrap gap-2.5">
                 {LABEL_COLOR_PALETTE.map((color) => {
                   const isSelected = currentColor.toLowerCase() === color.toLowerCase();
@@ -101,6 +102,7 @@ export function LabelEditorDialog({
         <DialogFooter>
           <Button
             className="h-10 min-w-28 rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
+            disabled={isSaveDisabled}
             onClick={onSave}
             type="button"
           >

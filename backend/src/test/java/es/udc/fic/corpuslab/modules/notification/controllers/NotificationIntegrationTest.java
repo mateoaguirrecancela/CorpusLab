@@ -23,7 +23,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -86,11 +85,11 @@ class NotificationIntegrationTest extends AbstractIntegrationTest {
         second.setReadAt(java.time.Instant.now());
         notificationRepository.save(second);
 
-        MockHttpSession session = loginAs("recipient@example.com");
+        String session = loginAs("recipient@example.com");
 
         mockMvc.perform(get("/api/notifications")
                 .param("limit", "10")
-                .session(session))
+                .header("Authorization", "Bearer " + session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications.length()").value(2))
                 .andExpect(jsonPath("$.unreadCount").value(1))
@@ -113,10 +112,10 @@ class NotificationIntegrationTest extends AbstractIntegrationTest {
         notification.setType(NotificationType.RESEARCH_GROUP_INVITATION_RECEIVED);
         notification = notificationRepository.save(notification);
 
-        MockHttpSession session = loginAs("mark.read@example.com");
+        String session = loginAs("mark.read@example.com");
 
         mockMvc.perform(post("/api/notifications/" + notification.getId() + "/read")
-                .session(session))
+                .header("Authorization", "Bearer " + session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(notification.getId()))
                 .andExpect(jsonPath("$.read").value(true));
@@ -142,10 +141,10 @@ class NotificationIntegrationTest extends AbstractIntegrationTest {
         foreignNotification.setType(NotificationType.RESEARCH_GROUP_INVITATION_RECEIVED);
         foreignNotification = notificationRepository.save(foreignNotification);
 
-        MockHttpSession session = loginAs("owner@example.com");
+        String session = loginAs("owner@example.com");
 
         mockMvc.perform(post("/api/notifications/" + foreignNotification.getId() + "/read")
-                .session(session))
+                .header("Authorization", "Bearer " + session))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.message")
@@ -180,10 +179,10 @@ class NotificationIntegrationTest extends AbstractIntegrationTest {
         foreign.setType(NotificationType.RESEARCH_GROUP_INVITATION_RECEIVED);
         foreign = notificationRepository.save(foreign);
 
-        MockHttpSession session = loginAs("mark.all@example.com");
+        String session = loginAs("mark.all@example.com");
 
         mockMvc.perform(post("/api/notifications/read-all")
-                .session(session))
+                .header("Authorization", "Bearer " + session))
                 .andExpect(status().isNoContent());
 
         Notification refreshedMineOne = notificationRepository.findById(mineOne.getId()).orElseThrow();
@@ -201,7 +200,7 @@ class NotificationIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
-    private MockHttpSession loginAs(String email) throws Exception {
+    private String loginAs(String email) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(
@@ -211,6 +210,6 @@ class NotificationIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        return (MockHttpSession) result.getRequest().getSession(false);
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
     }
 }

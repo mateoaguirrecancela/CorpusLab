@@ -79,7 +79,7 @@ public class ProjectController {
             Authentication authentication,
             @PathVariable("groupId") Long groupId,
             @PathVariable("projectId") Long projectId,
-            @RequestBody AssignProjectParticipantsRequestDto request) {
+            @Valid @RequestBody AssignProjectParticipantsRequestDto request) {
         projectService.assignParticipants(
                 authentication.getName(),
                 groupId,

@@ -2,18 +2,11 @@ package es.udc.fic.corpuslab.modules.auth.services;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +28,7 @@ import es.udc.fic.corpuslab.modules.auth.repositories.PasswordResetTokenReposito
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
+import es.udc.fic.corpuslab.common.utils.StringUtils;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -44,18 +38,21 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailService emailService;
     private final es.udc.fic.corpuslab.common.security.JwtTokenService jwtTokenService;
+    private final String frontendBaseUrl;
 
     public AuthServiceImpl(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             PasswordResetTokenRepository passwordResetTokenRepository,
             EmailService emailService,
-            es.udc.fic.corpuslab.common.security.JwtTokenService jwtTokenService) {
+            es.udc.fic.corpuslab.common.security.JwtTokenService jwtTokenService,
+            @Value("${app.frontend.base-url:http://localhost:5173}") String frontendBaseUrl) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.emailService = emailService;
         this.jwtTokenService = jwtTokenService;
+        this.frontendBaseUrl = frontendBaseUrl;
     }
 
     @Override
@@ -73,7 +70,7 @@ public class AuthServiceImpl implements AuthService {
         user.setBirth(request.birth());
         user.setGender(request.gender());
         user.setCountryCode(normalizeCountryCode(request.countryCode()));
-        user.setCity(trimToNull(request.city()));
+        user.setCity(StringUtils.trimToNull(request.city()));
         user.setPasswordHash(passwordEncoder.encode(request.password()));
 
         User saved = userRepository.save(user);
@@ -87,7 +84,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserLoginResponseDto login(UserLoginRequestDto request, HttpServletRequest httpRequest) {
+    public UserLoginResponseDto login(UserLoginRequestDto request) {
         String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(request.email());
 
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
@@ -96,18 +93,6 @@ public class AuthServiceImpl implements AuthService {
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new InvalidCredentialsException();
         }
-
-        UsernamePasswordAuthenticationToken authentication = UsernamePasswordAuthenticationToken.authenticated(
-                user.getEmail(),
-                null,
-                List.of(new SimpleGrantedAuthority("ROLE_USER")));
-
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(authentication);
-        SecurityContextHolder.setContext(context);
-
-        HttpSession session = httpRequest.getSession(true);
-        session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
 
         String token = jwtTokenService.generateToken(user.getEmail());
 
@@ -143,7 +128,7 @@ public class AuthServiceImpl implements AuthService {
         user.setBirth(request.birth());
         user.setGender(request.gender());
         user.setCountryCode(normalizeCountryCode(request.countryCode()));
-        user.setCity(trimToNull(request.city()));
+        user.setCity(StringUtils.trimToNull(request.city()));
 
         User saved = userRepository.save(user);
 
@@ -162,12 +147,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public UserLogoutResponseDto logout(HttpServletRequest httpRequest) {
-        HttpSession session = httpRequest.getSession(false);
-        if (session != null) {
-            session.invalidate();
-        }
-        SecurityContextHolder.clearContext();
+    public UserLogoutResponseDto logout() {
         return new UserLogoutResponseDto("Logged out successfully");
     }
 
@@ -194,7 +174,7 @@ public class AuthServiceImpl implements AuthService {
         token.setExpiryDate(LocalDateTime.now().plus(15, ChronoUnit.MINUTES));
         passwordResetTokenRepository.save(token);
 
-        String resetUrl = "http://localhost:5173/auth/reset-password?token=" + rawToken;
+        String resetUrl = frontendBaseUrl + "/auth/reset-password?token=" + rawToken;
         try {
             emailService.sendPasswordResetEmail(user.getEmail(), resetUrl);
         } catch (RuntimeException ex) {
@@ -217,19 +197,10 @@ public class AuthServiceImpl implements AuthService {
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
         passwordResetTokenRepository.delete(passwordResetToken);
-        SecurityContextHolder.clearContext();
-    }
-
-    private String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private String normalizeCountryCode(String countryCode) {
-        String normalized = trimToNull(countryCode);
+        String normalized = StringUtils.trimToNull(countryCode);
         if (normalized == null) {
             return null;
         }

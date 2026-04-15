@@ -9,13 +9,22 @@ export type ProjectSummary = {
 
 export type ProjectParticipantRole = 'CREATOR' | 'PARTICIPANT';
 
+export type ProjectDetailParticipant = {
+  userId: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: ProjectParticipantRole;
+  completionPercentage: number;
+};
+
 export type ProjectAssignedSummary = {
   id: number;
   researchGroupId: number;
   researchGroupName: string;
   name: string;
   description: string | null;
-  setupCompleted: boolean;
+  completionPercentage: number;
   participantRole: ProjectParticipantRole;
   createdAt: string;
 };
@@ -78,8 +87,9 @@ export type ProjectDetail = {
   name: string;
   description: string | null;
   projectType: ProjectType;
-  setupCompleted: boolean;
+  completionPercentage: number;
   participantRole: ProjectParticipantRole;
+  participants: ProjectDetailParticipant[];
   labels: ProjectSetupLabel[];
   guidelineText: string | null;
   guidelinePdfBase64: string | null;
