@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import { extractApiErrorMessage } from '@/lib/apiErrors';
 import i18n from '@/lib/i18n';
 import { type OAuthProvider } from '@/modules/auth/constants/session';
 import {
@@ -92,16 +93,6 @@ export async function resetPassword(payload: ResetPasswordPayload): Promise<Rese
   return response.data;
 }
 
-function extractApiErrorMessage(error: unknown, fallbackMessage: string): string {
-  if (typeof error === 'object' && error !== null && 'response' in error) {
-    const response = (error as { response?: { data?: { message?: string; error?: string } } })
-      .response;
-    return response?.data?.message ?? response?.data?.error ?? fallbackMessage;
-  }
-
-  return fallbackMessage;
-}
-
 export function getLoginErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, i18n.t('auth.errors.unexpected.login'));
 }
@@ -135,12 +126,12 @@ export function getOAuthAuthorizationUrl(provider: OAuthProvider): string {
 }
 
 export function redirectToOAuthAuthorization(provider: OAuthProvider): void {
-  window.location.assign(getOAuthAuthorizationUrl(provider));
+  globalThis.location.assign(getOAuthAuthorizationUrl(provider));
 }
 
 function decodeBase64Url(input: string): string | null {
   try {
-    const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
+    const normalized = input.replaceAll('-', '+').replaceAll('_', '/');
     const paddingLength = (4 - (normalized.length % 4)) % 4;
     const padded = normalized + '='.repeat(paddingLength);
     return atob(padded);

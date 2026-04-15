@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { FileText, FileUp, Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -54,25 +54,28 @@ export function ProjectSetupStep({
   const isSavingSetup = configureSetupMutation.isPending;
   const isNerProjectType = projectType === 'NER';
   const requiresLabels = projectType !== 'SEQ2SEQ';
+  const isLabelNameValid = draftLabelName.trim().length > 0;
+  const isLabelColorValid = !isNerProjectType || draftLabelColor.trim().length > 0;
+  const isLabelDialogSaveDisabled = !isLabelNameValid || !isLabelColorValid;
 
-  useEffect(() => {
-    if (projectType === 'SEQ2SEQ') {
-      setLabels([]);
-      return;
-    }
+  const handleProjectTypeChange = (nextType: ProjectType) => {
+    setProjectType(nextType);
 
-    if (projectType === 'NER') {
-      setLabels((prev) =>
-        prev.map((label) => ({
+    setLabels((prev) => {
+      if (nextType === 'SEQ2SEQ') {
+        return [];
+      }
+
+      if (nextType === 'NER') {
+        return prev.map((label) => ({
           ...label,
           color: label.color ?? LABEL_COLOR_PALETTE[0],
-        })),
-      );
-      return;
-    }
+        }));
+      }
 
-    setLabels((prev) => prev.map((label) => ({ ...label, color: null })));
-  }, [projectType]);
+      return prev.map((label) => ({ ...label, color: null }));
+    });
+  };
 
   const hasValidGuideline =
     guidelineMode === 'TEXT' ? guidelineText.trim().length > 0 : guidelinePdfFile !== null;
@@ -203,20 +206,11 @@ export function ProjectSetupStep({
 
   return (
     <div className="mt-8 space-y-6">
-      <div className="rounded-md border border-border bg-background p-4">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          {t('project.create.taskDesignTitle')}
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t('project.create.taskDesignDescription')}
-        </p>
-      </div>
-
       <FormFieldControl
         controlType="select"
         id="create-project-type"
         label={t('project.create.projectTypeLabel')}
-        onValueChange={(value) => setProjectType(value as ProjectType)}
+        onValueChange={(value) => handleProjectTypeChange(value as ProjectType)}
         options={[
           {
             label: t('project.create.projectTypes.textClassificationSimple'),
@@ -241,21 +235,14 @@ export function ProjectSetupStep({
       />
 
       {requiresLabels && (
-        <section className="rounded-xl border border-border bg-surface-base p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                {t('project.create.labelsSectionTitle')}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {isNerProjectType
-                  ? t('project.create.labelsSectionDescriptionNer')
-                  : t('project.create.labelsSectionDescription')}
-              </p>
-            </div>
+        <section>
+          <div className="flex items-end justify-between gap-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              {t('project.create.labelsSectionTitle')} *
+            </p>
 
             <Button
-              className="h-9 rounded-md bg-primary px-3 text-sm font-semibold text-white hover:bg-primary-strong"
+              className="h-9 rounded-md bg-primary px-3 text-sm font-semibold text-white hover:bg-primary-strong cursor-pointer"
               onClick={openCreateLabelDialog}
               type="button"
             >
@@ -293,14 +280,14 @@ export function ProjectSetupStep({
           {t('project.create.guidelineSectionTitle')}
         </p>
 
-        <div className="overflow-hidden rounded-xl border border-border bg-surface-base">
-          <div className="grid grid-cols-2 border-b border-border bg-background">
+        <div className="overflow-hidden rounded-lg border border-primary/20 bg-surface-base">
+          <div className="flex border-b border-primary/20 bg-primary/5">
             <button
               className={[
-                'inline-flex items-center justify-center gap-2 border-r border-border px-4 py-3 text-xs font-bold tracking-wider uppercase text-muted-foreground transition-colors sm:justify-start sm:px-8',
+                'inline-flex items-center justify-center gap-2 border-r border-primary/20 px-4 py-3 text-xs font-bold tracking-wider uppercase transition-colors sm:justify-start sm:px-6',
                 guidelineMode === 'TEXT'
-                  ? 'bg-surface-base shadow-[inset_0_-2px_0_0] shadow-primary'
-                  : 'hover:bg-accent/40',
+                  ? 'bg-surface-base text-primary shadow-[inset_0_-2px_0_0] shadow-primary'
+                  : 'text-muted-foreground hover:bg-accent/30',
               ].join(' ')}
               onClick={() => {
                 setGuidelineMode('TEXT');
@@ -309,14 +296,14 @@ export function ProjectSetupStep({
               type="button"
             >
               <FileText className="size-3.5 text-muted-foreground" />
-              {t('project.create.guidelineAsText')}
+              {t('project.create.guidelineWriteTab')}
             </button>
             <button
               className={[
-                'inline-flex items-center justify-center gap-2 px-4 py-3 text-xs font-bold tracking-wider uppercase text-muted-foreground transition-colors sm:justify-start sm:px-8',
+                'inline-flex items-center justify-center gap-2 px-4 py-3 text-xs font-bold tracking-wider uppercase transition-colors sm:justify-start sm:px-6',
                 guidelineMode === 'PDF'
-                  ? 'bg-surface-base shadow-[inset_0_-2px_0_0] shadow-primary'
-                  : 'hover:bg-accent/40',
+                  ? 'bg-surface-base text-primary shadow-[inset_0_-2px_0_0] shadow-primary'
+                  : 'text-muted-foreground hover:bg-accent/30',
               ].join(' ')}
               onClick={() => {
                 setGuidelineMode('PDF');
@@ -325,11 +312,11 @@ export function ProjectSetupStep({
               type="button"
             >
               <FileUp className="size-3.5 text-muted-foreground" />
-              {t('project.create.guidelineAsPdf')}
+              {t('project.create.guidelineUploadTab')}
             </button>
           </div>
 
-          <div className="bg-slate-50/40 p-4 sm:p-6">
+          <div className="bg-slate-50/60 p-4 sm:p-6">
             {guidelineMode === 'TEXT' ? (
               <Textarea
                 id="project-guideline-text"
@@ -345,11 +332,11 @@ export function ProjectSetupStep({
                   accept=".pdf,application/pdf"
                   description={t('project.create.guidelinePdfHint')}
                   onFilesChange={handleGuidelinePdfSelected}
-                  title={t('project.create.guidelinePdfLabel')}
+                  title={t('project.create.guidelineUploadTitle')}
                 />
 
                 {guidelinePdfFile && (
-                  <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3">
+                  <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-primary">
                         {guidelinePdfFile.name}
@@ -395,7 +382,7 @@ export function ProjectSetupStep({
               {t('project.create.savingSetup')}
             </span>
           ) : (
-            t('project.create.finishCreateProject')
+            t('project.create.nextStepSimple')
           )}
         </Button>
       </div>
@@ -412,6 +399,7 @@ export function ProjectSetupStep({
         onNameChange={setDraftLabelName}
         onOpenChange={setIsLabelEditorOpen}
         onSave={saveLabelFromDialog}
+        isSaveDisabled={isLabelDialogSaveDisabled}
         placeholder={t('project.create.labelNamePlaceholder')}
         saveCreateText={t('project.create.addLabel')}
         saveEditText={t('project.create.saveLabel')}

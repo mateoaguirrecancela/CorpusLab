@@ -4,6 +4,9 @@
       "pageTitle": "Mis proyectos",
       "loading": "Cargando tus proyectos asignados...",
       "empty": "Todavía no tienes proyectos asignados.",
+      "newProject": "Nuevo proyecto",
+      "openProject": "Abrir proyecto",
+      "noDescription": "Sin descripción.",
       "columns": {
         "name": "Proyecto",
         "group": "Grupo",
@@ -15,24 +18,40 @@
         "creator": "Creador",
         "participant": "Participante"
       },
+      "completionBadge": "{{value}}% completado",
       "status": {
         "ready": "Listo",
-        "pendingSetup": "Configuración pendiente"
+        "pendingSetup": "Pendiente"
       }
     },
     "detail": {
+      "backToProjects": "Proyectos",
       "loading": "Cargando detalle del proyecto...",
       "invalidId": "El identificador del proyecto no es válido.",
       "cards": {
         "role": "Rol",
-        "status": "Estado",
+        "group": "Grupo de Investigacion",
+        "type": "Tipo",
+        "completion": "Completado",
         "datasetItems": "Items de dataset",
         "createdAt": "Creado"
       },
+      "participantsTitle": "Participantes",
+      "participantInfo": "Tu participacion en este proyecto:",
+      "myRole": "Mi Rol",
+      "participantsName": "Participante",
+      "participantsRole": "Rol",
+      "participantsCompletion": "Completado",
+      "participantsEmpty": "No hay participantes asignados a este proyecto.",
+      "completionValue": "{{value}}% completado",
       "labelsTitle": "Etiquetas",
       "noLabels": "Este proyecto no tiene etiquetas definidas.",
       "guidelineTitle": "Guideline",
       "guidelinePdfAttached": "Este proyecto tiene un guideline adjunto en PDF.",
+      "guidelineDocument": "Documento guideline",
+      "guidelinePdfFile": "Archivo PDF adjunto",
+      "openGuidelinePdf": "Abrir guideline en PDF",
+      "openGuidelinePdfError": "No se pudo abrir el guideline en PDF.",
       "noGuideline": "Este proyecto no tiene guideline disponible."
     },
     "create": {
@@ -69,10 +88,10 @@
       "taskDesignDescription": "Define el tipo de proyecto, las etiquetas necesarias y el guideline para el equipo.",
       "projectTypeLabel": "Tipo de proyecto",
       "projectTypes": {
-        "textClassificationSimple": "Clasificación de Texto Simple",
-        "textClassificationMultiLabel": "Clasificación de Texto Multietiqueta",
+        "textClassificationSimple": "Clasificación Simple",
+        "textClassificationMultiLabel": "Clasificación Multietiqueta",
         "ner": "Extracción de Entidades (NER)",
-        "seq2seq": "Generación y Mapeo Sequence-to-Sequence (Seq2Seq)"
+        "seq2seq": "Sequence-to-Sequence (Seq2Seq)"
       },
       "labelsSectionTitle": "Etiquetas",
       "labelsSectionDescription": "Añade las etiquetas que podrán asignarse en el proyecto.",
@@ -92,10 +111,14 @@
       "guidelineSectionDescription": "Escribe un guideline o sube un PDF. Solo una opción puede usarse.",
       "guidelineAsText": "Texto",
       "guidelineAsPdf": "PDF",
+      "guidelineWriteTab": "Texto",
+      "guidelineUploadTab": "Subir PDF",
       "guidelineTextLabel": "Guideline en texto",
       "guidelineTextPlaceholder": "Define criterios, ejemplos y reglas para anotar correctamente.",
       "guidelinePdfLabel": "Adjuntar guideline en PDF",
+      "guidelineUploadTitle": "Arrastra y suelta la guía del protocolo",
       "guidelinePdfHint": "Sube un único archivo PDF con el guideline del proyecto.",
+      "guidelineBrowseFiles": "Examinar archivos",
       "guidelinePdfReadError": "No se pudo leer el PDF del guideline.",
       "savingSetup": "Guardando configuración...",
       "assignmentTitle": "Asignar investigadores",

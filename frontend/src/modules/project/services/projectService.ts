@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import { extractApiErrorMessage } from '@/lib/apiErrors';
 import i18n from '@/lib/i18n';
 import {
   type AssignProjectParticipantsPayload,
@@ -27,18 +28,8 @@ export async function createProject(
   return response.data;
 }
 
-function extractApiErrorMessage(error: unknown, fallbackKey: string): string {
-  if (typeof error === 'object' && error !== null && 'response' in error) {
-    const response = (error as { response?: { data?: { message?: string; error?: string } } })
-      .response;
-    return response?.data?.message ?? response?.data?.error ?? i18n.t(fallbackKey);
-  }
-
-  return i18n.t(fallbackKey);
-}
-
 export function getCreateProjectErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'project.errors.createFailed');
+  return extractApiErrorMessage(error, i18n.t('project.errors.createFailed'));
 }
 
 export async function uploadProjectDataset(
@@ -65,7 +56,7 @@ export async function uploadProjectDataset(
 }
 
 export function getUploadDatasetErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'project.errors.datasetUploadFailed');
+  return extractApiErrorMessage(error, i18n.t('project.errors.datasetUploadFailed'));
 }
 
 export async function configureProjectSetup(
@@ -89,7 +80,7 @@ export async function configureProjectSetup(
 }
 
 export function getProjectSetupErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'project.errors.setupFailed');
+  return extractApiErrorMessage(error, i18n.t('project.errors.setupFailed'));
 }
 
 export async function assignProjectParticipants(
@@ -101,7 +92,7 @@ export async function assignProjectParticipants(
 }
 
 export function getAssignParticipantsErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'project.errors.assignmentFailed');
+  return extractApiErrorMessage(error, i18n.t('project.errors.assignmentFailed'));
 }
 
 export async function getAssignedProjectsByGroup(
@@ -124,9 +115,9 @@ export async function getProjectDetail(projectId: number): Promise<ProjectDetail
 }
 
 export function getProjectsLoadErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'project.errors.loadFailed');
+  return extractApiErrorMessage(error, i18n.t('project.errors.loadFailed'));
 }
 
 export function getProjectDetailLoadErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'project.errors.detailLoadFailed');
+  return extractApiErrorMessage(error, i18n.t('project.errors.detailLoadFailed'));
 }
