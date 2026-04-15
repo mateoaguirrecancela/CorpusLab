@@ -1,6 +1,5 @@
 package es.udc.fic.corpuslab.modules.auth.controllers;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -46,8 +45,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public UserLoginResponseDto login(@Valid @RequestBody UserLoginRequestDto request, HttpServletRequest httpRequest) {
-        return authService.login(request, httpRequest);
+    public UserLoginResponseDto login(@Valid @RequestBody UserLoginRequestDto request) {
+        return authService.login(request);
     }
 
     @GetMapping("/profile")
@@ -63,8 +62,8 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public UserLogoutResponseDto logout(HttpServletRequest httpRequest) {
-        return authService.logout(httpRequest);
+    public UserLogoutResponseDto logout() {
+        return authService.logout();
     }
 
     @PostMapping("/forgot-password")

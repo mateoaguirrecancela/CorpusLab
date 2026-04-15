@@ -18,6 +18,8 @@ public interface ProjectParticipantRepository extends JpaRepository<ProjectParti
             Long researchGroupId,
             Long userId);
 
+    List<ProjectParticipant> findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(Long projectId);
+
     List<ProjectParticipant> findByUserIdOrderByProjectCreatedAtDesc(Long userId);
 
     Optional<ProjectParticipant> findByProjectIdAndUserId(Long projectId, Long userId);

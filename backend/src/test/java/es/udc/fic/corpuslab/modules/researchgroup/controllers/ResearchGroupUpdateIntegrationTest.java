@@ -29,7 +29,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -84,7 +83,7 @@ class ResearchGroupUpdateIntegrationTest extends AbstractIntegrationTest {
                 userRepository.deleteAll();
         }
 
-        private MockHttpSession loginAs(String email) throws Exception {
+        private String loginAs(String email) throws Exception {
                 MvcResult result = mockMvc.perform(post("/api/auth/login")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(
@@ -94,7 +93,7 @@ class ResearchGroupUpdateIntegrationTest extends AbstractIntegrationTest {
                                 .andExpect(status().isOk())
                                 .andReturn();
 
-                return (MockHttpSession) result.getRequest().getSession(false);
+                return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
         }
 
         @Test
@@ -117,10 +116,10 @@ class ResearchGroupUpdateIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build());
 
-                MockHttpSession ownerSession = loginAs("owner.update@example.com");
+                String ownerSession = loginAs("owner.update@example.com");
 
                 mockMvc.perform(put("/api/research-groups/" + group.getId())
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"name\":\"Updated Name\",\"description\":\"Updated Description\"}"))
                                 .andExpect(status().isOk())
@@ -146,10 +145,10 @@ class ResearchGroupUpdateIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build());
 
-                MockHttpSession ownerSession = loginAs("owner.trim@example.com");
+                String ownerSession = loginAs("owner.trim@example.com");
 
                 mockMvc.perform(put("/api/research-groups/" + group.getId())
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"name\":\"  Trim Name  \",\"description\":\"  Trim Desc  \"}"))
                                 .andExpect(status().isOk())
@@ -174,10 +173,10 @@ class ResearchGroupUpdateIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build());
 
-                MockHttpSession ownerSession = loginAs("owner.null@example.com");
+                String ownerSession = loginAs("owner.null@example.com");
 
                 mockMvc.perform(put("/api/research-groups/" + group.getId())
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"name\":\"Updated Name\",\"description\":\"   \"}"))
                                 .andExpect(status().isOk())
@@ -212,10 +211,10 @@ class ResearchGroupUpdateIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.ADMIN)
                                 .build());
 
-                MockHttpSession adminSession = loginAs("admin.noedit@example.com");
+                String adminSession = loginAs("admin.noedit@example.com");
 
                 mockMvc.perform(put("/api/research-groups/" + group.getId())
-                                .session(adminSession)
+                                .header("Authorization", "Bearer " + adminSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"name\":\"Updated Name\",\"description\":\"Updated Description\"}"))
                                 .andExpect(status().isForbidden());
@@ -229,10 +228,10 @@ class ResearchGroupUpdateIntegrationTest extends AbstractIntegrationTest {
                                 .build();
                 userRepository.save(owner);
 
-                MockHttpSession ownerSession = loginAs("owner.notfound@example.com");
+                String ownerSession = loginAs("owner.notfound@example.com");
 
                 mockMvc.perform(put("/api/research-groups/999999")
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"name\":\"Updated Name\",\"description\":\"Updated Description\"}"))
                                 .andExpect(status().isNotFound());
@@ -255,10 +254,10 @@ class ResearchGroupUpdateIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build());
 
-                MockHttpSession ownerSession = loginAs("owner.validation@example.com");
+                String ownerSession = loginAs("owner.validation@example.com");
 
                 mockMvc.perform(put("/api/research-groups/" + group.getId())
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"name\":\"   \",\"description\":\"Updated Description\"}"))
                                 .andExpect(status().isBadRequest());
@@ -281,10 +280,10 @@ class ResearchGroupUpdateIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build());
 
-                MockHttpSession ownerSession = loginAs("owner.missingname@example.com");
+                String ownerSession = loginAs("owner.missingname@example.com");
 
                 mockMvc.perform(put("/api/research-groups/" + group.getId())
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"description\":\"Updated Description\"}"))
                                 .andExpect(status().isBadRequest());
@@ -307,11 +306,11 @@ class ResearchGroupUpdateIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build());
 
-                MockHttpSession ownerSession = loginAs("owner.longdesc@example.com");
+                String ownerSession = loginAs("owner.longdesc@example.com");
                 String tooLongDescription = "a".repeat(2049);
 
                 mockMvc.perform(put("/api/research-groups/" + group.getId())
-                                .session(ownerSession)
+                                .header("Authorization", "Bearer " + ownerSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"name\":\"Updated Name\",\"description\":\"" + tooLongDescription + "\"}"))
                                 .andExpect(status().isBadRequest());
@@ -340,10 +339,10 @@ class ResearchGroupUpdateIntegrationTest extends AbstractIntegrationTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build());
 
-                MockHttpSession outsiderSession = loginAs("outsider.membercheck@example.com");
+                String outsiderSession = loginAs("outsider.membercheck@example.com");
 
                 mockMvc.perform(put("/api/research-groups/" + group.getId())
-                                .session(outsiderSession)
+                                .header("Authorization", "Bearer " + outsiderSession)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"name\":\"Updated Name\",\"description\":\"Updated Description\"}"))
                                 .andExpect(status().isForbidden());

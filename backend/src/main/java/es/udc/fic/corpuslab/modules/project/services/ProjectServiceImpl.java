@@ -24,6 +24,7 @@ import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.DatasetItemDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAssignedSummaryDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectDetailDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectDetailParticipantDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupLabelDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupResponseDto;
@@ -44,6 +45,7 @@ import es.udc.fic.corpuslab.modules.project.repositories.DatasetItemRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.ProjectParticipantRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.ProjectRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto;
+import es.udc.fic.corpuslab.common.utils.StringUtils;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroup;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroupMember;
 import es.udc.fic.corpuslab.modules.researchgroup.enums.ResearchGroupMemberRole;
@@ -55,6 +57,7 @@ import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupRepo
 public class ProjectServiceImpl implements ProjectService {
 
     private static final String NOT_MEMBER_ERROR = "User is not a member of this research group";
+    private static final int MOCK_COMPLETION_PERCENTAGE = 0;
 
     private final UserRepository userRepository;
     private final ResearchGroupRepository researchGroupRepository;
@@ -126,6 +129,12 @@ public class ProjectServiceImpl implements ProjectService {
         String guidelinePdfBase64 = guideline != null ? guideline.getFileUrl() : null;
 
         long datasetItemsCount = datasetItemRepository.countByProjectId(projectId);
+        int completionPercentage = calculateCompletionPercentage();
+        List<ProjectDetailParticipantDto> participants = projectParticipantRepository
+                .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId)
+                .stream()
+                .map(this::toDetailParticipantDto)
+                .toList();
 
         return new ProjectDetailDto(
                 project.getId(),
@@ -134,8 +143,9 @@ public class ProjectServiceImpl implements ProjectService {
                 project.getName(),
                 project.getDescription(),
                 project.getProjectType(),
-                project.isSetupCompleted(),
+                completionPercentage,
                 participant.getRole(),
+                participants,
                 labels,
                 guidelineText,
                 guidelinePdfBase64,
@@ -197,7 +207,7 @@ public class ProjectServiceImpl implements ProjectService {
             List<MultipartFile> files) {
         User user = findUserByEmail(authenticatedEmail);
 
-        projectRepository.findByIdAndResearchGroupId(projectId, researchGroupId)
+        Project project = projectRepository.findByIdAndResearchGroupId(projectId, researchGroupId)
                 .orElseThrow(() -> new ProjectNotFoundException(projectId));
 
         ResearchGroupMember requesterMembership = researchGroupMemberRepository
@@ -212,9 +222,6 @@ public class ProjectServiceImpl implements ProjectService {
         if (files == null || files.isEmpty()) {
             throw new InvalidProjectDatasetException("At least one file is required to upload a dataset");
         }
-
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ProjectNotFoundException(projectId));
 
         int nextIndex = (int) datasetItemRepository.countByProjectId(projectId);
         List<DatasetItem> createdItems = new ArrayList<>();
@@ -361,8 +368,8 @@ public class ProjectServiceImpl implements ProjectService {
             project.setGuideline(guideline);
         }
 
-        String guidelineText = trimToNull(request.guidelineText());
-        String guidelinePdfBase64 = trimToNull(request.guidelinePdfBase64());
+        String guidelineText = StringUtils.trimToNull(request.guidelineText());
+        String guidelinePdfBase64 = StringUtils.trimToNull(request.guidelinePdfBase64());
         guideline.setContent(guidelineText);
         guideline.setFileUrl(guidelinePdfBase64);
 
@@ -387,7 +394,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         for (ProjectSetupLabelDto label : labels) {
             if (label != null) {
-                String normalizedName = trimToNull(label.name());
+                String normalizedName = StringUtils.trimToNull(label.name());
                 if (normalizedName != null) {
                     String normalizedColor = normalizeHexColor(label.color());
 
@@ -421,8 +428,8 @@ public class ProjectServiceImpl implements ProjectService {
             throw new InvalidProjectSetupException("NER labels require a color");
         }
 
-        String normalizedGuidelineText = trimToNull(guidelineText);
-        String normalizedGuidelinePdf = trimToNull(guidelinePdfBase64);
+        String normalizedGuidelineText = StringUtils.trimToNull(guidelineText);
+        String normalizedGuidelinePdf = StringUtils.trimToNull(guidelinePdfBase64);
 
         if (normalizedGuidelineText == null && normalizedGuidelinePdf == null) {
             throw new InvalidProjectSetupException("Provide either a guideline text or a guideline PDF");
@@ -433,17 +440,8 @@ public class ProjectServiceImpl implements ProjectService {
         }
     }
 
-    private String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
     private String normalizeHexColor(String value) {
-        String trimmed = trimToNull(value);
+        String trimmed = StringUtils.trimToNull(value);
         return trimmed == null ? null : trimmed.toUpperCase();
     }
 
@@ -486,14 +484,36 @@ public class ProjectServiceImpl implements ProjectService {
 
     private ProjectAssignedSummaryDto toAssignedSummaryDto(ProjectParticipant participant) {
         Project project = participant.getProject();
+        int completionPercentage = calculateCompletionPercentage();
+
         return new ProjectAssignedSummaryDto(
                 project.getId(),
                 project.getResearchGroup().getId(),
                 project.getResearchGroup().getName(),
                 project.getName(),
                 project.getDescription(),
-                project.isSetupCompleted(),
+                completionPercentage,
                 participant.getRole(),
                 project.getCreatedAt());
+    }
+
+    private ProjectDetailParticipantDto toDetailParticipantDto(ProjectParticipant participant) {
+        User participantUser = participant.getUser();
+
+        return new ProjectDetailParticipantDto(
+                participantUser.getId(),
+                participantUser.getFirstName(),
+                participantUser.getLastName(),
+                participantUser.getEmail(),
+                participant.getRole(),
+                calculateParticipantCompletionPercentage());
+    }
+
+    private int calculateCompletionPercentage() {
+        return MOCK_COMPLETION_PERCENTAGE;
+    }
+
+    private int calculateParticipantCompletionPercentage() {
+        return MOCK_COMPLETION_PERCENTAGE;
     }
 }

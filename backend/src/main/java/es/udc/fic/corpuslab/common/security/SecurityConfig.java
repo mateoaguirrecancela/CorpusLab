@@ -9,6 +9,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -26,46 +27,65 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 public class SecurityConfig {
+
     @Bean
-    SecurityFilterChain securityFilterChain(
+    @Order(1)
+    SecurityFilterChain oauthSecurityFilterChain(
             HttpSecurity http,
             ObjectProvider<org.springframework.security.oauth2.client.registration.ClientRegistrationRepository> clientRegistrationRepositoryProvider,
             ObjectProvider<OAuth2LoginSuccessHandler> oAuth2LoginSuccessHandlerProvider,
-            ObjectProvider<OAuth2LoginFailureHandler> oAuth2LoginFailureHandlerProvider) throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/auth/signup",
-                                "/api/auth/login",
-                                "/api/auth/logout",
-                                "/api/auth/forgot-password",
-                                "/api/auth/reset-password",
-                                "/oauth2/**",
-                                "/login/oauth2/**")
-                        .permitAll()
-                        .anyRequest().authenticated())
-                .exceptionHandling(ex -> ex
-                        .defaultAuthenticationEntryPointFor(
-                                new HttpStatusEntryPoint(HttpStatus.FORBIDDEN),
-                                request -> request.getRequestURI() != null
-                                        && request.getRequestURI().startsWith("/api/")))
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {
-                }))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
+            ObjectProvider<OAuth2LoginFailureHandler> oAuth2LoginFailureHandlerProvider) {
+        try {
+            http.csrf(AbstractHttpConfigurer::disable)
+                    .securityMatcher("/oauth2/**", "/login/oauth2/**")
+                    .authorizeHttpRequests(auth -> auth
+                            .anyRequest().permitAll())
+                    .httpBasic(AbstractHttpConfigurer::disable)
+                    .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
 
-        if (clientRegistrationRepositoryProvider.getIfAvailable() != null) {
-            OAuth2LoginSuccessHandler successHandler = oAuth2LoginSuccessHandlerProvider.getIfAvailable();
-            OAuth2LoginFailureHandler failureHandler = oAuth2LoginFailureHandlerProvider.getIfAvailable();
+            if (clientRegistrationRepositoryProvider.getIfAvailable() != null) {
+                OAuth2LoginSuccessHandler successHandler = oAuth2LoginSuccessHandlerProvider.getIfAvailable();
+                OAuth2LoginFailureHandler failureHandler = oAuth2LoginFailureHandlerProvider.getIfAvailable();
 
-            if (successHandler != null && failureHandler != null) {
-                http.oauth2Login(oauth -> oauth
-                        .successHandler(successHandler)
-                        .failureHandler(failureHandler));
+                if (successHandler != null && failureHandler != null) {
+                    http.oauth2Login(oauth -> oauth
+                            .successHandler(successHandler)
+                            .failureHandler(failureHandler));
+                }
             }
-        }
 
-        return http.build();
+            return http.build();
+        } catch (Exception ex) {
+            throw new IllegalStateException("Could not configure OAuth security filter chain", ex);
+        }
+    }
+
+    @Bean
+    @Order(2)
+    SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) {
+        try {
+            return http
+                    .securityMatcher("/api/**")
+                    .csrf(AbstractHttpConfigurer::disable)
+                    .authorizeHttpRequests(auth -> auth
+                            .requestMatchers(
+                                    "/api/auth/signup",
+                                    "/api/auth/login",
+                                    "/api/auth/logout",
+                                    "/api/auth/forgot-password",
+                                    "/api/auth/reset-password")
+                            .permitAll()
+                            .anyRequest().authenticated())
+                    .exceptionHandling(
+                            ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.FORBIDDEN)))
+                    .httpBasic(AbstractHttpConfigurer::disable)
+                    .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {
+                    }))
+                    .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                    .build();
+        } catch (Exception ex) {
+            throw new IllegalStateException("Could not configure API security filter chain", ex);
+        }
     }
 
     @Bean

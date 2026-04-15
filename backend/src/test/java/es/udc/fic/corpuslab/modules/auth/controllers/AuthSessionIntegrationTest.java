@@ -26,11 +26,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.mock.web.MockHttpSession;
 
 import java.time.LocalDate;
 
@@ -60,7 +58,7 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
-        void loginShouldReturnUserDataAndCreateSession() throws Exception {
+        void loginShouldReturnUserDataAndToken() throws Exception {
                 User user = UserTestBuilder.validUser()
                                 .withEmail("login.user@example.com")
                                 .withPasswordHash(passwordEncoder.encode("strong-password"))
@@ -79,12 +77,11 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                                 .andExpect(jsonPath("$.email").value("login.user@example.com"))
                                 .andExpect(jsonPath("$.firstName").value("New"))
                                 .andExpect(jsonPath("$.lastName").value("User"))
+                                .andExpect(jsonPath("$.token").isString())
                                 .andReturn();
 
-                Object securityContext = result.getRequest()
-                                .getSession(false)
-                                .getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
-                assertThat(securityContext).isNotNull();
+                String token = objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
+                assertThat(token).isNotBlank();
         }
 
         @Test
@@ -108,7 +105,7 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                                 .andExpect(jsonPath("$.message").value("Invalid email or password"))
                                 .andReturn();
 
-                assertThat(result.getRequest().getSession(false)).isNull();
+                assertThat(result.getResponse().getContentAsString()).isNotBlank();
         }
 
         @Test
@@ -147,7 +144,9 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                                 .andReturn();
 
                 mockMvc.perform(post("/api/auth/logout")
-                                .session((MockHttpSession) loginResult.getRequest().getSession(false)))
+                                .header("Authorization", "Bearer "
+                                                + objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                                                                .get("token").asText()))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.message").value("Logged out successfully"));
         }
@@ -171,7 +170,9 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                                 .andReturn();
 
                 mockMvc.perform(get("/api/auth/profile")
-                                .session((MockHttpSession) loginResult.getRequest().getSession(false)))
+                                .header("Authorization", "Bearer "
+                                                + objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                                                                .get("token").asText()))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.email").value("profile.user@example.com"))
                                 .andExpect(jsonPath("$.firstName").value("New"))
@@ -213,7 +214,9 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                                 .build();
 
                 mockMvc.perform(put("/api/auth/profile")
-                                .session((MockHttpSession) loginResult.getRequest().getSession(false))
+                                .header("Authorization", "Bearer "
+                                                + objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                                                                .get("token").asText())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(updateRequest)))
                                 .andExpect(status().isOk())
@@ -226,7 +229,9 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                                 .andExpect(jsonPath("$.city").isEmpty());
 
                 mockMvc.perform(get("/api/auth/profile")
-                                .session((MockHttpSession) loginResult.getRequest().getSession(false)))
+                                .header("Authorization", "Bearer "
+                                                + objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                                                                .get("token").asText()))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.firstName").value("Alice"))
                                 .andExpect(jsonPath("$.lastName").value("Smith"))
@@ -268,7 +273,9 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                                 .build();
 
                 mockMvc.perform(put("/api/auth/profile")
-                                .session((MockHttpSession) loginResult.getRequest().getSession(false))
+                                .header("Authorization", "Bearer "
+                                                + objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                                                                .get("token").asText())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(invalidRequest)))
                                 .andExpect(status().isBadRequest())
@@ -301,7 +308,9 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                                 .build();
 
                 mockMvc.perform(put("/api/auth/profile")
-                                .session((MockHttpSession) loginResult.getRequest().getSession(false))
+                                .header("Authorization", "Bearer "
+                                                + objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                                                                .get("token").asText())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(invalidRequest)))
                                 .andExpect(status().isBadRequest())
@@ -333,7 +342,9 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                                 .build();
 
                 mockMvc.perform(put("/api/auth/profile")
-                                .session((MockHttpSession) loginResult.getRequest().getSession(false))
+                                .header("Authorization", "Bearer "
+                                                + objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                                                                .get("token").asText())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(invalidRequest)))
                                 .andExpect(status().isBadRequest())
@@ -370,7 +381,9 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                 userRepository.deleteAll();
 
                 mockMvc.perform(get("/api/auth/profile")
-                                .session((MockHttpSession) loginResult.getRequest().getSession(false)))
+                                .header("Authorization", "Bearer "
+                                                + objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                                                                .get("token").asText()))
                                 .andExpect(status().isNotFound())
                                 .andExpect(jsonPath("$.status").value(404))
                                 .andExpect(jsonPath("$.message")

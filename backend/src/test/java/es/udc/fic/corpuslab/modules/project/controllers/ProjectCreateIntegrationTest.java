@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -42,194 +41,195 @@ import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupRepo
 @ActiveProfiles("test")
 class ProjectCreateIntegrationTest extends AbstractIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @Autowired
-    private UserRepository userRepository;
+        @Autowired
+        private UserRepository userRepository;
 
-    @Autowired
-    private ResearchGroupRepository researchGroupRepository;
+        @Autowired
+        private ResearchGroupRepository researchGroupRepository;
 
-    @Autowired
-    private ResearchGroupMemberRepository memberRepository;
+        @Autowired
+        private ResearchGroupMemberRepository memberRepository;
 
-    @Autowired
-    private ResearchGroupInvitationRepository invitationRepository;
+        @Autowired
+        private ResearchGroupInvitationRepository invitationRepository;
 
-    @Autowired
-    private NotificationRepository notificationRepository;
+        @Autowired
+        private NotificationRepository notificationRepository;
 
-    @Autowired
-    private ProjectRepository projectRepository;
+        @Autowired
+        private ProjectRepository projectRepository;
 
         @Autowired
         private ProjectParticipantRepository projectParticipantRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+        @Autowired
+        private PasswordEncoder passwordEncoder;
 
-    private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
+        private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
 
-    @BeforeEach
-    void cleanData() {
-        notificationRepository.deleteAll();
-        invitationRepository.deleteAll();
-        memberRepository.deleteAll();
+        @BeforeEach
+        void cleanData() {
+                notificationRepository.deleteAll();
+                invitationRepository.deleteAll();
+                memberRepository.deleteAll();
                 projectParticipantRepository.deleteAll();
-        projectRepository.deleteAll();
-        researchGroupRepository.deleteAll();
-        userRepository.deleteAll();
-    }
+                projectRepository.deleteAll();
+                researchGroupRepository.deleteAll();
+                userRepository.deleteAll();
+        }
 
-    private void createUser(String email) {
-        User user = UserTestBuilder.validUser()
-                .withEmail(email)
-                .withPasswordHash(passwordEncoder.encode("strong-password"))
-                .build();
-        userRepository.save(user);
-    }
-
-    private MockHttpSession loginAs(String email) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(
-                        UserLoginRequestTestBuilder.validRequest()
+        private void createUser(String email) {
+                User user = UserTestBuilder.validUser()
                                 .withEmail(email)
-                                .build())))
-                .andExpect(status().isOk())
-                .andReturn();
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                userRepository.save(user);
+        }
 
-        return (MockHttpSession) result.getRequest().getSession(false);
-    }
+        private String loginAs(String email) throws Exception {
+                MvcResult result = mockMvc.perform(post("/api/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(
+                                                UserLoginRequestTestBuilder.validRequest()
+                                                                .withEmail(email)
+                                                                .build())))
+                                .andExpect(status().isOk())
+                                .andReturn();
 
-    @Test
-    void shouldCreateProjectWhenRequesterIsOwner() throws Exception {
-        createUser("owner@example.com");
-        User owner = userRepository.findByEmailIgnoreCase("owner@example.com").orElseThrow();
+                return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
+        }
 
-        ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
-        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
-                .withUser(owner)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.OWNER)
-                .build());
+        @Test
+        void shouldCreateProjectWhenRequesterIsOwner() throws Exception {
+                createUser("owner@example.com");
+                User owner = userRepository.findByEmailIgnoreCase("owner@example.com").orElseThrow();
 
-        MockHttpSession session = loginAs("owner@example.com");
+                ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
 
-        CreateProjectRequestDto request = new CreateProjectRequestDto("  First Project  ", "  Baseline corpus  ");
+                String session = loginAs("owner@example.com");
 
-        mockMvc.perform(post("/api/research-groups/{groupId}/projects", group.getId())
-                .session(session)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").isNumber())
-                .andExpect(jsonPath("$.researchGroupId").value(group.getId()))
-                .andExpect(jsonPath("$.name").value("First Project"))
-                .andExpect(jsonPath("$.description").value("Baseline corpus"))
-                .andExpect(jsonPath("$.createdAt").isNotEmpty());
+                CreateProjectRequestDto request = new CreateProjectRequestDto("  First Project  ",
+                                "  Baseline corpus  ");
 
-        mockMvc.perform(get("/api/research-groups/{groupId}", group.getId()).session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.activeProjects").value(1));
-    }
+                mockMvc.perform(post("/api/research-groups/{groupId}/projects", group.getId())
+                                .header("Authorization", "Bearer " + session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.id").isNumber())
+                                .andExpect(jsonPath("$.researchGroupId").value(group.getId()))
+                                .andExpect(jsonPath("$.name").value("First Project"))
+                                .andExpect(jsonPath("$.description").value("Baseline corpus"))
+                                .andExpect(jsonPath("$.createdAt").isNotEmpty());
 
-    @Test
-    void shouldCreateProjectWhenRequesterIsAdmin() throws Exception {
-        createUser("admin@example.com");
-        User admin = userRepository.findByEmailIgnoreCase("admin@example.com").orElseThrow();
+                mockMvc.perform(get("/api/research-groups/{groupId}", group.getId()).header("Authorization", "Bearer " + session))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.activeProjects").value(1));
+        }
 
-        ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
-        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
-                .withUser(admin)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.ADMIN)
-                .build());
+        @Test
+        void shouldCreateProjectWhenRequesterIsAdmin() throws Exception {
+                createUser("admin@example.com");
+                User admin = userRepository.findByEmailIgnoreCase("admin@example.com").orElseThrow();
 
-        MockHttpSession session = loginAs("admin@example.com");
+                ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(admin)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ADMIN)
+                                .build());
 
-        CreateProjectRequestDto request = new CreateProjectRequestDto("Project as admin", null);
+                String session = loginAs("admin@example.com");
 
-        mockMvc.perform(post("/api/research-groups/{groupId}/projects", group.getId())
-                .session(session)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("Project as admin"))
-                .andExpect(jsonPath("$.description").isEmpty());
-    }
+                CreateProjectRequestDto request = new CreateProjectRequestDto("Project as admin", null);
 
-    @Test
-    void shouldReturnForbiddenWhenRequesterIsAnnotator() throws Exception {
-        createUser("annotator@example.com");
-        User annotator = userRepository.findByEmailIgnoreCase("annotator@example.com").orElseThrow();
+                mockMvc.perform(post("/api/research-groups/{groupId}/projects", group.getId())
+                                .header("Authorization", "Bearer " + session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.name").value("Project as admin"))
+                                .andExpect(jsonPath("$.description").isEmpty());
+        }
 
-        ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
-        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
-                .withUser(annotator)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.ANNOTATOR)
-                .build());
+        @Test
+        void shouldReturnForbiddenWhenRequesterIsAnnotator() throws Exception {
+                createUser("annotator@example.com");
+                User annotator = userRepository.findByEmailIgnoreCase("annotator@example.com").orElseThrow();
 
-        MockHttpSession session = loginAs("annotator@example.com");
+                ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(annotator)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.ANNOTATOR)
+                                .build());
 
-        CreateProjectRequestDto request = new CreateProjectRequestDto("Forbidden Project", "No permission");
+                String session = loginAs("annotator@example.com");
 
-        mockMvc.perform(post("/api/research-groups/{groupId}/projects", group.getId())
-                .session(session)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isForbidden());
-    }
+                CreateProjectRequestDto request = new CreateProjectRequestDto("Forbidden Project", "No permission");
 
-    @Test
-    void shouldReturnForbiddenWhenRequesterIsNotGroupMember() throws Exception {
-        createUser("outsider@example.com");
-        ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
-        MockHttpSession session = loginAs("outsider@example.com");
+                mockMvc.perform(post("/api/research-groups/{groupId}/projects", group.getId())
+                                .header("Authorization", "Bearer " + session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isForbidden());
+        }
 
-        CreateProjectRequestDto request = new CreateProjectRequestDto("Forbidden Project", "No membership");
+        @Test
+        void shouldReturnForbiddenWhenRequesterIsNotGroupMember() throws Exception {
+                createUser("outsider@example.com");
+                ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
+                String session = loginAs("outsider@example.com");
 
-        mockMvc.perform(post("/api/research-groups/{groupId}/projects", group.getId())
-                .session(session)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isForbidden());
-    }
+                CreateProjectRequestDto request = new CreateProjectRequestDto("Forbidden Project", "No membership");
 
-    @Test
-    void shouldReturnForbiddenWhenNotAuthenticated() throws Exception {
-        ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
+                mockMvc.perform(post("/api/research-groups/{groupId}/projects", group.getId())
+                                .header("Authorization", "Bearer " + session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isForbidden());
+        }
 
-        CreateProjectRequestDto request = new CreateProjectRequestDto("Unauthorized", null);
+        @Test
+        void shouldReturnForbiddenWhenNotAuthenticated() throws Exception {
+                ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
 
-        mockMvc.perform(post("/api/research-groups/{groupId}/projects", group.getId())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isForbidden());
-    }
+                CreateProjectRequestDto request = new CreateProjectRequestDto("Unauthorized", null);
 
-    @Test
-    void shouldRejectBlankName() throws Exception {
-        createUser("owner2@example.com");
-        User owner = userRepository.findByEmailIgnoreCase("owner2@example.com").orElseThrow();
+                mockMvc.perform(post("/api/research-groups/{groupId}/projects", group.getId())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isForbidden());
+        }
 
-        ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
-        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
-                .withUser(owner)
-                .withResearchGroup(group)
-                .withRole(ResearchGroupMemberRole.OWNER)
-                .build());
+        @Test
+        void shouldRejectBlankName() throws Exception {
+                createUser("owner2@example.com");
+                User owner = userRepository.findByEmailIgnoreCase("owner2@example.com").orElseThrow();
 
-        MockHttpSession session = loginAs("owner2@example.com");
+                ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
 
-        CreateProjectRequestDto request = new CreateProjectRequestDto("   ", "Any");
+                String session = loginAs("owner2@example.com");
 
-        mockMvc.perform(post("/api/research-groups/{groupId}/projects", group.getId())
-                .session(session)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
+                CreateProjectRequestDto request = new CreateProjectRequestDto("   ", "Any");
+
+                mockMvc.perform(post("/api/research-groups/{groupId}/projects", group.getId())
+                                .header("Authorization", "Bearer " + session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isBadRequest());
+        }
 }
