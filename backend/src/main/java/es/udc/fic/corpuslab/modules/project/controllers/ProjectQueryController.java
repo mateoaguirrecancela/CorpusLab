@@ -60,6 +60,22 @@ public class ProjectQueryController {
         return projectService.getAnnotationWorkspace(authentication.getName(), projectId, offset, limit);
     }
 
+    @GetMapping("/{projectId}/annotations/participants/{participantUserId}/steps")
+    @ResponseStatus(HttpStatus.OK)
+    public ProjectAnnotationWorkspaceDto getParticipantAnnotationWorkspaceForCreator(
+            Authentication authentication,
+            @PathVariable Long projectId,
+            @PathVariable Long participantUserId,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "50") int limit) {
+        return projectService.getParticipantAnnotationWorkspaceForCreator(
+                authentication.getName(),
+                projectId,
+                participantUserId,
+                offset,
+                limit);
+    }
+
     @GetMapping("/{projectId}/dataset-items/{datasetItemId}/content")
     public ResponseEntity<byte[]> getAnnotationSourceContent(
             Authentication authentication,

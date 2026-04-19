@@ -468,6 +468,131 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
+        void shouldAllowProjectCreatorToViewInvestigatorAnnotations() throws Exception {
+                User owner = createUser("owner.annotation.review@example.com");
+                User annotator = createUser("annotator.annotation.review@example.com");
+
+                ResearchGroup group = createGroup("Annotation Review Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Review Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createCsvDatasetItem(project, "id,text\n1,alpha\n2,beta");
+
+                String annotatorToken = loginAs("annotator.annotation.review@example.com");
+                saveAnnotationStep(annotatorToken, project.getId(), item.getId(), 0, "POSITIVE");
+
+                String ownerToken = loginAs("owner.annotation.review@example.com");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/annotations/participants/{participantUserId}/steps",
+                                                project.getId(), annotator.getId())
+                                                .param("offset", "0")
+                                                .param("limit", "10")
+                                                .header("Authorization", "Bearer " + ownerToken))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.projectId").value(project.getId()))
+                                .andExpect(jsonPath("$.totalSteps").value(2))
+                                .andExpect(jsonPath("$.completedSteps").value(1))
+                                .andExpect(jsonPath("$.completionPercentage").value(50))
+                                .andExpect(jsonPath("$.steps.length()").value(2))
+                                .andExpect(jsonPath("$.steps[0].completed").value(true))
+                                .andExpect(jsonPath("$.steps[0].annotation.label").value("POSITIVE"))
+                                .andExpect(jsonPath("$.steps[1].completed").value(false));
+        }
+
+        @Test
+        void shouldReturnForbiddenWhenRequesterIsNotProjectCreatorForAnnotationReview() throws Exception {
+                User owner = createUser("owner.annotation.review.forbidden@example.com");
+                User annotatorA = createUser("annotatora.annotation.review.forbidden@example.com");
+                User annotatorB = createUser("annotatorb.annotation.review.forbidden@example.com");
+
+                ResearchGroup group = createGroup("Annotation Review Forbidden Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotatorA, group, ResearchGroupMemberRole.ANNOTATOR);
+                addMembership(annotatorB, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Review Forbidden Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotatorA, ProjectParticipantRole.PARTICIPANT);
+                assign(project, annotatorB, ProjectParticipantRole.PARTICIPANT);
+
+                String annotatorToken = loginAs("annotatora.annotation.review.forbidden@example.com");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/annotations/participants/{participantUserId}/steps",
+                                                project.getId(), annotatorB.getId())
+                                                .param("offset", "0")
+                                                .param("limit", "10")
+                                                .header("Authorization", "Bearer " + annotatorToken))
+                                .andExpect(status().isForbidden());
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenCreatorRequestsAnnotationsForNonInvestigator() throws Exception {
+                User owner = createUser("owner.annotation.review.badrequest@example.com");
+                User annotator = createUser("annotator.annotation.review.badrequest@example.com");
+
+                ResearchGroup group = createGroup("Annotation Review Bad Request Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Review Bad Request Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                String ownerToken = loginAs("owner.annotation.review.badrequest@example.com");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/annotations/participants/{participantUserId}/steps",
+                                                project.getId(), owner.getId())
+                                                .param("offset", "0")
+                                                .param("limit", "10")
+                                                .header("Authorization", "Bearer " + ownerToken))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldReturnNotFoundWhenRequesterIsNotAssignedForAnnotationReview() throws Exception {
+                User owner = createUser("owner.annotation.review.notfound@example.com");
+                User annotator = createUser("annotator.annotation.review.notfound@example.com");
+                User outsider = createUser("outsider.annotation.review.notfound@example.com");
+
+                ResearchGroup group = createGroup("Annotation Review Not Found Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Review Not Found Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                String outsiderToken = loginAs("outsider.annotation.review.notfound@example.com");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/annotations/participants/{participantUserId}/steps",
+                                                project.getId(), annotator.getId())
+                                                .param("offset", "0")
+                                                .param("limit", "10")
+                                                .header("Authorization", "Bearer " + outsiderToken))
+                                .andExpect(status().isNotFound());
+        }
+
+        @Test
         void shouldReturnBadRequestWhenSavingAnnotationWithInvalidStepIndex() throws Exception {
                 User owner = createUser("owner.annotation.step.invalid.index@example.com");
                 User annotator = createUser("annotator.annotation.step.invalid.index@example.com");

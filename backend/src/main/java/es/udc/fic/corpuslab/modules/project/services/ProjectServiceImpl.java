@@ -391,7 +391,47 @@ public class ProjectServiceImpl implements ProjectService {
         ProjectParticipant participant = projectParticipantRepository.findByProjectIdAndUserId(projectId, user.getId())
                 .orElseThrow(() -> new ProjectNotFoundException(projectId));
 
-        Project project = participant.getProject();
+        return buildAnnotationWorkspace(participant.getProject(), user.getId(), offset, limit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProjectAnnotationWorkspaceDto getParticipantAnnotationWorkspaceForCreator(
+            String authenticatedEmail,
+            Long projectId,
+            Long participantUserId,
+            int offset,
+            int limit) {
+        User requester = findUserByEmail(authenticatedEmail);
+
+        ProjectParticipant requesterParticipant = projectParticipantRepository
+                .findByProjectIdAndUserId(projectId, requester.getId())
+                .orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        if (requesterParticipant.getRole() != ProjectParticipantRole.CREATOR) {
+            throw new AccessDeniedException("Only project creators can view investigators annotations");
+        }
+
+        ProjectParticipant targetParticipant = projectParticipantRepository
+                .findByProjectIdAndUserId(projectId, participantUserId)
+                .orElseThrow(() -> new InvalidProjectParticipantsException(
+                        "Selected investigator is not assigned to this project"));
+
+        if (targetParticipant.getRole() != ProjectParticipantRole.PARTICIPANT) {
+            throw new InvalidProjectParticipantsException("Annotations can only be viewed for investigators");
+        }
+
+        return buildAnnotationWorkspace(requesterParticipant.getProject(), targetParticipant.getUser().getId(), offset,
+                limit);
+    }
+
+    private ProjectAnnotationWorkspaceDto buildAnnotationWorkspace(
+            Project project,
+            Long annotationUserId,
+            int offset,
+            int limit) {
+        Long projectId = project.getId();
+
         List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
         List<ProjectParticipant> participants = projectParticipantRepository
                 .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId);
@@ -410,9 +450,9 @@ public class ProjectServiceImpl implements ProjectService {
                 sanitizedOffset,
                 sanitizedLimit,
                 progressSnapshot.totalSteps(),
-                progressSnapshot.completedStepsForUser(user.getId()),
-                progressSnapshot.completionPercentageForUser(user.getId()),
-                buildAnnotationSteps(datasetItems, user.getId(), sanitizedOffset, sanitizedLimit));
+                progressSnapshot.completedStepsForUser(annotationUserId),
+                progressSnapshot.completionPercentageForUser(annotationUserId),
+                buildAnnotationSteps(datasetItems, annotationUserId, sanitizedOffset, sanitizedLimit));
     }
 
     @Override
