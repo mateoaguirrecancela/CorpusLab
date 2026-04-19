@@ -25,6 +25,8 @@ import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserLoginRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
+import es.udc.fic.corpuslab.modules.notification.entities.Notification;
+import es.udc.fic.corpuslab.modules.notification.enums.NotificationType;
 import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
 import es.udc.fic.corpuslab.modules.project.dtos.AssignProjectParticipantsRequestDto;
 import es.udc.fic.corpuslab.modules.project.entities.Project;
@@ -183,6 +185,18 @@ class ProjectAssignParticipantsIntegrationTest extends AbstractIntegrationTest {
                 assertThat(projectParticipants.stream().filter(pp -> pp.getRole() == ProjectParticipantRole.CREATOR)
                                 .count())
                                 .isEqualTo(1L);
+
+                List<Notification> notifications = notificationRepository.findAll();
+                assertThat(notifications).hasSize(2);
+                assertThat(notifications)
+                                .extracting(Notification::getType)
+                                .containsOnly(NotificationType.PROJECT_PARTICIPANT_ASSIGNED);
+                assertThat(notifications)
+                                .extracting(notification -> notification.getRecipientUser().getId())
+                                .containsExactlyInAnyOrder(newParticipantA.getId(), newParticipantB.getId());
+                assertThat(notifications)
+                                .extracting(Notification::getProjectId)
+                                .containsOnly(project.getId());
         }
 
         @Test

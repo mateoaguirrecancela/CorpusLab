@@ -27,6 +27,7 @@ import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupLabelDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupRequestDto;
+import es.udc.fic.corpuslab.modules.project.entities.DatasetItem;
 import es.udc.fic.corpuslab.modules.project.entities.Project;
 import es.udc.fic.corpuslab.modules.project.enums.ProjectType;
 import es.udc.fic.corpuslab.modules.project.repositories.DatasetItemRepository;
@@ -40,7 +41,10 @@ import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupInvi
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupMemberRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupRepository;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -108,6 +112,21 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
                                 .andReturn();
 
                 return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
+        }
+
+        private void createDatasetItem(Project project, String fileName, String mimeType, String content) {
+                byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+
+                DatasetItem item = new DatasetItem();
+                item.setProject(project);
+                item.setItemIndex(0);
+                item.setContent(Map.of(
+                                "fileName", fileName,
+                                "mimeType", mimeType,
+                                "sizeBytes", bytes.length,
+                                "base64", Base64.getEncoder().encodeToString(bytes)));
+
+                datasetItemRepository.save(item);
         }
 
         @Test
@@ -201,6 +220,8 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
                 project.setName("NER Setup Project");
                 project = projectRepository.save(project);
 
+                createDatasetItem(project, "dataset.txt", "text/plain", "John works at OpenAI");
+
                 String session = loginAs("owner.ner@example.com");
 
                 ProjectSetupRequestDto request = new ProjectSetupRequestDto(
@@ -220,5 +241,40 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
                                 .andExpect(jsonPath("$.projectType").value("NER"))
                                 .andExpect(jsonPath("$.labels[0].name").value("PERSON"))
                                 .andExpect(jsonPath("$.labels[0].color").value("#10B981"));
+        }
+
+        @Test
+        void shouldRejectNerProjectWhenDatasetContainsUnsupportedFile() throws Exception {
+                createUser("owner.ner.invalid@example.com");
+                User owner = userRepository.findByEmailIgnoreCase("owner.ner.invalid@example.com").orElseThrow();
+
+                ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
+
+                Project project = new Project();
+                project.setResearchGroup(group);
+                project.setName("NER Unsupported Dataset Project");
+                project = projectRepository.save(project);
+
+                createDatasetItem(project, "dataset.csv", "text/csv", "id,text\n1,alpha");
+
+                String session = loginAs("owner.ner.invalid@example.com");
+
+                ProjectSetupRequestDto request = new ProjectSetupRequestDto(
+                                ProjectType.NER,
+                                List.of(new ProjectSetupLabelDto("PERSON", "#10B981")),
+                                "Anotar entidades",
+                                null);
+
+                mockMvc.perform(put("/api/research-groups/{groupId}/projects/{projectId}/setup", group.getId(),
+                                project.getId())
+                                .header("Authorization", "Bearer " + session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isBadRequest());
         }
 }

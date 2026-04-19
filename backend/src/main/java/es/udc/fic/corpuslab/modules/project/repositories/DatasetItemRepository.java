@@ -1,6 +1,7 @@
 package es.udc.fic.corpuslab.modules.project.repositories;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -11,4 +12,6 @@ public interface DatasetItemRepository extends JpaRepository<DatasetItem, Long> 
     long countByProjectId(Long projectId);
 
     List<DatasetItem> findByProjectIdOrderByItemIndexAsc(Long projectId);
+
+    Optional<DatasetItem> findByIdAndProjectId(Long id, Long projectId);
 }

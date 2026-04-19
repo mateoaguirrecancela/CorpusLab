@@ -49,6 +49,12 @@ public class Notification {
     @Column(name = "invitation_id")
     private Long invitationId;
 
+    @Column(name = "project_id")
+    private Long projectId;
+
+    @Column(name = "project_name", length = 255)
+    private String projectName;
+
     @Column(name = "read_at")
     private Instant readAt;
 
@@ -110,6 +116,22 @@ public class Notification {
 
     public void setInvitationId(Long invitationId) {
         this.invitationId = invitationId;
+    }
+
+    public Long getProjectId() {
+        return projectId;
+    }
+
+    public void setProjectId(Long projectId) {
+        this.projectId = projectId;
+    }
+
+    public String getProjectName() {
+        return projectName;
+    }
+
+    public void setProjectName(String projectName) {
+        this.projectName = projectName;
     }
 
     public Instant getReadAt() {
