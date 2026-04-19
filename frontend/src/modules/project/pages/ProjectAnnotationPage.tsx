@@ -18,7 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { BackButton } from '@/components/common/BackButton';
 import { PageContainer } from '@/components/common/PageContainer';
@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  useProjectParticipantAnnotationWorkspaceQuery,
   useProjectAnnotationWorkspaceQuery,
   useProjectDetailQuery,
   useSaveProjectAnnotationStepMutation,
@@ -889,9 +890,24 @@ export default function ProjectAnnotationPage() {
   const { t } = useTranslation(); // NOSONAR
   const navigate = useNavigate();
   const { projectId } = useParams();
+  const [searchParams] = useSearchParams();
 
   const numericProjectId = useMemo(() => Number(projectId), [projectId]);
   const isInvalidProjectId = !Number.isFinite(numericProjectId) || numericProjectId <= 0;
+  const reviewedParticipantUserId = useMemo(() => {
+    const rawParticipantUserId = searchParams.get('participantUserId');
+    if (!rawParticipantUserId) {
+      return null;
+    }
+
+    const parsedParticipantUserId = Number(rawParticipantUserId);
+    if (!Number.isInteger(parsedParticipantUserId) || parsedParticipantUserId <= 0) {
+      return null;
+    }
+
+    return parsedParticipantUserId;
+  }, [searchParams]);
+  const isReviewMode = reviewedParticipantUserId != null;
 
   const [annotationOffset, setAnnotationOffset] = useState(0);
   const [resumeGlobalStepIndex, setResumeGlobalStepIndex] = useState<number | null>(null);
@@ -911,17 +927,50 @@ export default function ProjectAnnotationPage() {
     error: projectError,
   } = useProjectDetailQuery(numericProjectId);
 
-  const {
-    data: annotationWorkspace,
-    isLoading: isAnnotationWorkspaceLoading,
-    isError: isAnnotationWorkspaceError,
-    error: annotationWorkspaceError,
-  } = useProjectAnnotationWorkspaceQuery(numericProjectId, annotationOffset, ANNOTATION_PAGE_SIZE);
+  const ownAnnotationWorkspaceQuery = useProjectAnnotationWorkspaceQuery(
+    numericProjectId,
+    annotationOffset,
+    ANNOTATION_PAGE_SIZE,
+    { enabled: !isReviewMode },
+  );
+
+  const participantAnnotationWorkspaceQuery = useProjectParticipantAnnotationWorkspaceQuery(
+    numericProjectId,
+    reviewedParticipantUserId ?? 0,
+    annotationOffset,
+    ANNOTATION_PAGE_SIZE,
+    { enabled: isReviewMode },
+  );
+
+  const annotationWorkspace = isReviewMode
+    ? participantAnnotationWorkspaceQuery.data
+    : ownAnnotationWorkspaceQuery.data;
+  const isAnnotationWorkspaceLoading = isReviewMode
+    ? participantAnnotationWorkspaceQuery.isLoading
+    : ownAnnotationWorkspaceQuery.isLoading;
+  const isAnnotationWorkspaceError = isReviewMode
+    ? participantAnnotationWorkspaceQuery.isError
+    : ownAnnotationWorkspaceQuery.isError;
+  const annotationWorkspaceError = isReviewMode
+    ? participantAnnotationWorkspaceQuery.error
+    : ownAnnotationWorkspaceQuery.error;
 
   const saveProjectAnnotationStepMutation = useSaveProjectAnnotationStepMutation(
     annotationOffset,
     ANNOTATION_PAGE_SIZE,
   );
+
+  const reviewedParticipant = useMemo(() => {
+    if (!project || reviewedParticipantUserId == null) {
+      return null;
+    }
+
+    return (
+      project.participants.find(
+        (participant) => participant.userId === reviewedParticipantUserId,
+      ) ?? null
+    );
+  }, [project, reviewedParticipantUserId]);
 
   const detailErrorMessage = useMemo(() => {
     if (isInvalidProjectId) {
@@ -1109,6 +1158,10 @@ export default function ProjectAnnotationPage() {
   };
 
   const updateDraft = (step: AnnotationStep, patch: Partial<AnnotationDraft>) => {
+    if (isReviewMode) {
+      return;
+    }
+
     const stepId = annotationStepKey(step);
     const currentDraft = getDraft(step);
 
@@ -1134,7 +1187,7 @@ export default function ProjectAnnotationPage() {
   };
 
   const handleNerSourceSelection = () => {
-    if (!currentStep || annotationProjectType !== 'NER') {
+    if (isReviewMode || !currentStep || annotationProjectType !== 'NER') {
       return;
     }
 
@@ -1173,6 +1226,10 @@ export default function ProjectAnnotationPage() {
   };
 
   const removeNerEntity = (step: AnnotationStep, entityToRemove: NerAnnotationEntity) => {
+    if (isReviewMode) {
+      return;
+    }
+
     const currentEntities = getDraft(step).entities;
     updateDraft(step, {
       entities: currentEntities.filter(
@@ -1187,7 +1244,7 @@ export default function ProjectAnnotationPage() {
   };
 
   useEffect(() => {
-    if (annotationProjectType !== 'NER') {
+    if (annotationProjectType !== 'NER' || isReviewMode) {
       return;
     }
 
@@ -1200,9 +1257,13 @@ export default function ProjectAnnotationPage() {
     return () => {
       globalThis.document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [annotationProjectType, handleNerSourceSelection]);
+  }, [annotationProjectType, handleNerSourceSelection, isReviewMode]);
 
   const persistCurrentStep = async (): Promise<PersistCurrentStepResult> => {
+    if (isReviewMode) {
+      return 'skipped';
+    }
+
     if (!currentStep) {
       return 'skipped';
     }
@@ -1239,6 +1300,11 @@ export default function ProjectAnnotationPage() {
   };
 
   const runAfterPersist = async (onSuccess: () => void) => {
+    if (isReviewMode) {
+      onSuccess();
+      return;
+    }
+
     const result = await persistCurrentStep();
     if (result !== 'error') {
       onSuccess();
@@ -1246,6 +1312,10 @@ export default function ProjectAnnotationPage() {
   };
 
   const handleBackNavigation = async () => {
+    if (isReviewMode) {
+      return true;
+    }
+
     const result = await persistCurrentStep();
     if (result === 'error') {
       return false;
@@ -1267,6 +1337,10 @@ export default function ProjectAnnotationPage() {
     ? getDraft(currentStep)
     : { value: '', notes: '', entities: [] as NerAnnotationEntity[] };
   const isClassificationCompleted = useMemo(() => {
+    if (isReviewMode) {
+      return true;
+    }
+
     return (
       buildAnnotationPayload(
         annotationProjectType,
@@ -1275,7 +1349,7 @@ export default function ProjectAnnotationPage() {
         currentDraft.entities,
       ) != null
     );
-  }, [annotationProjectType, currentDraft.entities, currentDraft.value]);
+  }, [annotationProjectType, currentDraft.entities, currentDraft.value, isReviewMode]);
 
   const handleNextAction = async () => {
     if (!isClassificationCompleted) {
@@ -1334,7 +1408,7 @@ export default function ProjectAnnotationPage() {
   const isLastStep = currentStep != null && totalSteps > 0 && currentGlobalStepIndex >= totalSteps;
   const hasRenderableStep = currentStep != null;
   const areStepActionsDisabled =
-    isAnnotationWorkspaceLoading || saveProjectAnnotationStepMutation.isPending;
+    isAnnotationWorkspaceLoading || (!isReviewMode && saveProjectAnnotationStepMutation.isPending);
   const isSavingCurrentStep =
     saveProjectAnnotationStepMutation.isPending && savingStepId === currentStepId;
 
@@ -1346,6 +1420,12 @@ export default function ProjectAnnotationPage() {
     annotationWorkspace != null;
 
   const shouldShowHeaderProgress = !isInvalidProjectId && canRenderWorkspace;
+  const reviewedParticipantLabel = reviewedParticipant
+    ? `${reviewedParticipant.firstName} ${reviewedParticipant.lastName}`
+    : null;
+  const classificationHeading = isReviewMode
+    ? t('project.annotationPage.classificationTitle')
+    : `${t('project.annotationPage.classificationTitle')} *`;
 
   let guidelineContent = (
     <p className="text-sm text-muted-foreground">{t('project.detail.noGuideline')}</p>
@@ -1400,6 +1480,12 @@ export default function ProjectAnnotationPage() {
           </div>
         )}
       </div>
+
+      {isReviewMode && (
+        <h2 className="text-3xl font-black tracking-tight text-primary sm:text-4xl">
+          {reviewedParticipantLabel ?? String(reviewedParticipantUserId)}
+        </h2>
+      )}
 
       {(isProjectLoading || isAnnotationWorkspaceLoading) && (
         <div className="text-sm text-muted-foreground">
@@ -1599,18 +1685,20 @@ export default function ProjectAnnotationPage() {
                                   >
                                     {segment.text}
                                   </mark>
-                                  <button
-                                    aria-label={t('project.annotationPage.removeEntity')}
-                                    className="absolute -top-2 -right-2 inline-flex size-4 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-destructive group-hover/ner:opacity-100"
-                                    onClick={() => removeNerEntity(currentStep, entity)}
-                                    onMouseDown={(event) => {
-                                      event.preventDefault();
-                                      event.stopPropagation();
-                                    }}
-                                    type="button"
-                                  >
-                                    <X aria-hidden className="size-3" />
-                                  </button>
+                                  {!isReviewMode && (
+                                    <button
+                                      aria-label={t('project.annotationPage.removeEntity')}
+                                      className="absolute -top-2 -right-2 inline-flex size-4 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-destructive group-hover/ner:opacity-100"
+                                      onClick={() => removeNerEntity(currentStep, entity)}
+                                      onMouseDown={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                      }}
+                                      type="button"
+                                    >
+                                      <X aria-hidden className="size-3" />
+                                    </button>
+                                  )}
                                 </span>
                               );
                             })}
@@ -1641,7 +1729,7 @@ export default function ProjectAnnotationPage() {
                 <section>
                   <h2 className="flex items-center gap-2 text-sm font-bold tracking-[0.12em] text-muted-foreground uppercase">
                     <Tag className="size-4" />
-                    {t('project.annotationPage.classificationTitle')} *
+                    {classificationHeading}
                   </h2>
 
                   <div className="mt-4 space-y-3">
@@ -1649,6 +1737,7 @@ export default function ProjectAnnotationPage() {
                       labels.length > 0 && (
                         <select
                           className="h-10 w-full rounded-md border border-input bg-surface-base px-3 text-sm"
+                          disabled={isReviewMode}
                           onChange={(event) =>
                             updateDraft(currentStep, { value: event.currentTarget.value })
                           }
@@ -1674,11 +1763,13 @@ export default function ProjectAnnotationPage() {
                             return (
                               <button
                                 className={[
-                                  'flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm font-medium transition cursor-pointer',
+                                  'flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm font-medium transition',
                                   selected
                                     ? 'bg-primary/8 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]'
                                     : 'hover:bg-background',
+                                  isReviewMode ? 'cursor-default opacity-80' : 'cursor-pointer',
                                 ].join(' ')}
+                                disabled={isReviewMode}
                                 key={label.name}
                                 onClick={() => toggleLabel(currentStep, label.name)}
                                 style={getLabelStyle(label, selected)}
@@ -1701,11 +1792,13 @@ export default function ProjectAnnotationPage() {
                             return (
                               <button
                                 className={[
-                                  'flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm font-medium transition cursor-pointer',
+                                  'flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm font-medium transition',
                                   selected
                                     ? 'bg-primary/8 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]'
                                     : 'hover:bg-transparent',
+                                  isReviewMode ? 'cursor-default opacity-80' : 'cursor-pointer',
                                 ].join(' ')}
+                                disabled={isReviewMode}
                                 key={label.name}
                                 onClick={() => setActiveNerLabel(label.name)}
                                 style={getLabelStyle(label, selected)}
@@ -1722,10 +1815,12 @@ export default function ProjectAnnotationPage() {
 
                     {annotationProjectType === 'SEQ2SEQ' && (
                       <Textarea
+                        disabled={isReviewMode}
                         onChange={(event) =>
                           updateDraft(currentStep, { value: event.currentTarget.value })
                         }
                         placeholder={t('project.annotationPage.fields.annotationPlaceholder')}
+                        readOnly={isReviewMode}
                         rows={5}
                         value={currentDraft.value}
                       />
@@ -1734,10 +1829,12 @@ export default function ProjectAnnotationPage() {
                     {annotationProjectType === 'TEXT_CLASSIFICATION_SIMPLE' &&
                       labels.length === 0 && (
                         <Input
+                          disabled={isReviewMode}
                           onChange={(event) =>
                             updateDraft(currentStep, { value: event.currentTarget.value })
                           }
                           placeholder={t('project.annotationPage.fields.selectLabelPlaceholder')}
+                          readOnly={isReviewMode}
                           value={currentDraft.value}
                         />
                       )}
@@ -1745,10 +1842,12 @@ export default function ProjectAnnotationPage() {
                     {annotationProjectType === 'TEXT_CLASSIFICATION_MULTILABEL' &&
                       labels.length === 0 && (
                         <Input
+                          disabled={isReviewMode}
                           onChange={(event) =>
                             updateDraft(currentStep, { value: event.currentTarget.value })
                           }
                           placeholder={t('project.annotationPage.fields.labelsPlaceholder')}
+                          readOnly={isReviewMode}
                           value={currentDraft.value}
                         />
                       )}
@@ -1767,10 +1866,12 @@ export default function ProjectAnnotationPage() {
                   </h2>
                   <Textarea
                     className="mt-3"
+                    disabled={isReviewMode}
                     onChange={(event) =>
                       updateDraft(currentStep, { notes: event.currentTarget.value })
                     }
                     placeholder={t('project.annotationPage.fields.notesPlaceholder')}
+                    readOnly={isReviewMode}
                     rows={6}
                     value={currentDraft.notes}
                   />

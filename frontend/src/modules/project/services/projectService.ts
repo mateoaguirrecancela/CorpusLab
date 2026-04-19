@@ -133,6 +133,22 @@ export async function getProjectAnnotationWorkspace(
   return response.data;
 }
 
+export async function getProjectParticipantAnnotationWorkspace(
+  projectId: number,
+  participantUserId: number,
+  offset = 0,
+  limit = 50,
+): Promise<ProjectAnnotationWorkspace> {
+  const response = await api.get<ProjectAnnotationWorkspace>(
+    `/projects/${projectId}/annotations/participants/${participantUserId}/steps`,
+    {
+      params: { offset, limit },
+    },
+  );
+
+  return response.data;
+}
+
 export async function saveProjectAnnotationStep(
   projectId: number,
   payload: SaveProjectAnnotationStepPayload,

@@ -373,6 +373,11 @@ export default function ProjectDetailPage() {
                       <TableHead className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                         {t('project.detail.participantsCompletion')}
                       </TableHead>
+                      {project.participantRole === 'CREATOR' && (
+                        <TableHead className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                          {t('project.detail.participantsActions')}
+                        </TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
 
@@ -411,6 +416,22 @@ export default function ProjectDetailPage() {
                           <TableCell className="px-4 py-3 text-right text-sm font-semibold text-muted-foreground tabular-nums">
                             {participantCompletion}%
                           </TableCell>
+
+                          {project.participantRole === 'CREATOR' && (
+                            <TableCell className="px-4 py-3 text-right">
+                              {participant.role === 'PARTICIPANT' ? (
+                                <Link
+                                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-transparent px-3 text-xs font-semibold text-foreground transition hover:bg-surface-soft hover:text-primary"
+                                  to={`/home/projects/${project.id}/annotate?participantUserId=${participant.userId}`}
+                                >
+                                  <PenSquare className="size-3.5" />
+                                  {t('project.detail.viewParticipantAnnotations')}
+                                </Link>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                          )}
                         </TableRow>
                       );
                     })}
