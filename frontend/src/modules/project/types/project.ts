@@ -90,9 +90,56 @@ export type ProjectDetail = {
   completionPercentage: number;
   participantRole: ProjectParticipantRole;
   participants: ProjectDetailParticipant[];
+  datasetItems: DatasetItem[];
   labels: ProjectSetupLabel[];
   guidelineText: string | null;
   guidelinePdfBase64: string | null;
   datasetItemsCount: number;
   createdAt: string;
+};
+
+export type AnnotationStep = {
+  datasetItemId: number;
+  datasetItemIndex: number;
+  stepIndex: number;
+  totalStepsForItem: number;
+  sourceName: string;
+  sourceMimeType: string;
+  preview: string;
+  completed: boolean;
+  annotation: unknown;
+};
+
+export type ProjectAnnotationWorkspace = {
+  projectId: number;
+  projectType: ProjectType;
+  labels: ProjectSetupLabel[];
+  offset: number;
+  limit: number;
+  totalSteps: number;
+  completedSteps: number;
+  completionPercentage: number;
+  steps: AnnotationStep[];
+};
+
+export type ProjectDatasetItemContent = {
+  blob: Blob;
+  mimeType: string;
+  fileName: string | null;
+};
+
+export type SaveProjectAnnotationStepPayload = {
+  datasetItemId: number;
+  stepIndex?: number;
+  annotation: unknown;
+};
+
+export type SaveProjectAnnotationStepResponse = {
+  projectId: number;
+  datasetItemId: number;
+  stepIndex: number;
+  participantCompletedSteps: number;
+  participantTotalSteps: number;
+  participantCompletionPercentage: number;
+  projectCompletionPercentage: number;
 };

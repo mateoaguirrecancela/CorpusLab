@@ -20,9 +20,18 @@
       "RESEARCH_GROUP_INVITATION_ACCEPTED": {
         "title": "Aceptaron a tua invitación",
         "description": "{{actor}} aceptou a tua invitación a {{group}}"
+      },
+      "PROJECT_PARTICIPANT_ASSIGNED": {
+        "title": "Fuches asignado a un proxecto",
+        "description": "{{actor}} asignoute ao proxecto {{project}}"
+      },
+      "PROJECT_ANNOTATION_COMPLETED": {
+        "title": "Un investigador completou a anotacion",
+        "description": "{{actor}} completou a anotacion do proxecto {{project}}"
       }
     },
     "unknownActor": "Alguén",
-    "fallbackGroup": "un grupo"
+    "fallbackGroup": "un grupo",
+    "fallbackProject": "un proxecto"
   }
 }

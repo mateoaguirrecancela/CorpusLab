@@ -8,8 +8,7 @@
       "settings": "Settings"
     },
     "dashboard": {
-      "title": "Dashboard",
-      "greeting": "Hello"
+      "title": "Dashboard"
     },
     "profile": {
       "title": "My Profile",

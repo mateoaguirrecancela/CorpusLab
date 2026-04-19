@@ -6,13 +6,31 @@ import { Button } from '@/components/ui/button';
 type BackButtonProps = {
   fallbackTo?: string;
   className?: string;
+  disabled?: boolean;
+  onBeforeNavigate?: () => Promise<boolean | void> | boolean | void;
 };
 
-export function BackButton({ fallbackTo, className }: Readonly<BackButtonProps>) {
+export function BackButton({
+  fallbackTo,
+  className,
+  disabled = false,
+  onBeforeNavigate,
+}: Readonly<BackButtonProps>) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const handleClick = () => {
+  const handleClick = async () => {
+    if (disabled) {
+      return;
+    }
+
+    if (onBeforeNavigate) {
+      const shouldNavigate = await onBeforeNavigate();
+      if (shouldNavigate === false) {
+        return;
+      }
+    }
+
     if (fallbackTo) {
       navigate(fallbackTo);
       return;
@@ -29,6 +47,7 @@ export function BackButton({ fallbackTo, className }: Readonly<BackButtonProps>)
       ]
         .filter(Boolean)
         .join(' ')}
+      disabled={disabled}
       onClick={handleClick}
       type="button"
       variant="outline"

@@ -14,6 +14,8 @@ type NotificationDto = {
   researchGroupId: number | null;
   researchGroupName: string | null;
   invitationId: number | null;
+  projectId: number | null;
+  projectName: string | null;
 };
 
 type NotificationListResponseDto = {

@@ -3,6 +3,7 @@ import { Check, Mail, UserRound, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
+import { RoleBadge } from '@/components/common/RoleBadge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -190,7 +191,10 @@ export function ResearchGroupInvitationsDialog({
                       </span>
                       <span className="inline-flex shrink-0 items-center gap-2">
                         <Mail className="size-3.5 shrink-0" />
-                        {t(`researchGroup.roles.${invitation.role}`)}
+                        <RoleBadge
+                          label={t(`researchGroup.roles.${invitation.role}`)}
+                          role={invitation.role}
+                        />
                       </span>
                     </p>
 

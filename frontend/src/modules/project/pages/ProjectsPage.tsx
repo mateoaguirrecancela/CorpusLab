@@ -3,11 +3,11 @@ import { Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
+import { EntitySummaryCard } from '@/components/common/EntitySummaryCard';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { ProjectCard } from '@/modules/project/components/ProjectCard';
 import { useMyAssignedProjectsQuery } from '@/modules/project/hooks/useProjectQueries';
 import { getProjectsLoadErrorMessage } from '@/modules/project/services/projectService';
 
@@ -41,7 +41,7 @@ export default function ProjectsPage() {
 
       <div className="mt-6">
         {isLoading && (
-          <div className="rounded-lg border border-border bg-surface-base px-4 py-6 text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2">
               <Spinner aria-hidden className="size-4" />
               {t('project.list.loading')}
@@ -50,20 +50,34 @@ export default function ProjectsPage() {
         )}
 
         {!isLoading && errorMessage.length === 0 && projects.length === 0 && (
-          <div className="rounded-lg border border-dashed border-border bg-surface-base px-4 py-6 text-center text-sm text-muted-foreground">
-            {t('project.list.empty')}
-          </div>
+          <div className="text-sm text-muted-foreground">{t('project.list.empty')}</div>
         )}
 
         {!isLoading && projects.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {projects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                onOpen={(projectId) => navigate(`/home/projects/${projectId}`)}
-                project={project}
-              />
-            ))}
+            {projects.map((project) => {
+              const roleLabel =
+                project.participantRole === 'CREATOR'
+                  ? t('project.list.roles.creator')
+                  : t('project.list.roles.participant');
+
+              return (
+                <EntitySummaryCard
+                  actionLabel={t('project.list.openProject')}
+                  completionPercentage={project.completionPercentage}
+                  description={project.description}
+                  footerMeta={{
+                    kind: 'research-group',
+                    text: project.researchGroupName,
+                  }}
+                  key={project.id}
+                  onAction={() => navigate(`/home/projects/${project.id}`)}
+                  roleLabel={roleLabel}
+                  role={project.participantRole}
+                  title={project.name}
+                />
+              );
+            })}
           </div>
         )}
       </div>

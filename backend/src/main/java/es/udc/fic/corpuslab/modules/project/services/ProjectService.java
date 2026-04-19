@@ -2,10 +2,14 @@ package es.udc.fic.corpuslab.modules.project.services;
 
 import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAssignedSummaryDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationSourceContentDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationWorkspaceDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectDetailDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupResponseDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSummaryDto;
+import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepRequestDto;
+import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepResponseDto;
 import es.udc.fic.corpuslab.modules.project.dtos.UploadProjectDatasetResponseDto;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,31 +17,48 @@ import java.util.List;
 
 public interface ProjectService {
 
-    List<ProjectAssignedSummaryDto> findAssignedProjectsByResearchGroup(
-            String authenticatedEmail,
-            Long researchGroupId);
+        List<ProjectAssignedSummaryDto> findAssignedProjectsByResearchGroup(
+                        String authenticatedEmail,
+                        Long researchGroupId);
 
-    List<ProjectAssignedSummaryDto> findMyAssignedProjects(String authenticatedEmail);
+        List<ProjectAssignedSummaryDto> findMyAssignedProjects(String authenticatedEmail);
 
-    ProjectDetailDto getAssignedProjectDetail(String authenticatedEmail, Long projectId);
+        ProjectDetailDto getAssignedProjectDetail(String authenticatedEmail, Long projectId);
 
-    ProjectSummaryDto createProject(String authenticatedEmail, Long researchGroupId, CreateProjectRequestDto request);
+        ProjectSummaryDto createProject(String authenticatedEmail, Long researchGroupId,
+                        CreateProjectRequestDto request);
 
-    UploadProjectDatasetResponseDto uploadDataset(
-            String authenticatedEmail,
-            Long researchGroupId,
-            Long projectId,
-            List<MultipartFile> files);
+        UploadProjectDatasetResponseDto uploadDataset(
+                        String authenticatedEmail,
+                        Long researchGroupId,
+                        Long projectId,
+                        List<MultipartFile> files);
 
-    ProjectSetupResponseDto configureProjectSetup(
-            String authenticatedEmail,
-            Long researchGroupId,
-            Long projectId,
-            ProjectSetupRequestDto request);
+        ProjectSetupResponseDto configureProjectSetup(
+                        String authenticatedEmail,
+                        Long researchGroupId,
+                        Long projectId,
+                        ProjectSetupRequestDto request);
 
-    void assignParticipants(
-            String authenticatedEmail,
-            Long researchGroupId,
-            Long projectId,
-            List<Long> participantUserIds);
+        void assignParticipants(
+                        String authenticatedEmail,
+                        Long researchGroupId,
+                        Long projectId,
+                        List<Long> participantUserIds);
+
+        ProjectAnnotationWorkspaceDto getAnnotationWorkspace(
+                        String authenticatedEmail,
+                        Long projectId,
+                        int offset,
+                        int limit);
+
+        ProjectAnnotationSourceContentDto getAnnotationSourceContent(
+                        String authenticatedEmail,
+                        Long projectId,
+                        Long datasetItemId);
+
+        SaveProjectAnnotationStepResponseDto saveAnnotationStep(
+                        String authenticatedEmail,
+                        Long projectId,
+                        SaveProjectAnnotationStepRequestDto request);
 }

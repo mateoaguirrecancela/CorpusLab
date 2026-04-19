@@ -11,23 +11,30 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import es.udc.fic.corpuslab.modules.notification.entities.Notification;
+import es.udc.fic.corpuslab.modules.notification.enums.NotificationType;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-    List<Notification> findByRecipientUserIdOrderByCreatedAtDesc(Long recipientUserId, Pageable pageable);
+        List<Notification> findByRecipientUserIdOrderByCreatedAtDesc(Long recipientUserId, Pageable pageable);
 
-    long countByRecipientUserIdAndReadAtIsNull(Long recipientUserId);
+        long countByRecipientUserIdAndReadAtIsNull(Long recipientUserId);
 
-    Optional<Notification> findByIdAndRecipientUserId(Long id, Long recipientUserId);
+        Optional<Notification> findByIdAndRecipientUserId(Long id, Long recipientUserId);
 
-    @Modifying
-    @Query("""
-            UPDATE Notification n
-            SET n.readAt = :readAt
-            WHERE n.recipientUser.id = :recipientUserId
-              AND n.readAt IS NULL
-            """)
-    int markAllAsReadByRecipientUserId(
-            @Param("recipientUserId") Long recipientUserId,
-            @Param("readAt") Instant readAt);
+        boolean existsByRecipientUserIdAndActorUserIdAndTypeAndProjectId(
+                        Long recipientUserId,
+                        Long actorUserId,
+                        NotificationType type,
+                        Long projectId);
+
+        @Modifying
+        @Query("""
+                        UPDATE Notification n
+                        SET n.readAt = :readAt
+                        WHERE n.recipientUser.id = :recipientUserId
+                          AND n.readAt IS NULL
+                        """)
+        int markAllAsReadByRecipientUserId(
+                        @Param("recipientUserId") Long recipientUserId,
+                        @Param("readAt") Instant readAt);
 }

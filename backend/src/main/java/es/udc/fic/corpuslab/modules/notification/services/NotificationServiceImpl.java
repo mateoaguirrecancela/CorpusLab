@@ -17,6 +17,7 @@ import es.udc.fic.corpuslab.modules.notification.entities.Notification;
 import es.udc.fic.corpuslab.modules.notification.enums.NotificationType;
 import es.udc.fic.corpuslab.modules.notification.exceptions.NotificationNotFoundException;
 import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
+import es.udc.fic.corpuslab.modules.project.entities.Project;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroup;
 
 @Service
@@ -105,6 +106,44 @@ public class NotificationServiceImpl implements NotificationService {
         notificationRepository.save(notification);
     }
 
+    @Override
+    @Transactional
+    public void createProjectParticipantAssignedNotification(User recipient, User actor, Project project) {
+        Notification notification = new Notification();
+        notification.setRecipientUser(recipient);
+        notification.setActorUser(actor);
+        notification.setType(NotificationType.PROJECT_PARTICIPANT_ASSIGNED);
+        notification.setProjectId(project.getId());
+        notification.setProjectName(project.getName());
+        notification.setResearchGroupId(project.getResearchGroup().getId());
+        notification.setResearchGroupName(project.getResearchGroup().getName());
+
+        notificationRepository.save(notification);
+    }
+
+    @Override
+    @Transactional
+    public void createProjectAnnotationCompletedNotification(User recipient, User actor, Project project) {
+        if (notificationRepository.existsByRecipientUserIdAndActorUserIdAndTypeAndProjectId(
+                recipient.getId(),
+                actor.getId(),
+                NotificationType.PROJECT_ANNOTATION_COMPLETED,
+                project.getId())) {
+            return;
+        }
+
+        Notification notification = new Notification();
+        notification.setRecipientUser(recipient);
+        notification.setActorUser(actor);
+        notification.setType(NotificationType.PROJECT_ANNOTATION_COMPLETED);
+        notification.setProjectId(project.getId());
+        notification.setProjectName(project.getName());
+        notification.setResearchGroupId(project.getResearchGroup().getId());
+        notification.setResearchGroupName(project.getResearchGroup().getName());
+
+        notificationRepository.save(notification);
+    }
+
     private NotificationDto toDto(Notification notification) {
         User actor = notification.getActorUser();
         String actorFullName = actor == null
@@ -119,7 +158,9 @@ public class NotificationServiceImpl implements NotificationService {
                 actorFullName,
                 notification.getResearchGroupId(),
                 notification.getResearchGroupName(),
-                notification.getInvitationId());
+                notification.getInvitationId(),
+                notification.getProjectId(),
+                notification.getProjectName());
     }
 
     private User findUserByEmail(String authenticatedEmail) {

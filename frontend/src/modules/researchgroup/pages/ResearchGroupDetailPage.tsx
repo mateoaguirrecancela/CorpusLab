@@ -4,7 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { BackButton } from '@/components/common/BackButton';
+import { EntitySummaryCard } from '@/components/common/EntitySummaryCard';
 import { PageContainer } from '@/components/common/PageContainer';
+import { RoleBadge } from '@/components/common/RoleBadge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -16,7 +18,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useProfileQuery } from '@/modules/auth/hooks/useProfileQuery';
-import { ProjectCard } from '@/modules/project/components/ProjectCard';
 import { useAssignedProjectsByGroupQuery } from '@/modules/project/hooks/useProjectQueries';
 import { getProjectsLoadErrorMessage } from '@/modules/project/services/projectService';
 import { EditResearchGroupDialog } from '@/modules/researchgroup/components/EditResearchGroupDialog';
@@ -31,14 +32,6 @@ function getMemberInitials(member: ResearchGroupMember): string {
   const lastInitial = member.lastName.trim().charAt(0).toUpperCase();
 
   return `${firstInitial}${lastInitial}`.trim();
-}
-
-function getRoleBadgeClasses(role: string): string {
-  const normalizedRole = role.toUpperCase();
-  if (normalizedRole === 'ADMIN' || normalizedRole === 'OWNER') {
-    return 'bg-accent text-primary';
-  }
-  return 'bg-background text-muted-foreground';
 }
 
 export default function ResearchGroupDetailPage() {
@@ -87,9 +80,9 @@ export default function ResearchGroupDetailPage() {
   }, [projectsErrorMessage]);
 
   return (
-    <PageContainer className="py-4 sm:py-6">
+    <PageContainer>
       {isLoading && (
-        <div className="rounded-md border border-border bg-surface-base px-4 py-6 text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-2">
             <Spinner aria-hidden className="size-4" />
             {t('researchGroup.detail.loading')}
@@ -190,14 +183,29 @@ export default function ResearchGroupDetailPage() {
 
             {!isLoadingProjects && assignedProjects.length > 0 && (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {assignedProjects.map((project) => (
-                  <ProjectCard
-                    key={project.id}
-                    onOpen={(projectId) => navigate(`/home/projects/${projectId}`)}
-                    project={project}
-                    showGroupName={false}
-                  />
-                ))}
+                {assignedProjects.map((project) => {
+                  const roleLabel =
+                    project.participantRole === 'CREATOR'
+                      ? t('project.list.roles.creator')
+                      : t('project.list.roles.participant');
+
+                  return (
+                    <EntitySummaryCard
+                      actionLabel={t('project.list.openProject')}
+                      completionPercentage={project.completionPercentage}
+                      description={project.description}
+                      footerMeta={{
+                        kind: 'research-group',
+                        text: project.researchGroupName,
+                      }}
+                      key={project.id}
+                      onAction={() => navigate(`/home/projects/${project.id}`)}
+                      roleLabel={roleLabel}
+                      role={project.participantRole}
+                      title={project.name}
+                    />
+                  );
+                })}
               </div>
             )}
           </section>
@@ -261,11 +269,10 @@ export default function ResearchGroupDetailPage() {
                       </TableCell>
 
                       <TableCell className="px-4 py-3">
-                        <span
-                          className={`inline-flex rounded-md px-2 py-1 text-xs font-semibold ${getRoleBadgeClasses(member.role)}`}
-                        >
-                          {t(`researchGroup.roles.${member.role}`)}
-                        </span>
+                        <RoleBadge
+                          label={t(`researchGroup.roles.${member.role}`)}
+                          role={member.role}
+                        />
                       </TableCell>
 
                       <TableCell className="px-4 py-3 text-sm font-semibold text-muted-foreground">
