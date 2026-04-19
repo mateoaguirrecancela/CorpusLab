@@ -132,7 +132,7 @@ export function EntitySummaryCard({
           type="button"
         >
           {actionLabel}
-          <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+          <ArrowRight className="size-3.5" />
         </button>
       </div>
     </article>

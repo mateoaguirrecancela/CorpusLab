@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import {
   CalendarDays,
   Database,
+  Download,
   ExternalLink,
   FileText,
   FolderKanban,
@@ -108,6 +109,34 @@ function calculateBase64SizeBytes(base64Payload: string): number {
   }
 }
 
+function decodeBase64ToBuffer(base64Payload: string): ArrayBuffer {
+  const binary = globalThis.atob(base64Payload);
+  const buffer = new ArrayBuffer(binary.length);
+  const bytes = new Uint8Array(buffer);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.codePointAt(index) ?? 0;
+  }
+
+  return buffer;
+}
+
+function triggerBlobDownload(blob: Blob, fileName: string): void {
+  const blobUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = blobUrl;
+  anchor.download = fileName;
+  anchor.style.display = 'none';
+
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+
+  setTimeout(() => {
+    URL.revokeObjectURL(blobUrl);
+  }, 60_000);
+}
+
 export default function ProjectDetailPage() {
   const { t } = useTranslation();
   const { projectId } = useParams();
@@ -167,18 +196,33 @@ export default function ProjectDetailPage() {
         'application/pdf',
       );
 
-      const binary = globalThis.atob(base64Payload);
-      const bytes = new Uint8Array(binary.length);
-      for (let index = 0; index < binary.length; index += 1) {
-        bytes[index] = binary.codePointAt(index) ?? 0;
-      }
+      const buffer = decodeBase64ToBuffer(base64Payload);
 
-      const blobUrl = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+      const blobUrl = URL.createObjectURL(new Blob([buffer], { type: mimeType }));
       globalThis.open(blobUrl, '_blank', 'noopener,noreferrer');
 
       setTimeout(() => {
         URL.revokeObjectURL(blobUrl);
       }, 60_000);
+    } catch {
+      toast.error(t('project.detail.openGuidelinePdfError'));
+    }
+  };
+
+  const downloadGuidelinePdf = () => {
+    if (!project?.guidelinePdfBase64) {
+      return;
+    }
+
+    try {
+      const { mimeType, base64Payload } = parseBase64FilePayload(
+        project.guidelinePdfBase64,
+        'application/pdf',
+      );
+      const buffer = decodeBase64ToBuffer(base64Payload);
+      const blob = new Blob([buffer], { type: mimeType });
+
+      triggerBlobDownload(blob, 'guideline.pdf');
     } catch {
       toast.error(t('project.detail.openGuidelinePdfError'));
     }
@@ -199,6 +243,23 @@ export default function ProjectDetailPage() {
       }, 60_000);
     } catch (openError) {
       toast.error(getProjectDatasetItemContentErrorMessage(openError));
+    }
+  };
+
+  const downloadDatasetFile = async (datasetItemId: number, fallbackFileName: string) => {
+    if (!project) {
+      return;
+    }
+
+    try {
+      const file = await getProjectDatasetItemContent(project.id, datasetItemId);
+      const normalizedFallbackFileName = fallbackFileName.trim();
+      const downloadFileName =
+        file.fileName?.trim() || normalizedFallbackFileName || `dataset-item-${datasetItemId}`;
+
+      triggerBlobDownload(file.blob, downloadFileName);
+    } catch (downloadError) {
+      toast.error(getProjectDatasetItemContentErrorMessage(downloadError));
     }
   };
 
@@ -388,14 +449,24 @@ export default function ProjectDetailPage() {
                         </p>
                       </div>
                     </div>
-                    <Button
-                      className="h-9 shrink-0 gap-1.5 rounded-md border border-border bg-transparent px-3 text-xs font-semibold text-foreground hover:bg-surface-soft hover:text-primary cursor-pointer"
-                      onClick={() => void openDatasetFile(item.id)}
-                      type="button"
-                    >
-                      <ExternalLink className="size-3.5" />
-                      {t('project.detail.openDatasetFile')}
-                    </Button>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Button
+                        className="h-9 gap-1.5 rounded-md border border-border bg-transparent px-3 text-xs font-semibold text-foreground hover:bg-surface-soft hover:text-primary cursor-pointer"
+                        onClick={() => void downloadDatasetFile(item.id, item.fileName)}
+                        type="button"
+                      >
+                        <Download className="size-3.5" />
+                        {t('project.detail.downloadDatasetFile')}
+                      </Button>
+                      <Button
+                        className="h-9 gap-1.5 rounded-md border border-border bg-transparent px-3 text-xs font-semibold text-foreground hover:bg-surface-soft hover:text-primary cursor-pointer"
+                        onClick={() => void openDatasetFile(item.id)}
+                        type="button"
+                      >
+                        <ExternalLink className="size-3.5" />
+                        {t('project.detail.openDatasetFile')}
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -468,14 +539,24 @@ export default function ProjectDetailPage() {
                     </p>
                   </div>
                 </div>
-                <Button
-                  className="h-9 shrink-0 gap-1.5 rounded-md border border-border bg-transparent px-3 text-xs font-semibold text-foreground hover:bg-surface-soft hover:text-primary cursor-pointer"
-                  onClick={openGuidelinePdf}
-                  type="button"
-                >
-                  <ExternalLink className="size-3.5" />
-                  {t('project.detail.openGuidelinePdf')}
-                </Button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button
+                    className="h-9 gap-1.5 rounded-md border border-border bg-transparent px-3 text-xs font-semibold text-foreground hover:bg-surface-soft hover:text-primary cursor-pointer"
+                    onClick={downloadGuidelinePdf}
+                    type="button"
+                  >
+                    <Download className="size-3.5" />
+                    {t('project.detail.downloadDatasetFile')}
+                  </Button>
+                  <Button
+                    className="h-9 gap-1.5 rounded-md border border-border bg-transparent px-3 text-xs font-semibold text-foreground hover:bg-surface-soft hover:text-primary cursor-pointer"
+                    onClick={openGuidelinePdf}
+                    type="button"
+                  >
+                    <ExternalLink className="size-3.5" />
+                    {t('project.detail.openDatasetFile')}
+                  </Button>
+                </div>
               </div>
             )}
 

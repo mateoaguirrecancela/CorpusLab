@@ -52,8 +52,8 @@
       "guidelinePdfAttached": "This project has an attached PDF guideline.",
       "guidelineDocument": "Guideline Document",
       "guidelinePdfFile": "PDF file attached",
+      "downloadDatasetFile": "Download",
       "openDatasetFile": "Open",
-      "openGuidelinePdf": "Open guideline PDF",
       "openAnnotationWorkspace": "Open annotation workspace",
       "openGuidelinePdfError": "Could not open the guideline PDF.",
       "noGuideline": "This project has no guideline available.",
@@ -163,6 +163,7 @@
       "backToBasicConfig": "Back to basic config",
       "uploadingDataset": "Uploading dataset...",
       "finishCreateProject": "Finish creation",
+      "finishingCreateProject": "Finishing creation...",
       "taskDesignTitle": "Create labels and guideline",
       "taskDesignDescription": "Define the project type, required labels, and the guideline for the team.",
       "projectTypeLabel": "Project type",
@@ -205,8 +206,7 @@
       "assignmentTitle": "Assign investigators",
       "assignmentDescription": "Select which research team members will participate in this project. The creator is included automatically.",
       "loadingMembers": "Loading team investigators...",
-      "noAssignableMembers": "There are no additional investigators available to assign.",
-      "assigningParticipants": "Assigning investigators..."
+      "noAssignableMembers": "There are no additional investigators available to assign."
     },
     "errors": {
       "loadFailed": "Could not load projects. Please try again.",

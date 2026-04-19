@@ -52,8 +52,8 @@
       "guidelinePdfAttached": "Este proxecto ten un guideline adxunto en PDF.",
       "guidelineDocument": "Documento guideline",
       "guidelinePdfFile": "Arquivo PDF adxunto",
+      "downloadDatasetFile": "Descargar",
       "openDatasetFile": "Abrir",
-      "openGuidelinePdf": "Abrir guideline en PDF",
       "openAnnotationWorkspace": "Ir a anotar",
       "openGuidelinePdfError": "Non se puido abrir o guideline en PDF.",
       "noGuideline": "Este proxecto non ten guideline dispoñible.",
@@ -163,6 +163,7 @@
       "backToBasicConfig": "Volver á configuración básica",
       "uploadingDataset": "Subindo dataset...",
       "finishCreateProject": "Finalizar creación",
+      "finishingCreateProject": "Finalizando creación...",
       "taskDesignTitle": "Crear etiquetas e guideline",
       "taskDesignDescription": "Define o tipo de proxecto, as etiquetas necesarias e o guideline para o equipo.",
       "projectTypeLabel": "Tipo de proxecto",
@@ -205,8 +206,7 @@
       "assignmentTitle": "Asignar investigadores",
       "assignmentDescription": "Selecciona que investigadores do equipo participarán no proxecto. O creador engádese automaticamente.",
       "loadingMembers": "Cargando investigadores do equipo...",
-      "noAssignableMembers": "Non hai investigadores adicionais dispoñibles para asignar.",
-      "assigningParticipants": "Asignando investigadores..."
+      "noAssignableMembers": "Non hai investigadores adicionais dispoñibles para asignar."
     },
     "errors": {
       "loadFailed": "Non se puideron cargar os proxectos. Téntao de novo.",

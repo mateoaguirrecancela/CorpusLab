@@ -404,6 +404,365 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
                                 .andExpect(status().isBadRequest());
         }
 
+        @Test
+        void shouldSanitizeAnnotationWorkspacePaginationParameters() throws Exception {
+                User owner = createUser("owner.annotation.workspace.pagination@example.com");
+                User annotator = createUser("annotator.annotation.workspace.pagination@example.com");
+
+                ResearchGroup group = createGroup("Annotation Workspace Pagination Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Workspace Pagination Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                createCsvDatasetItem(project, "id,text\n1,alpha\n2,beta\n3,gamma");
+
+                String token = loginAs("annotator.annotation.workspace.pagination@example.com");
+
+                mockMvc.perform(get("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .param("offset", "-10")
+                                .param("limit", "0")
+                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.offset").value(0))
+                                .andExpect(jsonPath("$.limit").value(50))
+                                .andExpect(jsonPath("$.steps.length()").value(3));
+
+                mockMvc.perform(get("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .param("offset", "1")
+                                .param("limit", "999")
+                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.offset").value(1))
+                                .andExpect(jsonPath("$.limit").value(250))
+                                .andExpect(jsonPath("$.steps.length()").value(2));
+        }
+
+        @Test
+        void shouldReturnNotFoundWhenReadingAnnotationWorkspaceWithoutProjectAssignment() throws Exception {
+                User owner = createUser("owner.annotation.workspace.access@example.com");
+                User outsider = createUser("outsider.annotation.workspace.access@example.com");
+
+                ResearchGroup group = createGroup("Annotation Workspace Access Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+
+                Project project = createProject(group, "Workspace Access Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                createCsvDatasetItem(project, "id,text\n1,alpha");
+
+                String token = loginAs("outsider.annotation.workspace.access@example.com");
+
+                mockMvc.perform(get("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .param("offset", "0")
+                                .param("limit", "10")
+                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenSavingAnnotationWithInvalidStepIndex() throws Exception {
+                User owner = createUser("owner.annotation.step.invalid.index@example.com");
+                User annotator = createUser("annotator.annotation.step.invalid.index@example.com");
+
+                ResearchGroup group = createGroup("Annotation Invalid Step Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Invalid Step Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createCsvDatasetItem(project, "id,text\n1,alpha\n2,beta");
+                String token = loginAs("annotator.annotation.step.invalid.index@example.com");
+
+                mockMvc.perform(put("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                                "datasetItemId", item.getId(),
+                                                "stepIndex", 2,
+                                                "annotation", Map.of("label", "POSITIVE")))))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenSavingAnnotationWithEmptyPayload() throws Exception {
+                User owner = createUser("owner.annotation.payload.empty@example.com");
+                User annotator = createUser("annotator.annotation.payload.empty@example.com");
+
+                ResearchGroup group = createGroup("Annotation Empty Payload Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Empty Payload Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createCsvDatasetItem(project, "id,text\n1,alpha");
+                String token = loginAs("annotator.annotation.payload.empty@example.com");
+
+                mockMvc.perform(put("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                                "datasetItemId", item.getId(),
+                                                "stepIndex", 0,
+                                                "annotation", Map.of()))))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenDatasetItemBelongsToAnotherProject() throws Exception {
+                User owner = createUser("owner.annotation.dataset.mismatch@example.com");
+                User annotator = createUser("annotator.annotation.dataset.mismatch@example.com");
+
+                ResearchGroup group = createGroup("Annotation Dataset Mismatch Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project targetProject = createProject(group, "Target Project");
+                targetProject.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                targetProject = projectRepository.save(targetProject);
+
+                Project foreignProject = createProject(group, "Foreign Project");
+                foreignProject.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                foreignProject = projectRepository.save(foreignProject);
+
+                assign(targetProject, owner, ProjectParticipantRole.CREATOR);
+                assign(targetProject, annotator, ProjectParticipantRole.PARTICIPANT);
+                assign(foreignProject, owner, ProjectParticipantRole.CREATOR);
+
+                DatasetItem foreignItem = createCsvDatasetItem(foreignProject, "id,text\n1,foreign");
+                String token = loginAs("annotator.annotation.dataset.mismatch@example.com");
+
+                mockMvc.perform(put("/api/projects/{projectId}/annotations/steps", targetProject.getId())
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                                "datasetItemId", foreignItem.getId(),
+                                                "stepIndex", 0,
+                                                "annotation", Map.of("label", "POSITIVE")))))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldFallbackToOctetStreamWhenStoredMimeTypeIsInvalid() throws Exception {
+                User owner = createUser("owner.annotation.mime.invalid@example.com");
+                User annotator = createUser("annotator.annotation.mime.invalid@example.com");
+
+                ResearchGroup group = createGroup("Annotation Invalid MIME Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Invalid MIME Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                byte[] sourceBytes = "invalid-mime-content".getBytes(StandardCharsets.UTF_8);
+                DatasetItem item = createBinaryDatasetItem(
+                                project,
+                                "source.bin",
+                                "invalid mime type",
+                                Base64.getEncoder().encodeToString(sourceBytes));
+
+                String token = loginAs("annotator.annotation.mime.invalid@example.com");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/dataset-items/{datasetItemId}/content", project.getId(),
+                                                item.getId())
+                                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isOk())
+                                .andExpect(header().string("Content-Type", "application/octet-stream"))
+                                .andExpect(content().bytes(sourceBytes));
+        }
+
+        @Test
+        void shouldDefaultToOctetStreamWhenStoredMimeTypeIsBlank() throws Exception {
+                User owner = createUser("owner.annotation.mime.blank@example.com");
+                User annotator = createUser("annotator.annotation.mime.blank@example.com");
+
+                ResearchGroup group = createGroup("Annotation Blank MIME Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Blank MIME Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                byte[] sourceBytes = "blank-mime-content".getBytes(StandardCharsets.UTF_8);
+                DatasetItem item = createBinaryDatasetItem(
+                                project,
+                                "source-no-mime.bin",
+                                "   ",
+                                Base64.getEncoder().encodeToString(sourceBytes));
+
+                String token = loginAs("annotator.annotation.mime.blank@example.com");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/dataset-items/{datasetItemId}/content", project.getId(),
+                                                item.getId())
+                                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isOk())
+                                .andExpect(header().string("Content-Type", "application/octet-stream"))
+                                .andExpect(content().bytes(sourceBytes));
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenDatasetItemSourceContentHasInvalidBase64() throws Exception {
+                User owner = createUser("owner.annotation.base64.invalid@example.com");
+                User annotator = createUser("annotator.annotation.base64.invalid@example.com");
+
+                ResearchGroup group = createGroup("Annotation Invalid Base64 Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Invalid Base64 Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createBinaryDatasetItem(project, "source-bad-base64.txt", "text/plain", "A");
+                String token = loginAs("annotator.annotation.base64.invalid@example.com");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/dataset-items/{datasetItemId}/content", project.getId(),
+                                                item.getId())
+                                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenDatasetItemSourceContentIsBlank() throws Exception {
+                User owner = createUser("owner.annotation.base64.blank@example.com");
+                User annotator = createUser("annotator.annotation.base64.blank@example.com");
+
+                ResearchGroup group = createGroup("Annotation Blank Base64 Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Blank Base64 Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createBinaryDatasetItem(project, "source-blank-base64.txt", "text/plain", "   ");
+                String token = loginAs("annotator.annotation.base64.blank@example.com");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/dataset-items/{datasetItemId}/content", project.getId(),
+                                                item.getId())
+                                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldNormalizeNerAnnotationOffsetsAndDeduplicateEntities() throws Exception {
+                User owner = createUser("owner.annotation.ner.normalize@example.com");
+                User annotator = createUser("annotator.annotation.ner.normalize@example.com");
+
+                ResearchGroup group = createGroup("Annotation NER Normalize Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "NER Normalize Project");
+                project.setProjectType(ProjectType.NER);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createTextDatasetItem(project, "John works at OpenAI");
+
+                String token = loginAs("annotator.annotation.ner.normalize@example.com");
+
+                mockMvc.perform(put("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                                "datasetItemId", item.getId(),
+                                                "stepIndex", 0,
+                                                "annotation", Map.of(
+                                                                "entities", List.of(
+                                                                                Map.of(
+                                                                                                "label", " PERSON ",
+                                                                                                "text", " John ",
+                                                                                                "startOffset", "0",
+                                                                                                "endOffset", "4"),
+                                                                                Map.of(
+                                                                                                "label", "PERSON",
+                                                                                                "text", "John",
+                                                                                                "startOffset", 0,
+                                                                                                "endOffset", 4)),
+                                                                "notes", "  keep note  ")))))
+                                .andExpect(status().isOk());
+
+                mockMvc.perform(get("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .param("offset", "0")
+                                .param("limit", "10")
+                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.steps[0].annotation.entities.length()").value(1))
+                                .andExpect(jsonPath("$.steps[0].annotation.entities[0].label").value("PERSON"))
+                                .andExpect(jsonPath("$.steps[0].annotation.entities[0].text").value("John"))
+                                .andExpect(jsonPath("$.steps[0].annotation.entities[0].startOffset").value(0))
+                                .andExpect(jsonPath("$.steps[0].annotation.entities[0].endOffset").value(4))
+                                .andExpect(jsonPath("$.steps[0].annotation.notes").value("keep note"));
+        }
+
+        @Test
+        void shouldRejectNerAnnotationWithoutEntities() throws Exception {
+                User owner = createUser("owner.annotation.ner.entities.required@example.com");
+                User annotator = createUser("annotator.annotation.ner.entities.required@example.com");
+
+                ResearchGroup group = createGroup("Annotation NER Required Entities Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "NER Required Entities Project");
+                project.setProjectType(ProjectType.NER);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createTextDatasetItem(project, "John works at OpenAI");
+
+                String token = loginAs("annotator.annotation.ner.entities.required@example.com");
+
+                mockMvc.perform(put("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                                "datasetItemId", item.getId(),
+                                                "stepIndex", 0,
+                                                "annotation", Map.of("entities", List.of())))))
+                                .andExpect(status().isBadRequest());
+        }
+
         private User createUser(String email) {
                 User user = UserTestBuilder.validUser()
                                 .withEmail(email)
@@ -491,6 +850,19 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
                                 "mimeType", "text/plain",
                                 "sizeBytes", bytes.length,
                                 "base64", Base64.getEncoder().encodeToString(bytes)));
+
+                return datasetItemRepository.save(item);
+        }
+
+        private DatasetItem createBinaryDatasetItem(Project project, String fileName, String mimeType, String base64) {
+                DatasetItem item = new DatasetItem();
+                item.setProject(project);
+                item.setItemIndex(0);
+                item.setContent(Map.of(
+                                "fileName", fileName,
+                                "mimeType", mimeType,
+                                "sizeBytes", base64.length(),
+                                "base64", base64));
 
                 return datasetItemRepository.save(item);
         }

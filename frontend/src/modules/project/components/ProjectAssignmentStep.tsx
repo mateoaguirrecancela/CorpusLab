@@ -133,7 +133,7 @@ export function ProjectAssignmentStep({
           {isSubmitting ? (
             <span className="inline-flex items-center gap-2">
               <Spinner aria-hidden className="size-4" />
-              {t('project.create.assigningParticipants')}
+              {t('project.create.finishingCreateProject')}
             </span>
           ) : (
             t('project.create.finishCreateProject')

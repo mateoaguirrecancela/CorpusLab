@@ -31,6 +31,7 @@ import es.udc.fic.corpuslab.modules.notification.entities.Notification;
 import es.udc.fic.corpuslab.modules.notification.enums.NotificationType;
 import es.udc.fic.corpuslab.modules.notification.exceptions.NotificationNotFoundException;
 import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
+import es.udc.fic.corpuslab.modules.project.entities.Project;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroup;
 import es.udc.fic.corpuslab.modules.researchgroup.fixtures.ResearchGroupTestBuilder;
 
@@ -229,6 +230,143 @@ class NotificationServiceImplTest {
         assertThat(saved.getResearchGroupId()).isEqualTo(301L);
         assertThat(saved.getResearchGroupName()).isEqualTo("Corpus Group");
         assertThat(saved.getInvitationId()).isNull();
+    }
+
+    @Test
+    void createProjectParticipantAssignedNotificationShouldSaveExpectedData() {
+        User recipient = UserTestBuilder.validUser().withEmail("assignee@example.com").build();
+        User actor = UserTestBuilder.validUser().withEmail("owner@example.com").build();
+
+        ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("Project Group").build();
+        setField(group, "id", 401L);
+
+        Project project = new Project();
+        project.setResearchGroup(group);
+        project.setName("Annotation Project");
+        setField(project, "id", 501L);
+
+        notificationService.createProjectParticipantAssignedNotification(recipient, actor, project);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        Notification saved = captor.getValue();
+        assertThat(saved.getRecipientUser()).isEqualTo(recipient);
+        assertThat(saved.getActorUser()).isEqualTo(actor);
+        assertThat(saved.getType()).isEqualTo(NotificationType.PROJECT_PARTICIPANT_ASSIGNED);
+        assertThat(saved.getProjectId()).isEqualTo(501L);
+        assertThat(saved.getProjectName()).isEqualTo("Annotation Project");
+        assertThat(saved.getResearchGroupId()).isEqualTo(401L);
+        assertThat(saved.getResearchGroupName()).isEqualTo("Project Group");
+    }
+
+    @Test
+    void createProjectAnnotationCompletedNotificationShouldSaveWhenNoPreviousNotificationExists() {
+        User recipient = UserTestBuilder.validUser().withEmail("recipient@example.com").build();
+        setField(recipient, "id", 41L);
+
+        User actor = UserTestBuilder.validUser().withEmail("actor@example.com").build();
+        setField(actor, "id", 42L);
+
+        ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("Completion Group").build();
+        setField(group, "id", 601L);
+
+        Project project = new Project();
+        project.setResearchGroup(group);
+        project.setName("Completion Project");
+        setField(project, "id", 701L);
+
+        when(notificationRepository.existsByRecipientUserIdAndActorUserIdAndTypeAndProjectId(
+                41L,
+                42L,
+                NotificationType.PROJECT_ANNOTATION_COMPLETED,
+                701L)).thenReturn(false);
+
+        notificationService.createProjectAnnotationCompletedNotification(recipient, actor, project);
+
+        verify(notificationRepository).existsByRecipientUserIdAndActorUserIdAndTypeAndProjectId(
+                41L,
+                42L,
+                NotificationType.PROJECT_ANNOTATION_COMPLETED,
+                701L);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        Notification saved = captor.getValue();
+        assertThat(saved.getRecipientUser()).isEqualTo(recipient);
+        assertThat(saved.getActorUser()).isEqualTo(actor);
+        assertThat(saved.getType()).isEqualTo(NotificationType.PROJECT_ANNOTATION_COMPLETED);
+        assertThat(saved.getProjectId()).isEqualTo(701L);
+        assertThat(saved.getProjectName()).isEqualTo("Completion Project");
+        assertThat(saved.getResearchGroupId()).isEqualTo(601L);
+        assertThat(saved.getResearchGroupName()).isEqualTo("Completion Group");
+    }
+
+    @Test
+    void createProjectAnnotationCompletedNotificationShouldSkipWhenDuplicateExists() {
+        User recipient = UserTestBuilder.validUser().withEmail("recipient@example.com").build();
+        setField(recipient, "id", 41L);
+
+        User actor = UserTestBuilder.validUser().withEmail("actor@example.com").build();
+        setField(actor, "id", 42L);
+
+        ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("Completion Group").build();
+        setField(group, "id", 601L);
+
+        Project project = new Project();
+        project.setResearchGroup(group);
+        project.setName("Completion Project");
+        setField(project, "id", 701L);
+
+        when(notificationRepository.existsByRecipientUserIdAndActorUserIdAndTypeAndProjectId(
+                41L,
+                42L,
+                NotificationType.PROJECT_ANNOTATION_COMPLETED,
+                701L)).thenReturn(true);
+
+        notificationService.createProjectAnnotationCompletedNotification(recipient, actor, project);
+
+        verify(notificationRepository).existsByRecipientUserIdAndActorUserIdAndTypeAndProjectId(
+                41L,
+                42L,
+                NotificationType.PROJECT_ANNOTATION_COMPLETED,
+                701L);
+        verify(notificationRepository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void findMyNotificationsShouldIncludeProjectFieldsInDto() {
+        User recipient = UserTestBuilder.validUser().withEmail("reader.project@example.com").build();
+        setField(recipient, "id", 21L);
+
+        User actor = UserTestBuilder.validUser().withFirstName("Grace").withLastName("Hopper").build();
+        setField(actor, "id", 22L);
+
+        Notification notification = new Notification();
+        notification.setRecipientUser(recipient);
+        notification.setActorUser(actor);
+        notification.setType(NotificationType.PROJECT_PARTICIPANT_ASSIGNED);
+        notification.setResearchGroupId(801L);
+        notification.setResearchGroupName("Project RG");
+        notification.setProjectId(901L);
+        notification.setProjectName("Project X");
+        setField(notification, "id", 1001L);
+        setField(notification, "createdAt", Instant.parse("2026-04-04T10:00:00Z"));
+
+        when(userRepository.findByEmailIgnoreCase("reader.project@example.com"))
+                .thenReturn(Optional.of(recipient));
+        when(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(eq(21L), any(Pageable.class)))
+                .thenReturn(List.of(notification));
+        when(notificationRepository.countByRecipientUserIdAndReadAtIsNull(21L)).thenReturn(1L);
+
+        NotificationListResponseDto result = notificationService.findMyNotifications("reader.project@example.com", 5);
+
+        assertThat(result.notifications()).hasSize(1);
+        NotificationDto dto = result.notifications().get(0);
+        assertThat(dto.projectId()).isEqualTo(901L);
+        assertThat(dto.projectName()).isEqualTo("Project X");
+        assertThat(dto.actorFullName()).isEqualTo("Grace Hopper");
+        assertThat(dto.researchGroupId()).isEqualTo(801L);
+        assertThat(dto.researchGroupName()).isEqualTo("Project RG");
     }
 
     @Test
