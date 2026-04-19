@@ -1,35 +1,31 @@
 import { type ReactNode, useMemo, useState } from 'react';
-import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { BackButton } from '@/components/common/BackButton';
-import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { PageContainer } from '@/components/common/PageContainer';
-import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { CreateProjectDatasetStep } from '@/modules/project/components/CreateProjectDatasetStep';
+import { CreateProjectInfoStep } from '@/modules/project/components/CreateProjectInfoStep';
+import { CreateProjectProgress } from '@/modules/project/components/CreateProjectProgress';
 import { ProjectAssignmentStep } from '@/modules/project/components/ProjectAssignmentStep';
 import { ProjectSetupStep } from '@/modules/project/components/ProjectSetupStep';
-import { UploadDropzone } from '@/modules/project/components/UploadDropzone';
 import {
+  useAssignProjectParticipantsMutation,
+  useConfigureProjectSetupMutation,
   useCreateProjectMutation,
   useUploadProjectDatasetMutation,
 } from '@/modules/project/hooks/useProjectQueries';
 import {
+  getAssignParticipantsErrorMessage,
   getCreateProjectErrorMessage,
+  getProjectSetupErrorMessage,
   getUploadDatasetErrorMessage,
 } from '@/modules/project/services/projectService';
+import { type ConfigureProjectSetupPayload } from '@/modules/project/types/project';
 import { useResearchGroupsQuery } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
+type WizardStep = 1 | 2 | 3 | 4;
 
 // eslint-disable-next-line sonarjs/cognitive-complexity
 export default function CreateProjectPage() {
@@ -40,6 +36,8 @@ export default function CreateProjectPage() {
   const { data: groups = [], isLoading: isLoadingGroups } = useResearchGroupsQuery();
   const createProjectMutation = useCreateProjectMutation();
   const uploadDatasetMutation = useUploadProjectDatasetMutation();
+  const configureProjectSetupMutation = useConfigureProjectSetupMutation();
+  const assignProjectParticipantsMutation = useAssignProjectParticipantsMutation();
 
   const manageableGroups = useMemo(
     () => groups.filter((group) => group.role === 'OWNER' || group.role === 'ADMIN'),
@@ -61,9 +59,11 @@ export default function CreateProjectPage() {
   const [customSelectedGroupId, setCustomSelectedGroupId] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
-  const [createdProjectId, setCreatedProjectId] = useState<number | null>(null);
+  const [currentStep, setCurrentStep] = useState<WizardStep>(1);
+  const [finalizationProjectId, setFinalizationProjectId] = useState<number | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [projectSetupPayload, setProjectSetupPayload] =
+    useState<ConfigureProjectSetupPayload | null>(null);
 
   const selectedGroupId = useMemo(() => {
     if (isGroupLocked && lockedGroup) {
@@ -82,24 +82,17 @@ export default function CreateProjectPage() {
   }, [customSelectedGroupId, isGroupLocked, lockedGroup, manageableGroups]);
 
   const numericGroupId = Number(selectedGroupId);
-  const isSavingProject = createProjectMutation.isPending;
-  const isUploadingDataset = uploadDatasetMutation.isPending;
+  const isFinalizingProject =
+    createProjectMutation.isPending ||
+    uploadDatasetMutation.isPending ||
+    configureProjectSetupMutation.isPending ||
+    assignProjectParticipantsMutation.isPending;
 
   const canCreateProject =
-    Number.isFinite(numericGroupId) &&
-    numericGroupId > 0 &&
-    name.trim().length > 0 &&
-    !isSavingProject;
+    Number.isFinite(numericGroupId) && numericGroupId > 0 && name.trim().length > 0;
 
   const canUploadDataset =
-    Number.isFinite(numericGroupId) &&
-    numericGroupId > 0 &&
-    createdProjectId !== null &&
-    selectedFiles.length > 0 &&
-    !isUploadingDataset;
-
-  const totalSteps = 4;
-  const progressPercentage = ((currentStep - 1) / (totalSteps - 1)) * 100;
+    Number.isFinite(numericGroupId) && numericGroupId > 0 && selectedFiles.length > 0;
 
   const handleFilesSelected = (files: FileList | null) => {
     if (!files) {
@@ -116,9 +109,42 @@ export default function CreateProjectPage() {
     );
   };
 
-  const handleCreateProject = async () => {
+  const setupDatasetItems = useMemo(
+    () =>
+      selectedFiles.map((file) => ({
+        fileName: file.name,
+        mimeType: file.type || 'application/octet-stream',
+      })),
+    [selectedFiles],
+  );
+
+  const handleCreateProject = () => {
     if (!canCreateProject) {
       return;
+    }
+
+    setFinalizationProjectId(null);
+    setCurrentStep(2);
+  };
+
+  const handleUploadDataset = () => {
+    if (!canUploadDataset) {
+      return;
+    }
+
+    setFinalizationProjectId(null);
+    setProjectSetupPayload(null);
+    setCurrentStep(3);
+  };
+
+  const handleSetupCompleted = async (payload: ConfigureProjectSetupPayload) => {
+    setProjectSetupPayload(payload);
+    setCurrentStep(4);
+  };
+
+  const ensureProjectCreatedForFinalization = async (): Promise<number | null> => {
+    if (finalizationProjectId !== null) {
+      return finalizationProjectId;
     }
 
     try {
@@ -130,215 +156,185 @@ export default function CreateProjectPage() {
         },
       });
 
-      setCreatedProjectId(createdProject.id);
-      setCurrentStep(2);
+      setFinalizationProjectId(createdProject.id);
+      return createdProject.id;
     } catch (error) {
       toast.error(getCreateProjectErrorMessage(error));
+      return null;
     }
   };
 
-  const handleUploadDataset = async () => {
-    if (!canUploadDataset || createdProjectId === null) {
-      return;
-    }
-
+  const uploadDatasetForProject = async (projectId: number): Promise<boolean> => {
     try {
       await uploadDatasetMutation.mutateAsync({
         groupId: numericGroupId,
-        projectId: createdProjectId,
+        projectId,
         files: selectedFiles,
       });
-
-      setCurrentStep(3);
+      return true;
     } catch (error) {
       toast.error(getUploadDatasetErrorMessage(error));
+      return false;
     }
   };
 
-  let mainStepContent: ReactNode;
-  if (isLoadingGroups) {
-    mainStepContent = (
-      <div className="mt-8 rounded-md border border-border bg-background px-4 py-6 text-sm text-muted-foreground">
-        <span className="inline-flex items-center gap-2">
-          <Spinner aria-hidden className="size-4" />
-          {t('project.create.loadingGroups')}
-        </span>
-      </div>
-    );
-  } else if (manageableGroups.length === 0) {
-    mainStepContent = (
-      <p className="mt-8 rounded-md border border-dashed border-border bg-background px-4 py-5 text-sm text-muted-foreground">
-        {t('project.create.noGroups')}
-      </p>
-    );
-  } else if (currentStep === 1) {
-    mainStepContent = (
-      <div className="mt-8 space-y-4">
-        <FormFieldControl
-          controlType="select"
-          id="create-project-group"
-          label={t('project.create.groupLabel')}
-          onValueChange={setCustomSelectedGroupId}
-          options={manageableGroups.map((group) => ({
-            label: group.name,
-            value: String(group.id),
-          }))}
-          required
-          selectProps={{ disabled: isGroupLocked, required: true }}
-          value={selectedGroupId}
-        />
+  const configureSetupForProject = async (projectId: number): Promise<boolean> => {
+    if (!projectSetupPayload) {
+      return false;
+    }
 
-        <FormFieldControl
-          id="create-project-name-page"
-          inputProps={{
-            maxLength: 256,
-            placeholder: t('project.create.namePlaceholder'),
-            required: true,
-          }}
-          label={t('project.create.nameLabel')}
-          onValueChange={setName}
-          required
-          value={name}
-        />
+    try {
+      await configureProjectSetupMutation.mutateAsync({
+        groupId: numericGroupId,
+        projectId,
+        payload: projectSetupPayload,
+      });
+      return true;
+    } catch (error) {
+      toast.error(getProjectSetupErrorMessage(error));
+      return false;
+    }
+  };
 
-        <FormFieldControl
-          controlType="textarea"
-          id="create-project-description-page"
-          label={t('project.create.descriptionLabel')}
-          onValueChange={setDescription}
-          textareaProps={{
-            maxLength: 2048,
-            placeholder: t('project.create.descriptionPlaceholder'),
-          }}
-          value={description}
-        />
+  const assignParticipantsForProject = async (
+    projectId: number,
+    participantUserIds: number[],
+  ): Promise<boolean> => {
+    try {
+      await assignProjectParticipantsMutation.mutateAsync({
+        groupId: numericGroupId,
+        projectId,
+        participantUserIds,
+      });
+      return true;
+    } catch (error) {
+      toast.error(getAssignParticipantsErrorMessage(error));
+      return false;
+    }
+  };
 
-        <div className="flex justify-end gap-3">
-          <Button
-            className="h-10 min-w-36 rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
-            disabled={!canCreateProject}
-            onClick={() => void handleCreateProject()}
-            type="button"
-          >
-            {isSavingProject ? (
-              <span className="inline-flex items-center gap-2">
-                <Spinner aria-hidden className="size-4" />
-                {t('common.actions.saving')}
-              </span>
-            ) : (
-              t('project.create.nextStepSimple')
-            )}
-          </Button>
+  const handleFinalizeProject = async (participantUserIds: number[]) => {
+    if (
+      !canCreateProject ||
+      !canUploadDataset ||
+      !projectSetupPayload ||
+      Number.isFinite(numericGroupId) === false ||
+      numericGroupId <= 0
+    ) {
+      return;
+    }
+
+    const projectId = await ensureProjectCreatedForFinalization();
+    if (projectId === null) {
+      return;
+    }
+
+    const uploadedDataset = await uploadDatasetForProject(projectId);
+    if (!uploadedDataset) {
+      return;
+    }
+
+    const configuredSetup = await configureSetupForProject(projectId);
+    if (!configuredSetup) {
+      return;
+    }
+
+    const assignedParticipants = await assignParticipantsForProject(projectId, participantUserIds);
+    if (!assignedParticipants) {
+      return;
+    }
+
+    if (isGroupLocked) {
+      navigate(`/home/research-groups/${numericGroupId}`);
+      return;
+    }
+
+    navigate(`/home/projects/${projectId}`);
+  };
+
+  const renderMainStepContent = (): ReactNode => {
+    if (isLoadingGroups) {
+      return (
+        <div className="mt-8 rounded-md border border-border bg-background px-4 py-6 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-2">
+            <Spinner aria-hidden className="size-4" />
+            {t('project.create.loadingGroups')}
+          </span>
         </div>
-      </div>
-    );
-  } else if (currentStep === 2) {
-    mainStepContent = (
-      <div className="mt-8 space-y-3">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          {t('project.create.steps.dataset')} *
+      );
+    }
+
+    if (manageableGroups.length === 0) {
+      return (
+        <p className="mt-8 rounded-md border border-dashed border-border bg-background px-4 py-5 text-sm text-muted-foreground">
+          {t('project.create.noGroups')}
         </p>
+      );
+    }
 
-        <UploadDropzone
-          accept=".pdf,.txt,.json,.csv,image/*"
-          description={t('project.create.selectFilesHint')}
-          multiple
-          onFilesChange={handleFilesSelected}
-          title={t('project.create.selectFiles')}
+    if (currentStep === 1) {
+      return (
+        <CreateProjectInfoStep
+          canContinue={canCreateProject}
+          description={description}
+          groups={manageableGroups}
+          isGroupLocked={isGroupLocked}
+          name={name}
+          onContinue={handleCreateProject}
+          onDescriptionChange={setDescription}
+          onGroupChange={setCustomSelectedGroupId}
+          onNameChange={setName}
+          selectedGroupId={selectedGroupId}
         />
+      );
+    }
 
-        {selectedFiles.length > 0 && (
-          <div className="space-y-2 rounded-md border border-border bg-background p-3">
-            {selectedFiles.map((file, index) => (
-              <div
-                className="flex items-center justify-between gap-3"
-                key={`${file.name}-${index}`}
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-primary">{file.name}</p>
-                  <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
-                </div>
-                <button
-                  aria-label={t('project.create.removeFile')}
-                  className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
-                  onClick={() => handleRemoveFile(file.name, index)}
-                  type="button"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+    if (currentStep === 2) {
+      return (
+        <CreateProjectDatasetStep
+          canContinue={canUploadDataset}
+          onBack={() => setCurrentStep(1)}
+          onContinue={handleUploadDataset}
+          onFilesSelected={handleFilesSelected}
+          onRemoveFile={handleRemoveFile}
+          selectedFiles={selectedFiles}
+        />
+      );
+    }
 
-        <div className="flex justify-end gap-3">
-          <Button
-            className="h-10 rounded-md border border-border bg-surface-base px-6 text-sm font-semibold text-primary hover:bg-accent cursor-pointer"
-            onClick={() => setCurrentStep(1)}
-            type="button"
-            variant="outline"
-          >
-            {t('project.create.previousStepSimple')}
-          </Button>
-          <Button
-            className="h-10 min-w-36 rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
-            disabled={!canUploadDataset}
-            onClick={() => void handleUploadDataset()}
-            type="button"
-          >
-            {isUploadingDataset ? (
-              <span className="inline-flex items-center gap-2">
-                <Spinner aria-hidden className="size-4" />
-                {t('project.create.uploadingDataset')}
-              </span>
-            ) : (
-              t('project.create.nextStepSimple')
-            )}
-          </Button>
-        </div>
-      </div>
-    );
-  } else if (
-    currentStep === 3 &&
-    createdProjectId !== null &&
-    Number.isFinite(numericGroupId) &&
-    numericGroupId > 0
-  ) {
-    mainStepContent = (
-      <ProjectSetupStep
-        groupId={numericGroupId}
-        onBack={() => setCurrentStep(2)}
-        onCompleted={() => setCurrentStep(4)}
-        projectId={createdProjectId}
-      />
-    );
-  } else if (
-    currentStep === 4 &&
-    createdProjectId !== null &&
-    Number.isFinite(numericGroupId) &&
-    numericGroupId > 0
-  ) {
-    mainStepContent = (
-      <ProjectAssignmentStep
-        groupId={numericGroupId}
-        onBack={() => setCurrentStep(3)}
-        onCompleted={() => {
-          if (isGroupLocked) {
-            navigate(`/home/research-groups/${numericGroupId}`);
-            return;
-          }
+    if (currentStep === 3 && Number.isFinite(numericGroupId) && numericGroupId > 0) {
+      return (
+        <ProjectSetupStep
+          datasetItems={setupDatasetItems}
+          onBack={() => setCurrentStep(2)}
+          onCompleted={handleSetupCompleted}
+        />
+      );
+    }
 
-          navigate(`/home/projects/${createdProjectId}`);
-        }}
-        projectId={createdProjectId}
-      />
-    );
-  } else {
-    mainStepContent = null;
-  }
+    if (
+      currentStep === 4 &&
+      Number.isFinite(numericGroupId) &&
+      numericGroupId > 0 &&
+      projectSetupPayload !== null
+    ) {
+      return (
+        <ProjectAssignmentStep
+          groupId={numericGroupId}
+          isSubmitting={isFinalizingProject}
+          onBack={() => setCurrentStep(3)}
+          onCompleted={handleFinalizeProject}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  const mainStepContent = renderMainStepContent();
 
   return (
-    <PageContainer className="py-4 sm:py-6">
+    <PageContainer>
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <BackButton fallbackTo={backFallbackPath} />
@@ -350,29 +346,7 @@ export default function CreateProjectPage() {
           </h1>
 
           <div className="mt-8">
-            <div className="relative mb-6">
-              <div className="absolute top-1/2 left-0 right-0 h-px -translate-y-1/2 bg-border" />
-              <div
-                className="absolute top-1/2 left-0 h-px -translate-y-1/2 bg-primary transition-all duration-500"
-                style={{ width: `${progressPercentage}%` }}
-              />
-
-              <div className="relative flex items-center justify-between">
-                {[1, 2, 3, 4].map((step) => {
-                  const isCompleted = step <= currentStep;
-
-                  return (
-                    <div
-                      className={[
-                        'size-4 rounded-full border-2 transition-colors duration-500 z-10',
-                        isCompleted ? 'border-primary bg-primary' : 'border-border bg-surface-base',
-                      ].join(' ')}
-                      key={step}
-                    />
-                  );
-                })}
-              </div>
-            </div>
+            <CreateProjectProgress currentStep={currentStep} />
 
             {mainStepContent}
           </div>

@@ -44,15 +44,94 @@
       "participantsCompletion": "Completed",
       "participantsEmpty": "There are no participants assigned to this project.",
       "completionValue": "{{value}}% completed",
+      "datasetTitle": "Dataset",
+      "datasetEmpty": "This project has no dataset files.",
       "labelsTitle": "Labels",
       "noLabels": "This project has no labels defined.",
       "guidelineTitle": "Guideline",
       "guidelinePdfAttached": "This project has an attached PDF guideline.",
       "guidelineDocument": "Guideline Document",
       "guidelinePdfFile": "PDF file attached",
+      "openDatasetFile": "Open",
       "openGuidelinePdf": "Open guideline PDF",
+      "openAnnotationWorkspace": "Open annotation workspace",
       "openGuidelinePdfError": "Could not open the guideline PDF.",
-      "noGuideline": "This project has no guideline available."
+      "noGuideline": "This project has no guideline available.",
+      "annotation": {
+        "title": "Perform annotation",
+        "loading": "Loading annotation steps...",
+        "progress": "My progress",
+        "page": "Showing steps {{from}}-{{to}} of {{total}}",
+        "previous": "Previous",
+        "next": "Next",
+        "emptySteps": "There are no annotation steps available for this project.",
+        "saveStep": "Save",
+        "saved": "Annotation saved successfully.",
+        "columns": {
+          "step": "Step",
+          "source": "Source",
+          "preview": "Content",
+          "annotation": "Annotation",
+          "status": "Status",
+          "actions": "Actions"
+        },
+        "status": {
+          "completed": "Completed",
+          "pending": "Pending"
+        },
+        "fields": {
+          "selectLabelPlaceholder": "Select a label",
+          "labelsPlaceholder": "Labels separated by comma",
+          "seq2seqPlaceholder": "Write the annotation"
+        },
+        "errors": {
+          "emptyPayload": "You must provide an annotation before saving."
+        }
+      }
+    },
+    "annotationPage": {
+      "loading": "Loading annotation workspace...",
+      "backToProject": "Back to detail",
+      "projectBadge": "Annotation workspace",
+      "currentStep": "Step {{current}} of {{total}}",
+      "progress": "My progress",
+      "emptySteps": "There are no annotation steps available for this project.",
+      "saved": "Annotation saved successfully.",
+      "guidelineTitle": "Annotation guideline",
+      "guidelinePdfLoading": "Loading PDF guideline...",
+      "sourceTitle": "Source document",
+      "sourceLoading": "Loading document...",
+      "sourceImageAlt": "Source document",
+      "sourceNotSupported": "This file type cannot be previewed inline. A content summary is shown instead.",
+      "classificationTitle": "Classification",
+      "nerSelectionAreaLabel": "Text area to annotate entities",
+      "nerChooseLabelFirst": "Select a label to start highlighting text.",
+      "removeEntity": "Remove entity",
+      "nerNoLabels": "You must define labels before annotating entities.",
+      "notesTitle": "Annotator notes",
+      "previous": "Previous",
+      "next": "Next",
+      "finish": "Finish annotation",
+      "autoSaved": "Annotation was saved automatically.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "status": {
+        "completed": "Completed",
+        "pending": "Pending"
+      },
+      "fields": {
+        "selectLabelPlaceholder": "Select a label",
+        "labelsPlaceholder": "Labels separated by comma",
+        "annotationPlaceholder": "Write the annotation",
+        "notesPlaceholder": "Explain your reasoning or add clarifications"
+      },
+      "errors": {
+        "invalidId": "The project identifier is invalid.",
+        "emptyPayload": "You must provide an annotation before saving.",
+        "classificationRequired": "You must complete the classification before continuing.",
+        "nerLabelRequired": "Select a label before highlighting text.",
+        "nerOverlappingEntities": "Overlapping entities are not allowed."
+      }
     },
     "create": {
       "title": "New Project",
@@ -87,6 +166,8 @@
       "taskDesignTitle": "Create labels and guideline",
       "taskDesignDescription": "Define the project type, required labels, and the guideline for the team.",
       "projectTypeLabel": "Project type",
+      "nerDatasetIncompatibleHint": "NER is only available if all dataset files are text or JSON.",
+      "nerDatasetIncompatibleError": "You cannot select NER with the current dataset. Use only text or JSON files.",
       "projectTypes": {
         "textClassificationSimple": "Simple Classification",
         "textClassificationMultiLabel": "Multi-label Classification",
@@ -133,7 +214,10 @@
       "createFailed": "Could not create the project. Please try again.",
       "datasetUploadFailed": "Could not upload the dataset. Please try again.",
       "setupFailed": "Could not save the project setup. Please try again.",
-      "assignmentFailed": "Could not assign investigators. Please try again."
+      "assignmentFailed": "Could not assign investigators. Please try again.",
+      "annotationLoadFailed": "Could not load annotation steps. Please try again.",
+      "annotationSaveFailed": "Could not save the annotation. Please try again.",
+      "sourceContentLoadFailed": "Could not load the document content. Please try again."
     }
   }
 }

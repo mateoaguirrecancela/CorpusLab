@@ -20,9 +20,18 @@
       "RESEARCH_GROUP_INVITATION_ACCEPTED": {
         "title": "Your invitation was accepted",
         "description": "{{actor}} accepted your invitation to {{group}}"
+      },
+      "PROJECT_PARTICIPANT_ASSIGNED": {
+        "title": "You were assigned to a project",
+        "description": "{{actor}} assigned you to the project {{project}}"
+      },
+      "PROJECT_ANNOTATION_COMPLETED": {
+        "title": "A researcher completed annotation",
+        "description": "{{actor}} completed annotation for the project {{project}}"
       }
     },
     "unknownActor": "Someone",
-    "fallbackGroup": "a group"
+    "fallbackGroup": "a group",
+    "fallbackProject": "a project"
   }
 }

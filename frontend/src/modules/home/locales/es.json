@@ -8,8 +8,7 @@
       "settings": "Configuración"
     },
     "dashboard": {
-      "title": "Panel",
-      "greeting": "Hola"
+      "title": "Panel"
     },
     "profile": {
       "title": "Mi perfil",

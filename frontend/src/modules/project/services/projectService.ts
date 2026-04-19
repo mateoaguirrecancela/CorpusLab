@@ -6,9 +6,13 @@ import {
   type ConfigureProjectSetupPayload,
   type CreateProjectPayload,
   type ProjectAssignedSummary,
+  type ProjectAnnotationWorkspace,
+  type ProjectDatasetItemContent,
   type ProjectDetail,
   type ProjectSetupResponse,
   type ProjectSummary,
+  type SaveProjectAnnotationStepPayload,
+  type SaveProjectAnnotationStepResponse,
   type UploadDatasetResponse,
 } from '@/modules/project/types/project';
 
@@ -114,10 +118,107 @@ export async function getProjectDetail(projectId: number): Promise<ProjectDetail
   return response.data;
 }
 
+export async function getProjectAnnotationWorkspace(
+  projectId: number,
+  offset = 0,
+  limit = 50,
+): Promise<ProjectAnnotationWorkspace> {
+  const response = await api.get<ProjectAnnotationWorkspace>(
+    `/projects/${projectId}/annotations/steps`,
+    {
+      params: { offset, limit },
+    },
+  );
+
+  return response.data;
+}
+
+export async function saveProjectAnnotationStep(
+  projectId: number,
+  payload: SaveProjectAnnotationStepPayload,
+): Promise<SaveProjectAnnotationStepResponse> {
+  const response = await api.put<SaveProjectAnnotationStepResponse>(
+    `/projects/${projectId}/annotations/steps`,
+    payload,
+  );
+
+  return response.data;
+}
+
+function parseFileNameFromContentDisposition(
+  contentDisposition: string | undefined,
+): string | null {
+  if (!contentDisposition) {
+    return null;
+  }
+
+  const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(contentDisposition);
+  const utf8FileName = utf8Match?.[1];
+  if (utf8FileName) {
+    try {
+      return decodeURIComponent(utf8FileName);
+    } catch {
+      return utf8FileName;
+    }
+  }
+
+  const quotedMatch = /filename="([^"]+)"/i.exec(contentDisposition);
+  const quotedFileName = quotedMatch?.[1];
+  if (quotedFileName) {
+    return quotedFileName;
+  }
+
+  const plainMatch = /filename=([^;]+)/i.exec(contentDisposition);
+  const plainFileName = plainMatch?.[1];
+  if (plainFileName) {
+    return plainFileName.trim();
+  }
+
+  return null;
+}
+
+export async function getProjectDatasetItemContent(
+  projectId: number,
+  datasetItemId: number,
+): Promise<ProjectDatasetItemContent> {
+  const response = await api.get<ArrayBuffer>(
+    `/projects/${projectId}/dataset-items/${datasetItemId}/content`,
+    {
+      responseType: 'arraybuffer',
+    },
+  );
+
+  const mimeTypeHeader = response.headers['content-type'];
+  const mimeType =
+    typeof mimeTypeHeader === 'string' && mimeTypeHeader.length > 0
+      ? mimeTypeHeader
+      : 'application/octet-stream';
+
+  const fileName = parseFileNameFromContentDisposition(response.headers['content-disposition']);
+
+  return {
+    blob: new Blob([response.data], { type: mimeType }),
+    mimeType,
+    fileName,
+  };
+}
+
 export function getProjectsLoadErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, i18n.t('project.errors.loadFailed'));
 }
 
 export function getProjectDetailLoadErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, i18n.t('project.errors.detailLoadFailed'));
+}
+
+export function getProjectAnnotationLoadErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, i18n.t('project.errors.annotationLoadFailed'));
+}
+
+export function getProjectAnnotationSaveErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, i18n.t('project.errors.annotationSaveFailed'));
+}
+
+export function getProjectDatasetItemContentErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, i18n.t('project.errors.sourceContentLoadFailed'));
 }

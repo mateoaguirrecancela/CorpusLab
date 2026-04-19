@@ -1,6 +1,8 @@
 export type NotificationType =
   | 'RESEARCH_GROUP_INVITATION_RECEIVED'
-  | 'RESEARCH_GROUP_INVITATION_ACCEPTED';
+  | 'RESEARCH_GROUP_INVITATION_ACCEPTED'
+  | 'PROJECT_PARTICIPANT_ASSIGNED'
+  | 'PROJECT_ANNOTATION_COMPLETED';
 
 export type NotificationItem = {
   id: number;
@@ -11,6 +13,8 @@ export type NotificationItem = {
   researchGroupId: number | null;
   researchGroupName: string | null;
   invitationId: number | null;
+  projectId: number | null;
+  projectName: string | null;
 };
 
 export type NotificationListResponse = {

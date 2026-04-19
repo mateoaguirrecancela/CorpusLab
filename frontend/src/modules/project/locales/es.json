@@ -44,15 +44,94 @@
       "participantsCompletion": "Completado",
       "participantsEmpty": "No hay participantes asignados a este proyecto.",
       "completionValue": "{{value}}% completado",
+      "datasetTitle": "Dataset",
+      "datasetEmpty": "Este proyecto no tiene archivos de dataset.",
       "labelsTitle": "Etiquetas",
       "noLabels": "Este proyecto no tiene etiquetas definidas.",
       "guidelineTitle": "Guideline",
       "guidelinePdfAttached": "Este proyecto tiene un guideline adjunto en PDF.",
       "guidelineDocument": "Documento guideline",
       "guidelinePdfFile": "Archivo PDF adjunto",
+      "openDatasetFile": "Abrir",
       "openGuidelinePdf": "Abrir guideline en PDF",
+      "openAnnotationWorkspace": "Ir a anotar",
       "openGuidelinePdfError": "No se pudo abrir el guideline en PDF.",
-      "noGuideline": "Este proyecto no tiene guideline disponible."
+      "noGuideline": "Este proyecto no tiene guideline disponible.",
+      "annotation": {
+        "title": "Realizar anotacion",
+        "loading": "Cargando pasos de anotacion...",
+        "progress": "Mi progreso",
+        "page": "Mostrando pasos {{from}}-{{to}} de {{total}}",
+        "previous": "Anterior",
+        "next": "Siguiente",
+        "emptySteps": "No hay pasos de anotacion disponibles para este proyecto.",
+        "saveStep": "Guardar",
+        "saved": "Anotacion guardada correctamente.",
+        "columns": {
+          "step": "Paso",
+          "source": "Origen",
+          "preview": "Contenido",
+          "annotation": "Anotacion",
+          "status": "Estado",
+          "actions": "Acciones"
+        },
+        "status": {
+          "completed": "Completado",
+          "pending": "Pendiente"
+        },
+        "fields": {
+          "selectLabelPlaceholder": "Selecciona una etiqueta",
+          "labelsPlaceholder": "Etiquetas separadas por coma",
+          "seq2seqPlaceholder": "Escribe la anotacion"
+        },
+        "errors": {
+          "emptyPayload": "Debes introducir una anotacion antes de guardar."
+        }
+      }
+    },
+    "annotationPage": {
+      "loading": "Cargando espacio de anotación...",
+      "backToProject": "Volver al detalle",
+      "projectBadge": "Espacio de anotación",
+      "currentStep": "Paso {{current}} de {{total}}",
+      "progress": "Mi progreso",
+      "emptySteps": "No hay pasos de anotación disponibles para este proyecto.",
+      "saved": "Anotación guardada correctamente.",
+      "guidelineTitle": "Guía de anotación",
+      "guidelinePdfLoading": "Cargando guía en PDF...",
+      "sourceTitle": "Documento fuente",
+      "sourceLoading": "Cargando documento...",
+      "sourceImageAlt": "Documento de origen",
+      "sourceNotSupported": "Este tipo de archivo no se puede visualizar en línea. Se muestra un resumen del contenido.",
+      "classificationTitle": "Clasificación",
+      "nerSelectionAreaLabel": "Área de texto para anotar entidades",
+      "nerChooseLabelFirst": "Selecciona una etiqueta para empezar a remarcar texto.",
+      "removeEntity": "Eliminar entidad",
+      "nerNoLabels": "Debes definir etiquetas para poder anotar entidades.",
+      "notesTitle": "Notas del anotador",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "finish": "Terminar anotación",
+      "autoSaved": "Anotación guardada automáticamente.",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "status": {
+        "completed": "Completado",
+        "pending": "Pendiente"
+      },
+      "fields": {
+        "selectLabelPlaceholder": "Selecciona una etiqueta",
+        "labelsPlaceholder": "Etiquetas separadas por coma",
+        "annotationPlaceholder": "Escribe la anotación",
+        "notesPlaceholder": "Explica tu criterio o añade aclaraciones"
+      },
+      "errors": {
+        "invalidId": "El identificador del proyecto no es válido.",
+        "emptyPayload": "Debes introducir una anotación antes de guardar.",
+        "classificationRequired": "Debes completar la clasificación antes de continuar.",
+        "nerLabelRequired": "Selecciona una etiqueta antes de resaltar texto.",
+        "nerOverlappingEntities": "No se permiten entidades solapadas."
+      }
     },
     "create": {
       "title": "Nuevo Proyecto",
@@ -87,6 +166,8 @@
       "taskDesignTitle": "Crear etiquetas y guideline",
       "taskDesignDescription": "Define el tipo de proyecto, las etiquetas necesarias y el guideline para el equipo.",
       "projectTypeLabel": "Tipo de proyecto",
+      "nerDatasetIncompatibleHint": "NER solo está disponible si todos los archivos del dataset son texto o JSON.",
+      "nerDatasetIncompatibleError": "No puedes seleccionar NER con el dataset actual. Usa solo archivos de texto o JSON.",
       "projectTypes": {
         "textClassificationSimple": "Clasificación Simple",
         "textClassificationMultiLabel": "Clasificación Multietiqueta",
@@ -133,7 +214,10 @@
       "createFailed": "No se pudo crear el proyecto. Inténtalo de nuevo.",
       "datasetUploadFailed": "No se pudo subir el dataset. Inténtalo de nuevo.",
       "setupFailed": "No se pudo guardar la configuración del proyecto. Inténtalo de nuevo.",
-      "assignmentFailed": "No se pudieron asignar los investigadores. Inténtalo de nuevo."
+      "assignmentFailed": "No se pudieron asignar los investigadores. Inténtalo de nuevo.",
+      "annotationLoadFailed": "No se pudieron cargar los pasos de anotacion. Inténtalo de nuevo.",
+      "annotationSaveFailed": "No se pudo guardar la anotacion. Inténtalo de nuevo.",
+      "sourceContentLoadFailed": "No se pudo cargar el contenido del documento. Inténtalo de nuevo."
     }
   }
 }

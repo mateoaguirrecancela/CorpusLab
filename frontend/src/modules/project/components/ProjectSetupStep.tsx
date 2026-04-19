@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FileText, FileUp, Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -10,9 +10,13 @@ import { LabelEditorDialog } from '@/modules/project/components/LabelEditorDialo
 import { LabelRow } from '@/modules/project/components/LabelRow';
 import { UploadDropzone } from '@/modules/project/components/UploadDropzone';
 import { LABEL_COLOR_PALETTE } from '@/modules/project/constants/labelColorPalette';
-import { useConfigureProjectSetupMutation } from '@/modules/project/hooks/useProjectQueries';
-import { getProjectSetupErrorMessage } from '@/modules/project/services/projectService';
-import { type ProjectSetupLabel, type ProjectType } from '@/modules/project/types/project';
+import {
+  type ConfigureProjectSetupPayload,
+  type DatasetItem,
+  type ProjectSetupLabel,
+  type ProjectType,
+} from '@/modules/project/types/project';
+import { isNerCompatibleDataset } from '@/modules/project/utils/projectUtils';
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) {
@@ -24,21 +28,78 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function normalizeLabelsForProjectType(
+  labels: ProjectSetupLabel[],
+  nextType: ProjectType,
+): ProjectSetupLabel[] {
+  if (nextType === 'SEQ2SEQ') {
+    return [];
+  }
+
+  if (nextType === 'NER') {
+    return labels.map((label) => ({
+      ...label,
+      color: label.color ?? LABEL_COLOR_PALETTE[0],
+    }));
+  }
+
+  return labels.map((label) => ({ ...label, color: null }));
+}
+
+function hasDuplicateLabelName(
+  labels: ProjectSetupLabel[],
+  normalizedName: string,
+  mode: 'create' | 'edit',
+  editingLabelIndex: number | null,
+): boolean {
+  return labels.some((label, index) => {
+    if (mode === 'edit' && editingLabelIndex === index) {
+      return false;
+    }
+
+    return label.name.toLowerCase() === normalizedName.toLowerCase();
+  });
+}
+
+function createLabelCandidate(
+  normalizedName: string,
+  draftLabelColor: string,
+  isNerProjectType: boolean,
+): ProjectSetupLabel {
+  return {
+    name: normalizedName,
+    color: isNerProjectType ? draftLabelColor : null,
+  };
+}
+
+async function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== 'string') {
+        reject(new Error('Invalid file content'));
+        return;
+      }
+
+      const commaIndex = result.indexOf(',');
+      resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
+    };
+
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
 type ProjectSetupStepProps = Readonly<{
-  groupId: number;
+  datasetItems: Array<Pick<DatasetItem, 'mimeType' | 'fileName'>>;
   onBack: () => void;
-  onCompleted: () => void;
-  projectId: number;
+  onCompleted: (payload: ConfigureProjectSetupPayload) => void | Promise<void>;
 }>;
 
-export function ProjectSetupStep({
-  groupId,
-  onBack,
-  onCompleted,
-  projectId,
-}: ProjectSetupStepProps) {
+export function ProjectSetupStep({ datasetItems, onBack, onCompleted }: ProjectSetupStepProps) {
   const { t } = useTranslation();
-  const configureSetupMutation = useConfigureProjectSetupMutation();
 
   const [projectType, setProjectType] = useState<ProjectType>('TEXT_CLASSIFICATION_SIMPLE');
   const [labels, setLabels] = useState<ProjectSetupLabel[]>([]);
@@ -50,37 +111,46 @@ export function ProjectSetupStep({
   const [editingLabelIndex, setEditingLabelIndex] = useState<number | null>(null);
   const [draftLabelName, setDraftLabelName] = useState('');
   const [draftLabelColor, setDraftLabelColor] = useState(LABEL_COLOR_PALETTE[0]);
+  const [isPreparingSetup, setIsPreparingSetup] = useState(false);
 
-  const isSavingSetup = configureSetupMutation.isPending;
+  const isNerDatasetCompatible = useMemo(
+    () => isNerCompatibleDataset(datasetItems),
+    [datasetItems],
+  );
   const isNerProjectType = projectType === 'NER';
   const requiresLabels = projectType !== 'SEQ2SEQ';
   const isLabelNameValid = draftLabelName.trim().length > 0;
   const isLabelColorValid = !isNerProjectType || draftLabelColor.trim().length > 0;
   const isLabelDialogSaveDisabled = !isLabelNameValid || !isLabelColorValid;
 
-  const handleProjectTypeChange = (nextType: ProjectType) => {
+  const applyProjectType = useCallback((nextType: ProjectType) => {
     setProjectType(nextType);
 
-    setLabels((prev) => {
-      if (nextType === 'SEQ2SEQ') {
-        return [];
+    setLabels((prev) => normalizeLabelsForProjectType(prev, nextType));
+  }, []);
+
+  const handleProjectTypeChange = useCallback(
+    (nextType: ProjectType) => {
+      if (nextType === 'NER' && isNerDatasetCompatible === false) {
+        toast.error(t('project.create.nerDatasetIncompatibleError'));
+        return;
       }
 
-      if (nextType === 'NER') {
-        return prev.map((label) => ({
-          ...label,
-          color: label.color ?? LABEL_COLOR_PALETTE[0],
-        }));
-      }
+      applyProjectType(nextType);
+    },
+    [applyProjectType, isNerDatasetCompatible, t],
+  );
 
-      return prev.map((label) => ({ ...label, color: null }));
-    });
-  };
+  useEffect(() => {
+    if (projectType === 'NER' && isNerDatasetCompatible === false) {
+      applyProjectType('TEXT_CLASSIFICATION_SIMPLE');
+    }
+  }, [applyProjectType, isNerDatasetCompatible, projectType]);
 
   const hasValidGuideline =
     guidelineMode === 'TEXT' ? guidelineText.trim().length > 0 : guidelinePdfFile !== null;
   const canSaveSetup =
-    hasValidGuideline && (!requiresLabels || labels.length > 0) && !isSavingSetup;
+    hasValidGuideline && (!requiresLabels || labels.length > 0) && !isPreparingSetup;
 
   const handleGuidelinePdfSelected = (files: FileList | null) => {
     if (!files || files.length === 0) {
@@ -122,22 +192,19 @@ export function ProjectSetupStep({
       return;
     }
 
-    const duplicated = labels.some((label, index) => {
-      if (labelDialogMode === 'edit' && editingLabelIndex === index) {
-        return false;
-      }
-      return label.name.toLowerCase() === normalizedName.toLowerCase();
-    });
+    const duplicated = hasDuplicateLabelName(
+      labels,
+      normalizedName,
+      labelDialogMode,
+      editingLabelIndex,
+    );
 
     if (duplicated) {
       toast.error(t('project.create.labelsDuplicateError'));
       return;
     }
 
-    const candidate: ProjectSetupLabel = {
-      name: normalizedName,
-      color: isNerProjectType ? draftLabelColor : null,
-    };
+    const candidate = createLabelCandidate(normalizedName, draftLabelColor, isNerProjectType);
 
     if (labelDialogMode === 'create') {
       setLabels((prev) => [...prev, candidate]);
@@ -150,30 +217,12 @@ export function ProjectSetupStep({
     setIsLabelEditorOpen(false);
   };
 
-  const readFileAsBase64 = async (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-
-      reader.onload = () => {
-        const result = reader.result;
-        if (typeof result !== 'string') {
-          reject(new Error('Invalid file content'));
-          return;
-        }
-
-        const commaIndex = result.indexOf(',');
-        resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
-      };
-
-      reader.onerror = () => reject(new Error('Could not read file'));
-      reader.readAsDataURL(file);
-    });
-  };
-
   const handleSaveProjectSetup = async () => {
-    if (!canSaveSetup) {
+    if (!canSaveSetup || isPreparingSetup) {
       return;
     }
+
+    setIsPreparingSetup(true);
 
     let guidelinePdfBase64: string | undefined;
 
@@ -181,26 +230,21 @@ export function ProjectSetupStep({
       try {
         guidelinePdfBase64 = await readFileAsBase64(guidelinePdfFile);
       } catch {
+        setIsPreparingSetup(false);
         toast.error(t('project.create.guidelinePdfReadError'));
         return;
       }
     }
 
     try {
-      await configureSetupMutation.mutateAsync({
-        groupId,
-        projectId,
-        payload: {
-          projectType,
-          labels,
-          guidelineText: guidelineMode === 'TEXT' ? guidelineText.trim() : undefined,
-          guidelinePdfBase64,
-        },
+      await onCompleted({
+        projectType,
+        labels,
+        guidelineText: guidelineMode === 'TEXT' ? guidelineText.trim() : undefined,
+        guidelinePdfBase64,
       });
-
-      onCompleted();
-    } catch (error) {
-      toast.error(getProjectSetupErrorMessage(error));
+    } finally {
+      setIsPreparingSetup(false);
     }
   };
 
@@ -210,6 +254,11 @@ export function ProjectSetupStep({
         controlType="select"
         id="create-project-type"
         label={t('project.create.projectTypeLabel')}
+        message={
+          isNerDatasetCompatible === false
+            ? t('project.create.nerDatasetIncompatibleHint')
+            : undefined
+        }
         onValueChange={(value) => handleProjectTypeChange(value as ProjectType)}
         options={[
           {
@@ -222,6 +271,7 @@ export function ProjectSetupStep({
           },
           {
             label: t('project.create.projectTypes.ner'),
+            disabled: isNerDatasetCompatible === false,
             value: 'NER',
           },
           {
@@ -242,7 +292,7 @@ export function ProjectSetupStep({
             </p>
 
             <Button
-              className="h-9 rounded-md bg-primary px-3 text-sm font-semibold text-white hover:bg-primary-strong cursor-pointer"
+              className="h-10 rounded-md bg-primary px-3 text-sm font-semibold text-white hover:bg-primary-strong cursor-pointer"
               onClick={openCreateLabelDialog}
               type="button"
             >
@@ -376,7 +426,7 @@ export function ProjectSetupStep({
           onClick={() => void handleSaveProjectSetup()}
           type="button"
         >
-          {isSavingSetup ? (
+          {isPreparingSetup ? (
             <span className="inline-flex items-center gap-2">
               <Spinner aria-hidden className="size-4" />
               {t('project.create.savingSetup')}

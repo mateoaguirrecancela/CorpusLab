@@ -5,8 +5,10 @@ import {
   configureProjectSetup,
   createProject,
   getAssignedProjectsByGroup,
+  getProjectAnnotationWorkspace,
   getMyAssignedProjects,
   getProjectDetail,
+  saveProjectAnnotationStep,
   uploadProjectDataset,
 } from '@/modules/project/services/projectService';
 import { type CreateProjectPayload } from '@/modules/project/types/project';
@@ -150,5 +152,57 @@ export function useProjectDetailQuery(projectId: number) {
     queryKey: projectDetailQueryKey(projectId),
     queryFn: () => getProjectDetail(projectId),
     enabled: Number.isFinite(projectId) && projectId > 0,
+  });
+}
+
+export function projectAnnotationWorkspaceQueryKey(
+  projectId: number,
+  offset: number,
+  limit: number,
+) {
+  return ['projects', 'annotation-workspace', projectId, offset, limit] as const;
+}
+
+export function useProjectAnnotationWorkspaceQuery(
+  projectId: number,
+  offset: number,
+  limit: number,
+) {
+  return useQuery({
+    queryKey: projectAnnotationWorkspaceQueryKey(projectId, offset, limit),
+    queryFn: () => getProjectAnnotationWorkspace(projectId, offset, limit),
+    enabled: Number.isFinite(projectId) && projectId > 0,
+  });
+}
+
+type SaveProjectAnnotationStepMutationInput = {
+  projectId: number;
+  datasetItemId: number;
+  stepIndex?: number;
+  annotation: unknown;
+};
+
+export function useSaveProjectAnnotationStepMutation(offset: number, limit: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      datasetItemId,
+      stepIndex,
+      annotation,
+    }: SaveProjectAnnotationStepMutationInput) =>
+      saveProjectAnnotationStep(projectId, {
+        datasetItemId,
+        stepIndex,
+        annotation,
+      }),
+    onSuccess: (_, variables) => {
+      invalidateQueryKeys(queryClient, [
+        myAssignedProjectsQueryKey(),
+        projectDetailQueryKey(variables.projectId),
+        projectAnnotationWorkspaceQueryKey(variables.projectId, offset, limit),
+      ]);
+    },
   });
 }

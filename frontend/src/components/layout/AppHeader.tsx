@@ -96,17 +96,6 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
     }).format(new Date(createdAt));
   };
 
-  const getNotificationDestination = (notification: NotificationItem) => {
-    if (
-      notification.type === 'RESEARCH_GROUP_INVITATION_ACCEPTED' &&
-      notification.researchGroupId !== null
-    ) {
-      return `/home/research-groups/${notification.researchGroupId}`;
-    }
-
-    return '/home/research-groups';
-  };
-
   const getNotificationTitle = (notification: NotificationItem) => {
     return t(`notification.types.${notification.type}.title`);
   };
@@ -115,6 +104,7 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
     return t(`notification.types.${notification.type}.description`, {
       actor: notification.actorFullName ?? t('notification.unknownActor'),
       group: notification.researchGroupName ?? t('notification.fallbackGroup'),
+      project: notification.projectName ?? t('notification.fallbackProject'),
     });
   };
 
@@ -143,7 +133,7 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
   };
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 flex h-[72px] items-center border-b border-border bg-surface-header px-4 sm:px-6">
+    <header className="fixed inset-x-0 top-0 z-50 flex h-18 items-center border-b border-border bg-surface-header px-4 sm:px-6">
       <div className="flex items-center gap-3">
         <Link className="inline-flex items-center gap-2" to="/home">
           <img alt="CorpusLab" className="h-10 w-10 rounded-sm object-cover" src={corpusLabLogo} />
@@ -185,7 +175,7 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
 
           <PopoverContent
             align="end"
-            className="w-[360px] rounded-xl border border-border bg-surface-base p-0"
+            className="w-90 rounded-xl border border-border bg-surface-base p-0"
           >
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <h3 className="text-sm font-semibold text-foreground">{t('notification.title')}</h3>
@@ -199,7 +189,7 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
               </button>
             </div>
 
-            <div className="max-h-[360px] overflow-y-auto p-2">
+            <div className="max-h-90 overflow-y-auto p-2">
               {isNotificationsLoading && (
                 <div className="px-3 py-4 text-sm text-muted-foreground">
                   <span className="inline-flex items-center gap-2">
@@ -216,11 +206,11 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
               {!isNotificationsLoading && !isNotificationsError && notifications.length > 0 && (
                 <div className="space-y-1">
                   {notifications.map((notification) => (
-                    <Link
-                      className="block rounded-lg"
+                    <button
+                      className="block w-full rounded-lg text-left"
                       key={notification.id}
                       onClick={() => handleNotificationClick(notification.id, notification.read)}
-                      to={getNotificationDestination(notification)}
+                      type="button"
                     >
                       <article
                         className={[
@@ -240,7 +230,7 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
                           {formatNotificationDate(notification.createdAt)}
                         </p>
                       </article>
-                    </Link>
+                    </button>
                   ))}
                 </div>
               )}

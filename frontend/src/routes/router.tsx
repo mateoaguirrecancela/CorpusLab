@@ -15,6 +15,7 @@ import ResearchGroupsPage from '@/modules/researchgroup/pages/ResearchGroupsPage
 import { PublicOnly, RequireSession } from '@/routes/guards';
 import ProjectsPage from '@/modules/project/pages/ProjectsPage';
 import ProjectDetailPage from '@/modules/project/pages/ProjectDetailPage';
+import ProjectAnnotationPage from '@/modules/project/pages/ProjectAnnotationPage';
 
 export const router = createBrowserRouter([
   {
@@ -86,6 +87,10 @@ export const router = createBrowserRouter([
           {
             path: 'projects/:projectId',
             element: <ProjectDetailPage />,
+          },
+          {
+            path: 'projects/:projectId/annotate',
+            element: <ProjectAnnotationPage />,
           },
           {
             path: 'laboratories',

@@ -1,3 +1,7 @@
+import type { DatasetItem } from '@/modules/project/types/project';
+
+const NER_SUPPORTED_EXTENSIONS = new Set(['txt', 'json']);
+
 export function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -57,4 +61,42 @@ export function completionColor(pct: number): {
     text: 'text-sky-700',
     bg: 'bg-sky-50',
   };
+}
+
+function getFileExtension(fileName: string | null | undefined): string {
+  if (!fileName) {
+    return '';
+  }
+
+  const normalizedName = fileName.trim().toLowerCase();
+  const dotIndex = normalizedName.lastIndexOf('.');
+  if (dotIndex < 0 || dotIndex === normalizedName.length - 1) {
+    return '';
+  }
+
+  return normalizedName.slice(dotIndex + 1);
+}
+
+export function isNerCompatibleDatasetItem(
+  item: Pick<DatasetItem, 'mimeType' | 'fileName'>,
+): boolean {
+  const mimeType = item.mimeType.trim().toLowerCase();
+  const extension = getFileExtension(item.fileName);
+
+  if (
+    mimeType === 'text/plain' ||
+    mimeType === 'application/json' ||
+    mimeType === 'text/json' ||
+    mimeType.endsWith('+json')
+  ) {
+    return true;
+  }
+
+  return NER_SUPPORTED_EXTENSIONS.has(extension);
+}
+
+export function isNerCompatibleDataset(
+  datasetItems: Array<Pick<DatasetItem, 'mimeType' | 'fileName'>>,
+): boolean {
+  return datasetItems.length > 0 && datasetItems.every((item) => isNerCompatibleDatasetItem(item));
 }
