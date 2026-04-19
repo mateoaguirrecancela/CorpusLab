@@ -468,6 +468,274 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
+        void shouldAllowProjectCreatorToViewInvestigatorAnnotations() throws Exception {
+                User owner = createUser("owner.annotation.review@example.com");
+                User annotator = createUser("annotator.annotation.review@example.com");
+
+                ResearchGroup group = createGroup("Annotation Review Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Review Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createCsvDatasetItem(project, "id,text\n1,alpha\n2,beta");
+
+                String annotatorToken = loginAs("annotator.annotation.review@example.com");
+                saveAnnotationStep(annotatorToken, project.getId(), item.getId(), 0, "POSITIVE");
+
+                String ownerToken = loginAs("owner.annotation.review@example.com");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/annotations/participants/{participantUserId}/steps",
+                                                project.getId(), annotator.getId())
+                                                .param("offset", "0")
+                                                .param("limit", "10")
+                                                .header("Authorization", "Bearer " + ownerToken))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.projectId").value(project.getId()))
+                                .andExpect(jsonPath("$.totalSteps").value(2))
+                                .andExpect(jsonPath("$.completedSteps").value(1))
+                                .andExpect(jsonPath("$.completionPercentage").value(50))
+                                .andExpect(jsonPath("$.steps.length()").value(2))
+                                .andExpect(jsonPath("$.steps[0].completed").value(true))
+                                .andExpect(jsonPath("$.steps[0].annotation.label").value("POSITIVE"))
+                                .andExpect(jsonPath("$.steps[1].completed").value(false));
+        }
+
+        @Test
+        void shouldReturnForbiddenWhenRequesterIsNotProjectCreatorForAnnotationReview() throws Exception {
+                User owner = createUser("owner.annotation.review.forbidden@example.com");
+                User annotatorA = createUser("annotatora.annotation.review.forbidden@example.com");
+                User annotatorB = createUser("annotatorb.annotation.review.forbidden@example.com");
+
+                ResearchGroup group = createGroup("Annotation Review Forbidden Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotatorA, group, ResearchGroupMemberRole.ANNOTATOR);
+                addMembership(annotatorB, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Review Forbidden Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotatorA, ProjectParticipantRole.PARTICIPANT);
+                assign(project, annotatorB, ProjectParticipantRole.PARTICIPANT);
+
+                String annotatorToken = loginAs("annotatora.annotation.review.forbidden@example.com");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/annotations/participants/{participantUserId}/steps",
+                                                project.getId(), annotatorB.getId())
+                                                .param("offset", "0")
+                                                .param("limit", "10")
+                                                .header("Authorization", "Bearer " + annotatorToken))
+                                .andExpect(status().isForbidden());
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenCreatorRequestsAnnotationsForNonInvestigator() throws Exception {
+                User owner = createUser("owner.annotation.review.badrequest@example.com");
+                User annotator = createUser("annotator.annotation.review.badrequest@example.com");
+
+                ResearchGroup group = createGroup("Annotation Review Bad Request Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Review Bad Request Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                String ownerToken = loginAs("owner.annotation.review.badrequest@example.com");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/annotations/participants/{participantUserId}/steps",
+                                                project.getId(), owner.getId())
+                                                .param("offset", "0")
+                                                .param("limit", "10")
+                                                .header("Authorization", "Bearer " + ownerToken))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldReturnNotFoundWhenRequesterIsNotAssignedForAnnotationReview() throws Exception {
+                User owner = createUser("owner.annotation.review.notfound@example.com");
+                User annotator = createUser("annotator.annotation.review.notfound@example.com");
+                User outsider = createUser("outsider.annotation.review.notfound@example.com");
+
+                ResearchGroup group = createGroup("Annotation Review Not Found Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Review Not Found Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                String outsiderToken = loginAs("outsider.annotation.review.notfound@example.com");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/annotations/participants/{participantUserId}/steps",
+                                                project.getId(), annotator.getId())
+                                                .param("offset", "0")
+                                                .param("limit", "10")
+                                                .header("Authorization", "Bearer " + outsiderToken))
+                                .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void shouldSanitizePaginationParametersWhenCreatorReviewsInvestigatorAnnotations() throws Exception {
+                User owner = createUser("owner.annotation.review.pagination@example.com");
+                User annotator = createUser("annotator.annotation.review.pagination@example.com");
+
+                ResearchGroup group = createGroup("Annotation Review Pagination Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Review Pagination Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                createCsvDatasetItem(project, "id,text\n1,alpha\n2,beta\n3,gamma");
+
+                String ownerToken = loginAs("owner.annotation.review.pagination@example.com");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/annotations/participants/{participantUserId}/steps",
+                                                project.getId(), annotator.getId())
+                                                .param("offset", "-10")
+                                                .param("limit", "0")
+                                                .header("Authorization", "Bearer " + ownerToken))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.offset").value(0))
+                                .andExpect(jsonPath("$.limit").value(50))
+                                .andExpect(jsonPath("$.steps.length()").value(3));
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/annotations/participants/{participantUserId}/steps",
+                                                project.getId(), annotator.getId())
+                                                .param("offset", "1")
+                                                .param("limit", "999")
+                                                .header("Authorization", "Bearer " + ownerToken))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.offset").value(1))
+                                .andExpect(jsonPath("$.limit").value(250))
+                                .andExpect(jsonPath("$.steps.length()").value(2));
+        }
+
+        @Test
+        void shouldReturnReviewedInvestigatorAnnotationsInsteadOfCreatorOnes() throws Exception {
+                User owner = createUser("owner.annotation.review.target.progress@example.com");
+                User annotator = createUser("annotator.annotation.review.target.progress@example.com");
+
+                ResearchGroup group = createGroup("Annotation Review Target Progress Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Review Target Progress Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createCsvDatasetItem(project, "id,text\n1,alpha\n2,beta");
+
+                String ownerToken = loginAs("owner.annotation.review.target.progress@example.com");
+                String annotatorToken = loginAs("annotator.annotation.review.target.progress@example.com");
+
+                saveAnnotationStep(ownerToken, project.getId(), item.getId(), 0, "OWNER_ONLY");
+                saveAnnotationStep(annotatorToken, project.getId(), item.getId(), 0, "PARTICIPANT_ONLY");
+                saveAnnotationStep(annotatorToken, project.getId(), item.getId(), 1, "NEGATIVE");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/annotations/participants/{participantUserId}/steps",
+                                                project.getId(), annotator.getId())
+                                                .param("offset", "0")
+                                                .param("limit", "10")
+                                                .header("Authorization", "Bearer " + ownerToken))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.completedSteps").value(2))
+                                .andExpect(jsonPath("$.completionPercentage").value(100))
+                                .andExpect(jsonPath("$.steps[0].annotation.label").value("PARTICIPANT_ONLY"))
+                                .andExpect(jsonPath("$.steps[1].annotation.label").value("NEGATIVE"));
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenCreatorReviewsUserNotAssignedToProject() throws Exception {
+                User owner = createUser("owner.annotation.review.target.unassigned@example.com");
+                User annotator = createUser("annotator.annotation.review.target.unassigned@example.com");
+                User unassignedUser = createUser("unassigned.annotation.review.target@example.com");
+
+                ResearchGroup group = createGroup("Annotation Review Unassigned Target Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Review Unassigned Target Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                String ownerToken = loginAs("owner.annotation.review.target.unassigned@example.com");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/annotations/participants/{participantUserId}/steps",
+                                                project.getId(), unassignedUser.getId())
+                                                .param("offset", "0")
+                                                .param("limit", "10")
+                                                .header("Authorization", "Bearer " + ownerToken))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldAllowProjectCreatorToReadDatasetItemSourceContentForAnnotationReview() throws Exception {
+                User owner = createUser("owner.annotation.review.source@example.com");
+                User annotator = createUser("annotator.annotation.review.source@example.com");
+
+                ResearchGroup group = createGroup("Annotation Review Source Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Review Source Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                byte[] sourceBytes = "review-source-content".getBytes(StandardCharsets.UTF_8);
+                DatasetItem item = createBinaryDatasetItem(
+                                project,
+                                "review-source.txt",
+                                "text/plain",
+                                Base64.getEncoder().encodeToString(sourceBytes));
+
+                String ownerToken = loginAs("owner.annotation.review.source@example.com");
+
+                mockMvc.perform(
+                                get("/api/projects/{projectId}/dataset-items/{datasetItemId}/content", project.getId(),
+                                                item.getId())
+                                                .header("Authorization", "Bearer " + ownerToken))
+                                .andExpect(status().isOk())
+                                .andExpect(header().string("Content-Type", "text/plain"))
+                                .andExpect(content().bytes(sourceBytes));
+        }
+
+        @Test
         void shouldReturnBadRequestWhenSavingAnnotationWithInvalidStepIndex() throws Exception {
                 User owner = createUser("owner.annotation.step.invalid.index@example.com");
                 User annotator = createUser("annotator.annotation.step.invalid.index@example.com");

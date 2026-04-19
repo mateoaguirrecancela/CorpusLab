@@ -52,6 +52,13 @@ public interface ProjectService {
                         int offset,
                         int limit);
 
+        ProjectAnnotationWorkspaceDto getParticipantAnnotationWorkspaceForCreator(
+                        String authenticatedEmail,
+                        Long projectId,
+                        Long participantUserId,
+                        int offset,
+                        int limit);
+
         ProjectAnnotationSourceContentDto getAnnotationSourceContent(
                         String authenticatedEmail,
                         Long projectId,

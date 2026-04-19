@@ -5,6 +5,7 @@ import {
   configureProjectSetup,
   createProject,
   getAssignedProjectsByGroup,
+  getProjectParticipantAnnotationWorkspace,
   getProjectAnnotationWorkspace,
   getMyAssignedProjects,
   getProjectDetail,
@@ -163,15 +164,62 @@ export function projectAnnotationWorkspaceQueryKey(
   return ['projects', 'annotation-workspace', projectId, offset, limit] as const;
 }
 
+export function projectParticipantAnnotationWorkspaceQueryKey(
+  projectId: number,
+  participantUserId: number,
+  offset: number,
+  limit: number,
+) {
+  return [
+    'projects',
+    'annotation-workspace',
+    projectId,
+    'participant',
+    participantUserId,
+    offset,
+    limit,
+  ] as const;
+}
+
+type WorkspaceQueryOptions = {
+  enabled?: boolean;
+};
+
 export function useProjectAnnotationWorkspaceQuery(
   projectId: number,
   offset: number,
   limit: number,
+  options?: WorkspaceQueryOptions,
 ) {
   return useQuery({
     queryKey: projectAnnotationWorkspaceQueryKey(projectId, offset, limit),
     queryFn: () => getProjectAnnotationWorkspace(projectId, offset, limit),
-    enabled: Number.isFinite(projectId) && projectId > 0,
+    enabled: (options?.enabled ?? true) && Number.isFinite(projectId) && projectId > 0,
+  });
+}
+
+export function useProjectParticipantAnnotationWorkspaceQuery(
+  projectId: number,
+  participantUserId: number,
+  offset: number,
+  limit: number,
+  options?: WorkspaceQueryOptions,
+) {
+  return useQuery({
+    queryKey: projectParticipantAnnotationWorkspaceQueryKey(
+      projectId,
+      participantUserId,
+      offset,
+      limit,
+    ),
+    queryFn: () =>
+      getProjectParticipantAnnotationWorkspace(projectId, participantUserId, offset, limit),
+    enabled:
+      (options?.enabled ?? true) &&
+      Number.isFinite(projectId) &&
+      projectId > 0 &&
+      Number.isFinite(participantUserId) &&
+      participantUserId > 0,
   });
 }
 
