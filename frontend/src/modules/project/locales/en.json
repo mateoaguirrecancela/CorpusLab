@@ -56,6 +56,7 @@
       "guidelinePdfFile": "PDF file attached",
       "downloadDatasetFile": "Download",
       "openDatasetFile": "Open",
+      "exportAnnotationsCsv": "Export Annotations",
       "openAnnotationWorkspace": "Open annotation workspace",
       "openGuidelinePdfError": "Could not open the guideline PDF.",
       "noGuideline": "This project has no guideline available.",
@@ -105,6 +106,9 @@
       "sourceLoading": "Loading document...",
       "sourceImageAlt": "Source document",
       "sourceNotSupported": "This file type cannot be previewed inline. A content summary is shown instead.",
+      "csvTargetColumnBadge": "Target column: {{column}}",
+      "csvFieldColumn": "Field",
+      "csvValueColumn": "Value",
       "classificationTitle": "Classification",
       "reviewingParticipant": "Viewing annotations from:",
       "nerSelectionAreaLabel": "Text area to annotate entities",
@@ -170,8 +174,13 @@
       "taskDesignTitle": "Create labels and guideline",
       "taskDesignDescription": "Define the project type, required labels, and the guideline for the team.",
       "projectTypeLabel": "Project type",
-      "nerDatasetIncompatibleHint": "NER is only available if all dataset files are text or JSON.",
-      "nerDatasetIncompatibleError": "You cannot select NER with the current dataset. Use only text or JSON files.",
+      "annotationTargetColumnLabel": "Column to annotate",
+      "annotationTargetColumnPlaceholder": "Ex: distil_predictions",
+      "annotationTargetColumnLoading": "Reading CSV columns...",
+      "annotationTargetColumnHeadersReadError": "Could not read CSV headers. Enter the column manually.",
+      "nerDatasetIncompatibleHint": "NER is only available if all dataset files are text, JSON, or CSV.",
+      "nerDatasetIncompatibleError": "You cannot select NER with the current dataset. Use only text, JSON, or CSV files.",
+      "csvSingleFileError": "Only a single file is allowed when the dataset contains a CSV file.",
       "projectTypes": {
         "textClassificationSimple": "Simple Classification",
         "textClassificationMultiLabel": "Multi-label Classification",
@@ -220,6 +229,7 @@
       "assignmentFailed": "Could not assign investigators. Please try again.",
       "annotationLoadFailed": "Could not load annotation steps. Please try again.",
       "annotationSaveFailed": "Could not save the annotation. Please try again.",
+      "annotationExportFailed": "Could not export annotation CSV. Please try again.",
       "sourceContentLoadFailed": "Could not load the document content. Please try again."
     }
   }

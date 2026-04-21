@@ -12,7 +12,6 @@ import { UploadDropzone } from '@/modules/project/components/UploadDropzone';
 import { LABEL_COLOR_PALETTE } from '@/modules/project/constants/labelColorPalette';
 import {
   type ConfigureProjectSetupPayload,
-  type DatasetItem,
   type ProjectSetupLabel,
   type ProjectType,
 } from '@/modules/project/types/project';
@@ -44,6 +43,84 @@ function normalizeLabelsForProjectType(
   }
 
   return labels.map((label) => ({ ...label, color: null }));
+}
+
+function isCsvDatasetFile(file: File): boolean {
+  const normalizedMimeType = file.type.toLowerCase();
+  const normalizedFileName = file.name.toLowerCase();
+
+  return normalizedMimeType.includes('csv') || normalizedFileName.endsWith('.csv');
+}
+
+function removeUtf8Bom(value: string): string {
+  return value.startsWith('\uFEFF') ? value.slice(1) : value;
+}
+
+function parseCsvColumns(line: string): string[] {
+  if (line.trim().length === 0) {
+    return [];
+  }
+
+  const values: string[] = [];
+  let currentValue = '';
+  let insideQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const currentChar = line[index];
+
+    if (currentChar === '"') {
+      if (insideQuotes && line[index + 1] === '"') {
+        currentValue += '"';
+        index += 1;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+
+      continue;
+    }
+
+    if (currentChar === ',' && insideQuotes === false) {
+      values.push(currentValue.trim());
+      currentValue = '';
+      continue;
+    }
+
+    currentValue += currentChar;
+  }
+
+  values.push(currentValue.trim());
+  return values;
+}
+
+async function extractCsvHeadersFromFile(file: File): Promise<string[]> {
+  const textContent = await file.text();
+  const firstLine = removeUtf8Bom(textContent.split(/\r?\n/)[0] ?? '').trim();
+  const headers = parseCsvColumns(firstLine);
+
+  return headers
+    .map((header, index) => header.trim() || `column_${index + 1}`)
+    .filter((header) => header.length > 0);
+}
+
+function normalizeCsvHeaderSelectionOptions(headersByFile: string[][]): string[] {
+  if (headersByFile.length === 0) {
+    return [];
+  }
+
+  const deduplicatedHeadersByFile = headersByFile.map((headers) =>
+    Array.from(new Set(headers.filter((header) => header.trim().length > 0))),
+  );
+
+  const [firstFileHeaders, ...remainingFileHeaders] = deduplicatedHeadersByFile;
+  const commonHeaders = firstFileHeaders.filter((header) =>
+    remainingFileHeaders.every((headers) => headers.includes(header)),
+  );
+
+  if (commonHeaders.length > 0) {
+    return commonHeaders;
+  }
+
+  return Array.from(new Set(deduplicatedHeadersByFile.flat()));
 }
 
 function hasDuplicateLabelName(
@@ -93,12 +170,12 @@ async function readFileAsBase64(file: File): Promise<string> {
 }
 
 type ProjectSetupStepProps = Readonly<{
-  datasetItems: Array<Pick<DatasetItem, 'mimeType' | 'fileName'>>;
+  datasetFiles: File[];
   onBack: () => void;
   onCompleted: (payload: ConfigureProjectSetupPayload) => void | Promise<void>;
 }>;
 
-export function ProjectSetupStep({ datasetItems, onBack, onCompleted }: ProjectSetupStepProps) {
+export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectSetupStepProps) {
   const { t } = useTranslation();
 
   const [projectType, setProjectType] = useState<ProjectType>('TEXT_CLASSIFICATION_SIMPLE');
@@ -112,6 +189,23 @@ export function ProjectSetupStep({ datasetItems, onBack, onCompleted }: ProjectS
   const [draftLabelName, setDraftLabelName] = useState('');
   const [draftLabelColor, setDraftLabelColor] = useState(LABEL_COLOR_PALETTE[0]);
   const [isPreparingSetup, setIsPreparingSetup] = useState(false);
+  const [csvHeaderOptions, setCsvHeaderOptions] = useState<string[]>([]);
+  const [isLoadingCsvHeaders, setIsLoadingCsvHeaders] = useState(false);
+  const [annotationTargetColumn, setAnnotationTargetColumn] = useState('');
+
+  const datasetItems = useMemo(
+    () =>
+      datasetFiles.map((file) => ({
+        mimeType: file.type || 'application/octet-stream',
+        fileName: file.name,
+      })),
+    [datasetFiles],
+  );
+  const csvDatasetFiles = useMemo(
+    () => datasetFiles.filter((file) => isCsvDatasetFile(file)),
+    [datasetFiles],
+  );
+  const requiresAnnotationTargetColumn = csvDatasetFiles.length > 0;
 
   const isNerDatasetCompatible = useMemo(
     () => isNerCompatibleDataset(datasetItems),
@@ -147,10 +241,69 @@ export function ProjectSetupStep({ datasetItems, onBack, onCompleted }: ProjectS
     }
   }, [applyProjectType, isNerDatasetCompatible, projectType]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!requiresAnnotationTargetColumn) {
+      setCsvHeaderOptions([]);
+      setAnnotationTargetColumn('');
+      setIsLoadingCsvHeaders(false);
+      return;
+    }
+
+    setIsLoadingCsvHeaders(true);
+
+    void Promise.all(csvDatasetFiles.map((file) => extractCsvHeadersFromFile(file)))
+      .then((headersByFile) => {
+        if (cancelled) {
+          return;
+        }
+
+        const normalizedHeaders = normalizeCsvHeaderSelectionOptions(headersByFile);
+        setCsvHeaderOptions(normalizedHeaders);
+
+        setAnnotationTargetColumn((currentValue) => {
+          const normalizedCurrentValue = currentValue.trim();
+          if (
+            normalizedCurrentValue.length > 0 &&
+            normalizedHeaders.includes(normalizedCurrentValue)
+          ) {
+            return normalizedCurrentValue;
+          }
+
+          return normalizedHeaders[0] ?? '';
+        });
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+
+        setCsvHeaderOptions([]);
+        setAnnotationTargetColumn('');
+        toast.error(t('project.create.annotationTargetColumnHeadersReadError'));
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingCsvHeaders(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [csvDatasetFiles, requiresAnnotationTargetColumn, t]);
+
   const hasValidGuideline =
     guidelineMode === 'TEXT' ? guidelineText.trim().length > 0 : guidelinePdfFile !== null;
+  const hasValidAnnotationTargetColumn =
+    !requiresAnnotationTargetColumn || annotationTargetColumn.trim().length > 0;
   const canSaveSetup =
-    hasValidGuideline && (!requiresLabels || labels.length > 0) && !isPreparingSetup;
+    hasValidGuideline &&
+    hasValidAnnotationTargetColumn &&
+    (!requiresLabels || labels.length > 0) &&
+    !isPreparingSetup &&
+    !isLoadingCsvHeaders;
 
   const handleGuidelinePdfSelected = (files: FileList | null) => {
     if (!files || files.length === 0) {
@@ -242,6 +395,9 @@ export function ProjectSetupStep({ datasetItems, onBack, onCompleted }: ProjectS
         labels,
         guidelineText: guidelineMode === 'TEXT' ? guidelineText.trim() : undefined,
         guidelinePdfBase64,
+        annotationTargetColumn: requiresAnnotationTargetColumn
+          ? annotationTargetColumn.trim()
+          : undefined,
       });
     } finally {
       setIsPreparingSetup(false);
@@ -254,11 +410,6 @@ export function ProjectSetupStep({ datasetItems, onBack, onCompleted }: ProjectS
         controlType="select"
         id="create-project-type"
         label={t('project.create.projectTypeLabel')}
-        message={
-          isNerDatasetCompatible === false
-            ? t('project.create.nerDatasetIncompatibleHint')
-            : undefined
-        }
         onValueChange={(value) => handleProjectTypeChange(value as ProjectType)}
         options={[
           {
@@ -284,6 +435,44 @@ export function ProjectSetupStep({ datasetItems, onBack, onCompleted }: ProjectS
         value={projectType}
       />
 
+      {requiresAnnotationTargetColumn && isLoadingCsvHeaders && (
+        <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+          <Spinner aria-hidden className="size-4" />
+          {t('project.create.annotationTargetColumnLoading')}
+        </p>
+      )}
+
+      {requiresAnnotationTargetColumn && !isLoadingCsvHeaders && csvHeaderOptions.length > 0 && (
+        <FormFieldControl
+          controlType="select"
+          id="create-project-annotation-target-column"
+          label={t('project.create.annotationTargetColumnLabel')}
+          onValueChange={setAnnotationTargetColumn}
+          options={csvHeaderOptions.map((header) => ({
+            label: header,
+            value: header,
+          }))}
+          required
+          selectProps={{ required: true }}
+          value={annotationTargetColumn}
+        />
+      )}
+
+      {requiresAnnotationTargetColumn && !isLoadingCsvHeaders && csvHeaderOptions.length === 0 && (
+        <FormFieldControl
+          controlType="input"
+          id="create-project-annotation-target-column-fallback"
+          label={t('project.create.annotationTargetColumnLabel')}
+          onValueChange={setAnnotationTargetColumn}
+          inputProps={{
+            placeholder: t('project.create.annotationTargetColumnPlaceholder'),
+            required: true,
+          }}
+          required
+          value={annotationTargetColumn}
+        />
+      )}
+
       {requiresLabels && (
         <section>
           <div className="flex items-end justify-between gap-3">
@@ -307,7 +496,7 @@ export function ProjectSetupStep({ datasetItems, onBack, onCompleted }: ProjectS
                 {t('project.create.labelsEmptyState')}
               </p>
             ) : (
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {labels.map((label, index) => (
                   <LabelRow
                     editLabelText={t('project.create.editLabel')}

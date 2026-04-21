@@ -12,7 +12,10 @@ import {
   saveProjectAnnotationStep,
   uploadProjectDataset,
 } from '@/modules/project/services/projectService';
-import { type CreateProjectPayload } from '@/modules/project/types/project';
+import {
+  type ConfigureProjectSetupPayload,
+  type CreateProjectPayload,
+} from '@/modules/project/types/project';
 import {
   RESEARCH_GROUPS_QUERY_KEY,
   researchGroupDetailQueryKey,
@@ -67,16 +70,7 @@ export function useUploadProjectDatasetMutation() {
 type ConfigureProjectSetupMutationInput = {
   groupId: number;
   projectId: number;
-  payload: {
-    projectType:
-      | 'TEXT_CLASSIFICATION_SIMPLE'
-      | 'TEXT_CLASSIFICATION_MULTILABEL'
-      | 'NER'
-      | 'SEQ2SEQ';
-    labels: Array<{ name: string; color: string | null }>;
-    guidelineText?: string;
-    guidelinePdfBase64?: string;
-  };
+  payload: ConfigureProjectSetupPayload;
 };
 
 export function useConfigureProjectSetupMutation() {

@@ -21,12 +21,6 @@
     },
     "loading": {
       "profile": "Loading profile..."
-    },
-    "footer": {
-      "copyright": "2026 CorpusLab. All rights reserved.",
-      "privacy": "Privacy",
-      "terms": "Terms",
-      "contact": "Contact"
     }
   }
 }

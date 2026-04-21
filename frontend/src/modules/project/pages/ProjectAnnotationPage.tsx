@@ -5,6 +5,7 @@ import {
   useState,
   type CSSProperties,
   type Dispatch,
+  type ReactNode,
   type SetStateAction,
 } from 'react';
 import {
@@ -25,6 +26,14 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import {
   useProjectParticipantAnnotationWorkspaceQuery,
@@ -50,6 +59,7 @@ import {
 } from '@/modules/project/utils/projectUtils';
 
 const ANNOTATION_PAGE_SIZE = 50;
+const MAX_VISIBLE_CSV_COLUMNS = 8;
 
 type AnnotationDraft = {
   value: string;
@@ -331,13 +341,27 @@ function buildAnnotationPayload(
   return payload;
 }
 
-function getNerSourceText(step: AnnotationStep | null, sourceTextContent: string | null): string {
+function getNerSourceText(
+  step: AnnotationStep | null,
+  sourceTextContent: string | null,
+  annotationTargetColumn: string | null,
+): string {
   if (!step) {
     return '';
   }
 
   if (sourceTextContent != null) {
     return sourceTextContent;
+  }
+
+  if (step.rowValues && annotationTargetColumn) {
+    const normalizedTargetColumn = annotationTargetColumn.trim().toLowerCase();
+    
+    for (const [key, value] of Object.entries(step.rowValues)) {
+      if (key.trim().toLowerCase() === normalizedTargetColumn) {
+        return value || '';
+      }
+    }
   }
 
   return step.preview;
@@ -885,6 +909,7 @@ function useAnnotationSourcePreview(
   };
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export default function ProjectAnnotationPage() {
   // NOSONAR - Flujo completo de anotacion en una sola pantalla.
   const { t } = useTranslation(); // NOSONAR
@@ -1122,6 +1147,8 @@ export default function ProjectAnnotationPage() {
 
   const annotationProjectType =
     annotationWorkspace?.projectType ?? project?.projectType ?? 'TEXT_CLASSIFICATION_SIMPLE';
+  const annotationTargetColumn =
+    annotationWorkspace?.annotationTargetColumn ?? project?.annotationTargetColumn ?? null;
   const labels = annotationWorkspace?.labels ?? project?.labels ?? [];
 
   useEffect(() => {
@@ -1380,6 +1407,56 @@ export default function ProjectAnnotationPage() {
     return parseCsvStepPreview(currentStep.preview);
   }, [currentStep]);
 
+  const csvTableColumns = useMemo(() => {
+    if (!currentStep || !isCsvMimeType(currentStep.sourceMimeType)) {
+      return [] as Array<{ header: string; value: string }>;
+    }
+
+    if (currentStep.rowValues) {
+      const rowEntries = Object.entries(currentStep.rowValues);
+      if (rowEntries.length > 0) {
+        return rowEntries.map(([header, value], columnIndex) => ({
+          header: header.trim() || `column_${columnIndex + 1}`,
+          value,
+        }));
+      }
+    }
+
+    if (!csvStepPreview) {
+      return [] as Array<{ header: string; value: string }>;
+    }
+
+    return csvStepPreview.headerColumns.map((header, columnIndex) => ({
+      header: header || `column_${columnIndex + 1}`,
+      value: csvStepPreview.rowColumns[columnIndex] ?? '-',
+    }));
+  }, [csvStepPreview, currentStep]);
+
+  const visibleCsvTableColumns = useMemo(() => {
+    if (csvTableColumns.length <= MAX_VISIBLE_CSV_COLUMNS) {
+      return csvTableColumns;
+    }
+
+    const normalizedTargetColumn = annotationTargetColumn?.trim().toLowerCase() ?? '';
+    if (normalizedTargetColumn.length === 0) {
+      return csvTableColumns.slice(0, MAX_VISIBLE_CSV_COLUMNS);
+    }
+
+    const targetColumnIndex = csvTableColumns.findIndex(
+      (column) => column.header.toLowerCase() === normalizedTargetColumn,
+    );
+
+    if (targetColumnIndex < 0) {
+      return csvTableColumns.slice(0, MAX_VISIBLE_CSV_COLUMNS);
+    }
+
+    const halfWindow = Math.floor(MAX_VISIBLE_CSV_COLUMNS / 2);
+    const maxStartIndex = csvTableColumns.length - MAX_VISIBLE_CSV_COLUMNS;
+    const startIndex = Math.min(Math.max(targetColumnIndex - halfWindow, 0), maxStartIndex);
+
+    return csvTableColumns.slice(startIndex, startIndex + MAX_VISIBLE_CSV_COLUMNS);
+  }, [annotationTargetColumn, csvTableColumns]);
+
   const selectedLabels = useMemo(() => {
     return parseCommaSeparatedLabels(currentDraft.value);
   }, [currentDraft.value]);
@@ -1389,8 +1466,8 @@ export default function ProjectAnnotationPage() {
       return '';
     }
 
-    return getNerSourceText(currentStep, sourceTextContent);
-  }, [annotationProjectType, currentStep, sourceTextContent]);
+    return getNerSourceText(currentStep, sourceTextContent, annotationTargetColumn);
+  }, [annotationProjectType, currentStep, sourceTextContent, annotationTargetColumn]);
 
   const nerTextSegments = useMemo(() => {
     if (annotationProjectType !== 'NER' || nerSourceText.length === 0) {
@@ -1426,6 +1503,106 @@ export default function ProjectAnnotationPage() {
   const classificationHeading = isReviewMode
     ? t('project.annotationPage.classificationTitle')
     : `${t('project.annotationPage.classificationTitle')} *`;
+  const normalizedAnnotationTargetColumn = annotationTargetColumn?.trim().toLowerCase() ?? '';
+
+  let csvSourceContent: ReactNode = (
+    <pre className="whitespace-pre-wrap px-3 py-2 text-sm leading-relaxed text-foreground/90">
+      {currentStep?.preview ?? ''}
+    </pre>
+  );
+
+  if (visibleCsvTableColumns.length > 0) {
+    csvSourceContent = (
+      <Table className="min-w-max table-auto text-left text-sm">
+        <TableHeader className="bg-muted/40">
+          <TableRow className="hover:bg-transparent">
+            {visibleCsvTableColumns.map((column, columnIndex) => {
+              const isTargetColumn =
+                normalizedAnnotationTargetColumn.length > 0 &&
+                normalizedAnnotationTargetColumn === column.header.toLowerCase();
+
+              return (
+                <TableHead
+                  className={[
+                    'h-auto max-w-xl border-b border-border p-4 font-semibold whitespace-normal wrap-break-word',
+                    isTargetColumn ? 'bg-primary/5 text-primary' : 'text-foreground',
+                  ].join(' ')}
+                  key={`${column.header}-${columnIndex}`}
+                  scope="col"
+                >
+                  {column.header}
+                </TableHead>
+              );
+            })}
+          </TableRow>
+        </TableHeader>
+        <TableBody className="bg-surface-base">
+          <TableRow className="align-top hover:bg-transparent">
+            {visibleCsvTableColumns.map((column, columnIndex) => {
+              const isTargetColumn =
+                normalizedAnnotationTargetColumn.length > 0 &&
+                normalizedAnnotationTargetColumn === column.header.toLowerCase();
+
+              return (
+                <TableCell
+                  className={[
+                    'max-w-xl border-b border-border/60 p-4 align-top whitespace-normal wrap-break-word',
+                    isTargetColumn
+                      ? 'bg-primary/5 text-foreground font-medium'
+                      : 'text-foreground/90',
+                  ].join(' ')}
+                  key={`${column.header}-${column.value}-${columnIndex}`}
+                >
+                  {isTargetColumn && annotationProjectType === 'NER' ? (
+                    <div
+                      aria-label={t('project.annotationPage.nerSelectionAreaLabel')}
+                      className="whitespace-pre-wrap select-text"
+                      ref={nerSourceSelectionRef}
+                    >
+                      {nerTextSegments.map((segment) => {
+                        const entity = segment.entity;
+                        if (!entity) {
+                          return <span key={segment.key}>{segment.text}</span>;
+                        }
+
+                        return (
+                          <span className="group/ner relative inline" key={segment.key}>
+                            <mark
+                              className="rounded-xs px-px text-current"
+                              style={getNerEntityStyle(entity.label, nerLabelColorMap)}
+                              title={entity.label}
+                            >
+                              {segment.text}
+                            </mark>
+                            {!isReviewMode && (
+                              <button
+                                aria-label={t('project.annotationPage.removeEntity')}
+                                className="absolute -top-2 -right-2 inline-flex size-4 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-destructive group-hover/ner:opacity-100"
+                                onClick={() => removeNerEntity(currentStep, entity)}
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                }}
+                                type="button"
+                              >
+                                <X aria-hidden className="size-3" />
+                              </button>
+                            )}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    column.value || '-'
+                  )}
+                </TableCell>
+              );
+            })}
+          </TableRow>
+        </TableBody>
+      </Table>
+    );
+  }
 
   let guidelineContent = (
     <p className="text-sm text-muted-foreground">{t('project.detail.noGuideline')}</p>
@@ -1585,45 +1762,7 @@ export default function ProjectAnnotationPage() {
                       sourceLoadError.length === 0 &&
                       isCsvMimeType(currentStep.sourceMimeType) && (
                         <div className="max-h-130 w-full max-w-full overflow-hidden rounded-lg border border-border/70 bg-surface-base">
-                          <div className="max-h-130 w-full overflow-x-auto overflow-y-auto overscroll-x-contain">
-                            {csvStepPreview ? (
-                              <table className="min-w-max border-collapse table-auto text-left text-sm">
-                                <thead className="bg-muted/40">
-                                  <tr>
-                                    {csvStepPreview.headerColumns.map(
-                                      (headerColumn, columnIndex) => (
-                                        <th
-                                          className="border-b border-border p-4 font-semibold whitespace-nowrap text-foreground"
-                                          key={`${headerColumn}-${columnIndex}`}
-                                          scope="col"
-                                        >
-                                          {headerColumn || `column_${columnIndex + 1}`}
-                                        </th>
-                                      ),
-                                    )}
-                                  </tr>
-                                </thead>
-                                <tbody className="bg-surface-base">
-                                  <tr className="align-top">
-                                    {csvStepPreview.headerColumns.map(
-                                      (headerColumn, columnIndex) => (
-                                        <td
-                                          className="border-b border-border/60 p-4 whitespace-nowrap text-foreground/90"
-                                          key={`${headerColumn}-${csvStepPreview.rowColumns[columnIndex] ?? ''}`}
-                                        >
-                                          {csvStepPreview.rowColumns[columnIndex] ?? '-'}
-                                        </td>
-                                      ),
-                                    )}
-                                  </tr>
-                                </tbody>
-                              </table>
-                            ) : (
-                              <pre className="whitespace-pre-wrap px-3 py-2 text-sm leading-relaxed text-foreground/90">
-                                {currentStep.preview}
-                              </pre>
-                            )}
-                          </div>
+                          <div className="max-h-130 w-full overflow-y-auto">{csvSourceContent}</div>
                         </div>
                       )}
 
@@ -1662,6 +1801,7 @@ export default function ProjectAnnotationPage() {
 
                     {!isSourceLoading &&
                       sourceLoadError.length === 0 &&
+                      !isCsvMimeType(currentStep.sourceMimeType) &&
                       annotationProjectType === 'NER' &&
                       nerSourceText.length > 0 && (
                         <div className="mt-4 space-y-2">
@@ -1858,6 +1998,14 @@ export default function ProjectAnnotationPage() {
                       </p>
                     )}
                   </div>
+
+                  {annotationTargetColumn && (
+                    <p className="mt-3 text-xs font-semibold text-muted-foreground">
+                      {t('project.annotationPage.csvTargetColumnBadge', {
+                        column: annotationTargetColumn,
+                      })}
+                    </p>
+                  )}
                 </section>
 
                 <section>

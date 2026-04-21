@@ -8,7 +8,7 @@ export function AuthHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-surface-soft backdrop-blur-md">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-3">
         <Link
           to="/auth/login"
           className="group inline-flex items-center gap-2 text-foreground"

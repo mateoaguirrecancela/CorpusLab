@@ -29,6 +29,8 @@ import {
 } from '@/components/ui/table';
 import { useProjectDetailQuery } from '@/modules/project/hooks/useProjectQueries';
 import {
+  exportProjectAnnotationResultsCsv,
+  getProjectAnnotationExportErrorMessage,
   getProjectDatasetItemContent,
   getProjectDatasetItemContentErrorMessage,
   getProjectDetailLoadErrorMessage,
@@ -263,18 +265,47 @@ export default function ProjectDetailPage() {
     }
   };
 
+  const downloadAnnotationResultsCsv = async () => {
+    if (project?.participantRole !== 'CREATOR') {
+      return;
+    }
+
+    try {
+      const exportFile = await exportProjectAnnotationResultsCsv(project.id);
+      const downloadFileName =
+        exportFile.fileName?.trim() || `project-${project.id}-annotations.csv`;
+
+      triggerBlobDownload(exportFile.blob, downloadFileName);
+    } catch (exportError) {
+      toast.error(getProjectAnnotationExportErrorMessage(exportError));
+    }
+  };
+
   return (
     <PageContainer>
       <div className="flex items-center justify-between gap-4">
         <BackButton fallbackTo="/home/projects" />
         {!isLoading && !detailErrorMessage && project && (
-          <Link
-            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
-            to={`/home/projects/${project.id}/annotate`}
-          >
-            <PenSquare className="size-4" />
-            {t('project.detail.openAnnotationWorkspace')}
-          </Link>
+          <div className="flex items-center gap-2">
+            {project.participantRole === 'CREATOR' && (
+              <Button
+                className="h-10 shrink-0 gap-2 rounded-lg border border-border bg-transparent px-3 text-sm font-semibold text-foreground transition hover:bg-surface-soft hover:text-primary cursor-pointer"
+                onClick={() => void downloadAnnotationResultsCsv()}
+                type="button"
+              >
+                <Download className="size-4" />
+                {t('project.detail.exportAnnotationsCsv')}
+              </Button>
+            )}
+
+            <Link
+              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+              to={`/home/projects/${project.id}/annotate`}
+            >
+              <PenSquare className="size-4" />
+              {t('project.detail.openAnnotationWorkspace')}
+            </Link>
+          </div>
         )}
       </div>
 
