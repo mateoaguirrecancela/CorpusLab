@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAssignedSummaryDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationExportCsvDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationSourceContentDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationWorkspaceDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectDetailDto;
@@ -99,6 +100,23 @@ public class ProjectQueryController {
                 .contentType(mediaType)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
                 .body(sourceContent.bytes());
+    }
+
+    @GetMapping("/{projectId}/annotations/export")
+    public ResponseEntity<byte[]> exportAnnotationResultsCsv(
+            Authentication authentication,
+            @PathVariable Long projectId) {
+        ProjectAnnotationExportCsvDto exportCsv = projectService
+                .exportAnnotationResultsCsv(authentication.getName(), projectId);
+
+        String fileName = exportCsv.fileName() == null || exportCsv.fileName().isBlank()
+                ? "project-" + projectId + "-annotations.csv"
+                : exportCsv.fileName().replace("\"", "");
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                .body(exportCsv.bytes());
     }
 
     @PutMapping("/{projectId}/annotations/steps")

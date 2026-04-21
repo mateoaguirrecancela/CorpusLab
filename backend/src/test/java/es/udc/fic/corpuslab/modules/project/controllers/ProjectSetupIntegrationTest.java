@@ -154,6 +154,7 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
                                                 new ProjectSetupLabelDto("Positivo", null),
                                                 new ProjectSetupLabelDto("Negativo", null)),
                                 "Etiquetar según polaridad del texto",
+                                null,
                                 null);
 
                 mockMvc.perform(put("/api/research-groups/{groupId}/projects/{projectId}/setup", group.getId(),
@@ -193,6 +194,7 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
                                 ProjectType.SEQ2SEQ,
                                 List.of(new ProjectSetupLabelDto("Etiqueta prohibida", null)),
                                 "Usar pares source-target",
+                                null,
                                 null);
 
                 mockMvc.perform(put("/api/research-groups/{groupId}/projects/{projectId}/setup", group.getId(),
@@ -230,6 +232,7 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
                                                 new ProjectSetupLabelDto("PERSON", "#10B981"),
                                                 new ProjectSetupLabelDto("ORG", "#F43F5E")),
                                 "Anotar entidades",
+                                null,
                                 null);
 
                 mockMvc.perform(put("/api/research-groups/{groupId}/projects/{projectId}/setup", group.getId(),
@@ -268,6 +271,7 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
                                 ProjectType.NER,
                                 List.of(new ProjectSetupLabelDto("PERSON", "#10B981")),
                                 "Anotar entidades",
+                                null,
                                 null);
 
                 mockMvc.perform(put("/api/research-groups/{groupId}/projects/{projectId}/setup", group.getId(),
@@ -276,5 +280,82 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldRequireAnnotationTargetColumnWhenDatasetIsCsv() throws Exception {
+                createUser("owner.csv.target.required@example.com");
+                User owner = userRepository.findByEmailIgnoreCase("owner.csv.target.required@example.com")
+                                .orElseThrow();
+
+                ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
+
+                Project project = new Project();
+                project.setResearchGroup(group);
+                project.setName("CSV Target Required Project");
+                project = projectRepository.save(project);
+
+                createDatasetItem(project, "dataset.csv", "text/csv",
+                                "instance_id,text,distil_predictions\n1,alpha,{}\n");
+
+                String session = loginAs("owner.csv.target.required@example.com");
+
+                ProjectSetupRequestDto request = new ProjectSetupRequestDto(
+                                ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+                                List.of(new ProjectSetupLabelDto("Correct", null)),
+                                "Validar explicaciones",
+                                null,
+                                null);
+
+                mockMvc.perform(put("/api/research-groups/{groupId}/projects/{projectId}/setup", group.getId(),
+                                project.getId())
+                                .header("Authorization", "Bearer " + session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldConfigureCsvSetupWithTargetColumnAndDefaultExportNames() throws Exception {
+                createUser("owner.csv.target.valid@example.com");
+                User owner = userRepository.findByEmailIgnoreCase("owner.csv.target.valid@example.com").orElseThrow();
+
+                ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
+
+                Project project = new Project();
+                project.setResearchGroup(group);
+                project.setName("CSV Target Valid Project");
+                project = projectRepository.save(project);
+
+                createDatasetItem(project, "dataset.csv", "text/csv",
+                                "instance_id,text,distil_predictions\n1,alpha,{}\n");
+
+                String session = loginAs("owner.csv.target.valid@example.com");
+
+                ProjectSetupRequestDto request = new ProjectSetupRequestDto(
+                                ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+                                List.of(new ProjectSetupLabelDto("Correct", null)),
+                                "Validar explicaciones",
+                                null,
+                                "distil_predictions");
+
+                mockMvc.perform(put("/api/research-groups/{groupId}/projects/{projectId}/setup", group.getId(),
+                                project.getId())
+                                .header("Authorization", "Bearer " + session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.projectId").value(project.getId()))
+                                .andExpect(jsonPath("$.annotationTargetColumn").value("distil_predictions"));
         }
 }

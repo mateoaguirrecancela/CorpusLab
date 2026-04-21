@@ -1031,6 +1031,95 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
                                 .andExpect(status().isBadRequest());
         }
 
+        @Test
+        void shouldExportAnnotationResultsCsvForProjectCreator() throws Exception {
+                User owner = createUser("owner.annotation.export@example.com");
+                User annotator = createUser("annotator.annotation.export@example.com");
+
+                ResearchGroup group = createGroup("Annotation Export Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Export Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project.setAnnotationTargetColumn("distil_predictions");
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createCsvDatasetItem(
+                                project,
+                                "instance_id,text,distil_predictions\n1,alpha,{\"label\":\"a\"}\n2,beta,{\"label\":\"b\"}");
+
+                String annotatorToken = loginAs("annotator.annotation.export@example.com");
+                mockMvc.perform(put("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .header("Authorization", "Bearer " + annotatorToken)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                                "datasetItemId", item.getId(),
+                                                "stepIndex", 0,
+                                                "annotation", Map.of(
+                                                                "label", "correcta",
+                                                                "notes", "sin incidencias")))))
+                                .andExpect(status().isOk());
+
+                mockMvc.perform(put("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .header("Authorization", "Bearer " + annotatorToken)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                                "datasetItemId", item.getId(),
+                                                "stepIndex", 1,
+                                                "annotation", Map.of(
+                                                                "label", "incorrecta",
+                                                                "notes", "insult|borderline")))))
+                                .andExpect(status().isOk());
+
+                String ownerToken = loginAs("owner.annotation.export@example.com");
+
+                MvcResult exportResult = mockMvc
+                                .perform(get("/api/projects/{projectId}/annotations/export", project.getId())
+                                                .header("Authorization", "Bearer " + ownerToken))
+                                .andExpect(status().isOk())
+                                .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"))
+                                .andReturn();
+
+                String csvContent = exportResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+                assertThat(csvContent).contains("instance_id");
+                assertThat(csvContent).contains("distil_predictions");
+                assertThat(csvContent).contains(annotator.getEmail().toLowerCase() + "_annotation");
+                assertThat(csvContent).contains(annotator.getEmail().toLowerCase() + "_coment");
+                assertThat(csvContent).contains("correcta");
+                assertThat(csvContent).contains("insult|borderline");
+                assertThat(csvContent).doesNotContain(annotator.getId() + "_binary_annotation");
+                assertThat(csvContent).doesNotContain(annotator.getId() + "_error_typology");
+        }
+
+        @Test
+        void shouldReturnForbiddenWhenParticipantExportsAnnotationResultsCsv() throws Exception {
+                User owner = createUser("owner.annotation.export.forbidden@example.com");
+                User annotator = createUser("annotator.annotation.export.forbidden@example.com");
+
+                ResearchGroup group = createGroup("Annotation Export Forbidden Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Export Forbidden Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+                createCsvDatasetItem(project, "instance_id,text\n1,alpha");
+
+                String annotatorToken = loginAs("annotator.annotation.export.forbidden@example.com");
+
+                mockMvc.perform(get("/api/projects/{projectId}/annotations/export", project.getId())
+                                .header("Authorization", "Bearer " + annotatorToken))
+                                .andExpect(status().isForbidden());
+        }
+
         private User createUser(String email) {
                 User user = UserTestBuilder.validUser()
                                 .withEmail(email)

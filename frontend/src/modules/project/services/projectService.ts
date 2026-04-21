@@ -73,6 +73,7 @@ export async function configureProjectSetup(
     labels: payload.labels,
     guidelineText: payload.guidelineText?.trim() || undefined,
     guidelinePdfBase64: payload.guidelinePdfBase64?.trim() || undefined,
+    annotationTargetColumn: payload.annotationTargetColumn?.trim() || undefined,
   };
 
   const response = await api.put<ProjectSetupResponse>(
@@ -219,6 +220,28 @@ export async function getProjectDatasetItemContent(
   };
 }
 
+export async function exportProjectAnnotationResultsCsv(
+  projectId: number,
+): Promise<ProjectDatasetItemContent> {
+  const response = await api.get<ArrayBuffer>(`/projects/${projectId}/annotations/export`, {
+    responseType: 'arraybuffer',
+  });
+
+  const mimeTypeHeader = response.headers['content-type'];
+  const mimeType =
+    typeof mimeTypeHeader === 'string' && mimeTypeHeader.length > 0
+      ? mimeTypeHeader
+      : 'text/csv;charset=UTF-8';
+
+  const fileName = parseFileNameFromContentDisposition(response.headers['content-disposition']);
+
+  return {
+    blob: new Blob([response.data], { type: mimeType }),
+    mimeType,
+    fileName,
+  };
+}
+
 export function getProjectsLoadErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, i18n.t('project.errors.loadFailed'));
 }
@@ -233,6 +256,10 @@ export function getProjectAnnotationLoadErrorMessage(error: unknown): string {
 
 export function getProjectAnnotationSaveErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, i18n.t('project.errors.annotationSaveFailed'));
+}
+
+export function getProjectAnnotationExportErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, i18n.t('project.errors.annotationExportFailed'));
 }
 
 export function getProjectDatasetItemContentErrorMessage(error: unknown): string {

@@ -45,7 +45,6 @@
   --color-surface-soft: var(--surface-soft);
   --color-surface-card: var(--surface-card);
   --color-surface-header: var(--surface-header);
-  --color-surface-footer: var(--surface-footer);
   --color-overlay-scrim: var(--overlay-scrim);
   --color-notification-unread-border: var(--notification-unread-border);
   --color-notification-unread-bg: var(--notification-unread-bg);
@@ -73,7 +72,6 @@
   --surface-soft: color-mix(in srgb, #ffffff 85%, transparent);
   --surface-card: color-mix(in srgb, #ffffff 80%, transparent);
   --surface-header: #ffffff;
-  --surface-footer: #ffffff;
   --auth-layout-gradient: radial-gradient(circle at top, #ffffff 0%, #eceffc 42%, #e5e9fb 100%);
   --overlay-scrim: color-mix(in srgb, #0f172a 20%, transparent);
   --notification-unread-border: color-mix(in srgb, #312e81 30%, transparent);
@@ -127,7 +125,6 @@
   --surface-soft: color-mix(in srgb, oklch(0.205 0 0) 85%, transparent);
   --surface-card: color-mix(in srgb, oklch(0.205 0 0) 88%, transparent);
   --surface-header: oklch(0.205 0 0);
-  --surface-footer: oklch(0.205 0 0);
   --auth-layout-gradient: radial-gradient(
     circle at top,
     oklch(0.28 0 0) 0%,

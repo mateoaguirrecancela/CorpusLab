@@ -65,6 +65,7 @@ export type ConfigureProjectSetupPayload = {
   labels: ProjectSetupLabel[];
   guidelineText?: string;
   guidelinePdfBase64?: string;
+  annotationTargetColumn?: string;
 };
 
 export type ProjectSetupResponse = {
@@ -73,6 +74,7 @@ export type ProjectSetupResponse = {
   labels: ProjectSetupLabel[];
   guidelineText: string | null;
   guidelinePdfBase64: string | null;
+  annotationTargetColumn: string | null;
   setupCompleted: boolean;
 };
 
@@ -94,6 +96,7 @@ export type ProjectDetail = {
   labels: ProjectSetupLabel[];
   guidelineText: string | null;
   guidelinePdfBase64: string | null;
+  annotationTargetColumn: string | null;
   datasetItemsCount: number;
   createdAt: string;
 };
@@ -106,6 +109,7 @@ export type AnnotationStep = {
   sourceName: string;
   sourceMimeType: string;
   preview: string;
+  rowValues: Record<string, string> | null;
   completed: boolean;
   annotation: unknown;
 };
@@ -113,6 +117,7 @@ export type AnnotationStep = {
 export type ProjectAnnotationWorkspace = {
   projectId: number;
   projectType: ProjectType;
+  annotationTargetColumn: string | null;
   labels: ProjectSetupLabel[];
   offset: number;
   limit: number;

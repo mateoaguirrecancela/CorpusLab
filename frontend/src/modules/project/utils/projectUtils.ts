@@ -1,6 +1,6 @@
 import type { DatasetItem } from '@/modules/project/types/project';
 
-const NER_SUPPORTED_EXTENSIONS = new Set(['txt', 'json']);
+const NER_SUPPORTED_EXTENSIONS = new Set(['txt', 'json', 'csv']);
 
 export function formatDate(value: string): string {
   const date = new Date(value);

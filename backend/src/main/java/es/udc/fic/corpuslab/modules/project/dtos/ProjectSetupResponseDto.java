@@ -10,5 +10,6 @@ public record ProjectSetupResponseDto(
                 List<ProjectSetupLabelDto> labels,
                 String guidelineText,
                 String guidelinePdfBase64,
+                String annotationTargetColumn,
                 boolean setupCompleted) {
 }

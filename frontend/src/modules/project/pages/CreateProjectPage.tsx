@@ -100,6 +100,17 @@ export default function CreateProjectPage() {
     }
 
     const incomingFiles = Array.from(files);
+    const candidateFiles = [...selectedFiles, ...incomingFiles];
+
+    const containsCsv = candidateFiles.some(
+      (file) => file.name.toLowerCase().endsWith('.csv') || file.type.toLowerCase().includes('csv')
+    );
+
+    if (containsCsv && candidateFiles.length > 1) {
+      toast.error(t('project.create.csvSingleFileError'));
+      return;
+    }
+
     setSelectedFiles((prev) => [...prev, ...incomingFiles]);
   };
 
@@ -108,15 +119,6 @@ export default function CreateProjectPage() {
       prev.filter((file, fileIndex) => !(file.name === fileName && fileIndex === index)),
     );
   };
-
-  const setupDatasetItems = useMemo(
-    () =>
-      selectedFiles.map((file) => ({
-        fileName: file.name,
-        mimeType: file.type || 'application/octet-stream',
-      })),
-    [selectedFiles],
-  );
 
   const handleCreateProject = () => {
     if (!canCreateProject) {
@@ -305,7 +307,7 @@ export default function CreateProjectPage() {
     if (currentStep === 3 && Number.isFinite(numericGroupId) && numericGroupId > 0) {
       return (
         <ProjectSetupStep
-          datasetItems={setupDatasetItems}
+          datasetFiles={selectedFiles}
           onBack={() => setCurrentStep(2)}
           onCompleted={handleSetupCompleted}
         />

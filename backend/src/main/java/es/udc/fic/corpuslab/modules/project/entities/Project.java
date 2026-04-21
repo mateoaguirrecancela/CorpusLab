@@ -46,6 +46,9 @@ public class Project {
     @Column(name = "setup_completed", nullable = false)
     private boolean setupCompleted;
 
+    @Column(name = "annotation_target_column", length = 256)
+    private String annotationTargetColumn;
+
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Label> labels = new ArrayList<>();
 
@@ -105,6 +108,14 @@ public class Project {
 
     public void setSetupCompleted(boolean setupCompleted) {
         this.setupCompleted = setupCompleted;
+    }
+
+    public String getAnnotationTargetColumn() {
+        return annotationTargetColumn;
+    }
+
+    public void setAnnotationTargetColumn(String annotationTargetColumn) {
+        this.annotationTargetColumn = annotationTargetColumn;
     }
 
     public List<Label> getLabels() {

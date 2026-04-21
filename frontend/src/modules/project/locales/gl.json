@@ -56,6 +56,7 @@
       "guidelinePdfFile": "Arquivo PDF adxunto",
       "downloadDatasetFile": "Descargar",
       "openDatasetFile": "Abrir",
+      "exportAnnotationsCsv": "Exportar anotacións",
       "openAnnotationWorkspace": "Ir a anotar",
       "openGuidelinePdfError": "Non se puido abrir o guideline en PDF.",
       "noGuideline": "Este proxecto non ten guideline dispoñible.",
@@ -105,6 +106,9 @@
       "sourceLoading": "Cargando documento...",
       "sourceImageAlt": "Documento de orixe",
       "sourceNotSupported": "Este tipo de arquivo non se pode visualizar en liña. Móstrase un resumo do contido.",
+      "csvTargetColumnBadge": "Columna obxectivo: {{column}}",
+      "csvFieldColumn": "Campo",
+      "csvValueColumn": "Valor",
       "classificationTitle": "Clasificación",
       "reviewingParticipant": "Vendo anotacións de:",
       "nerSelectionAreaLabel": "Área de texto para anotar entidades",
@@ -170,8 +174,13 @@
       "taskDesignTitle": "Crear etiquetas e guideline",
       "taskDesignDescription": "Define o tipo de proxecto, as etiquetas necesarias e o guideline para o equipo.",
       "projectTypeLabel": "Tipo de proxecto",
-      "nerDatasetIncompatibleHint": "NER só está dispoñible se todos os arquivos do dataset son texto ou JSON.",
-      "nerDatasetIncompatibleError": "Non podes seleccionar NER co dataset actual. Usa só arquivos de texto ou JSON.",
+      "annotationTargetColumnLabel": "Columna a anotar",
+      "annotationTargetColumnPlaceholder": "Ex: distil_predictions",
+      "annotationTargetColumnLoading": "Lendo columnas do CSV...",
+      "annotationTargetColumnHeadersReadError": "Non se puideron ler as cabeceiras CSV. Introduce a columna manualmente.",
+      "nerDatasetIncompatibleHint": "NER só está dispoñible se todos os arquivos do dataset son texto, JSON ou CSV.",
+      "nerDatasetIncompatibleError": "Non podes seleccionar NER co dataset actual. Usa só arquivos de texto, JSON ou CSV.",
+      "csvSingleFileError": "Só se permite subir un único arquivo cando o dataset contén un CSV.",
       "projectTypes": {
         "textClassificationSimple": "Clasificación Simple",
         "textClassificationMultiLabel": "Clasificación Multietiqueta",
@@ -220,6 +229,7 @@
       "assignmentFailed": "Non se puideron asignar os investigadores. Téntao de novo.",
       "annotationLoadFailed": "Non se puideron cargar os pasos de anotacion. Téntao de novo.",
       "annotationSaveFailed": "Non se puido gardar a anotacion. Téntao de novo.",
+      "annotationExportFailed": "Non se puido exportar o CSV de anotacións. Téntao de novo.",
       "sourceContentLoadFailed": "Non se puido cargar o contido do documento. Téntao de novo."
     }
   }
