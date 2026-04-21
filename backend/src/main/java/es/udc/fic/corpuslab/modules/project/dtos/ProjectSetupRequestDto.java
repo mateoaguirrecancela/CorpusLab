@@ -11,5 +11,6 @@ public record ProjectSetupRequestDto(
         @NotNull ProjectType projectType,
         List<@Valid ProjectSetupLabelDto> labels,
         @Size(max = 5000) String guidelineText,
-        String guidelinePdfBase64) {
+        String guidelinePdfBase64,
+        @Size(max = 256) String annotationTargetColumn) {
 }

@@ -2,6 +2,7 @@ package es.udc.fic.corpuslab.modules.project.services;
 
 import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAssignedSummaryDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationExportCsvDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationSourceContentDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationWorkspaceDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectDetailDto;
@@ -63,6 +64,10 @@ public interface ProjectService {
                         String authenticatedEmail,
                         Long projectId,
                         Long datasetItemId);
+
+        ProjectAnnotationExportCsvDto exportAnnotationResultsCsv(
+                        String authenticatedEmail,
+                        Long projectId);
 
         SaveProjectAnnotationStepResponseDto saveAnnotationStep(
                         String authenticatedEmail,

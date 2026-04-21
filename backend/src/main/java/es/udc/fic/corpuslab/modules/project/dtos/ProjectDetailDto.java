@@ -20,6 +20,7 @@ public record ProjectDetailDto(
         List<ProjectSetupLabelDto> labels,
         String guidelineText,
         String guidelinePdfBase64,
+        String annotationTargetColumn,
         long datasetItemsCount,
         Instant createdAt) {
 }

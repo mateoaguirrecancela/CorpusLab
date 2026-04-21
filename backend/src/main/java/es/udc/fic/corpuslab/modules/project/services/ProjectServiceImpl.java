@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -26,6 +27,7 @@ import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
 import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.DatasetItemDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationExportCsvDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationSourceContentDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationStepDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationWorkspaceDto;
@@ -77,6 +79,12 @@ public class ProjectServiceImpl implements ProjectService {
     private static final String NER_ANNOTATION_KEY_TEXT = "text";
     private static final String NER_ANNOTATION_KEY_START_OFFSET = "startOffset";
     private static final String NER_ANNOTATION_KEY_END_OFFSET = "endOffset";
+    private static final String ANNOTATION_KEY_BINARY_VALUE = "isExplanationCorrect";
+    private static final String ANNOTATION_KEY_LABEL = "label";
+    private static final String ANNOTATION_KEY_LABELS = "labels";
+    private static final String ANNOTATION_KEY_TEXT = "text";
+    private static final String EXPORT_ANNOTATION_HEADER_SUFFIX = "_annotation";
+    private static final String EXPORT_COMMENT_HEADER_SUFFIX = "_coment";
     private static final int DEFAULT_ANNOTATION_STEPS_LIMIT = 50;
     private static final int MAX_ANNOTATION_STEPS_LIMIT = 250;
     private static final int PREVIEW_MAX_LENGTH = 160;
@@ -180,6 +188,7 @@ public class ProjectServiceImpl implements ProjectService {
                 labels,
                 guidelineText,
                 guidelinePdfBase64,
+                project.getAnnotationTargetColumn(),
                 datasetItems.size(),
                 project.getCreatedAt());
     }
@@ -252,6 +261,17 @@ public class ProjectServiceImpl implements ProjectService {
 
         if (files == null || files.isEmpty()) {
             throw new InvalidProjectDatasetException("At least one file is required to upload a dataset");
+        }
+
+        boolean hasCsvFile = files.stream().anyMatch(file -> {
+            String mimeType = file.getContentType();
+            String name = file.getOriginalFilename();
+            return (mimeType != null && mimeType.toLowerCase().contains("csv")) 
+                    || (name != null && name.toLowerCase().endsWith(".csv"));
+        });
+
+        if (hasCsvFile && files.size() > 1) {
+            throw new InvalidProjectDatasetException("When uploading a CSV dataset, only a single file is allowed");
         }
 
         int nextIndex = (int) datasetItemRepository.countByProjectId(projectId);
@@ -444,6 +464,7 @@ public class ProjectServiceImpl implements ProjectService {
         return new ProjectAnnotationWorkspaceDto(
                 projectId,
                 project.getProjectType(),
+                project.getAnnotationTargetColumn(),
                 project.getLabels().stream()
                         .map(label -> new ProjectSetupLabelDto(label.getName(), label.getColor()))
                         .toList(),
@@ -490,6 +511,99 @@ public class ProjectServiceImpl implements ProjectService {
                 valueAsString(datasetItem.getContent().get(CONTENT_KEY_FILE_NAME)),
                 mimeType,
                 bytes);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProjectAnnotationExportCsvDto exportAnnotationResultsCsv(
+            String authenticatedEmail,
+            Long projectId) {
+        User requester = findUserByEmail(authenticatedEmail);
+
+        ProjectParticipant requesterParticipant = projectParticipantRepository
+                .findByProjectIdAndUserId(projectId, requester.getId())
+                .orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        if (requesterParticipant.getRole() != ProjectParticipantRole.CREATOR) {
+            throw new AccessDeniedException("Only project creators can export annotation results");
+        }
+
+        Project project = requesterParticipant.getProject();
+        List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
+
+        List<AnnotatorExportColumn> annotatorColumns = buildAnnotatorExportColumns(projectId);
+
+        LinkedHashSet<String> csvColumns = new LinkedHashSet<>();
+        List<ExportStepRow> exportRows = new ArrayList<>();
+
+        for (DatasetItem datasetItem : datasetItems) {
+            DatasetStepDefinition stepDefinition = resolveStepDefinition(datasetItem);
+            int totalSteps = stepDefinition.totalSteps();
+
+            for (int stepIndex = 0; stepIndex < totalSteps; stepIndex++) {
+                Map<String, String> rowValues = stepDefinition.rowValuesForStep(stepIndex);
+                if (rowValues != null && !rowValues.isEmpty()) {
+                    csvColumns.addAll(rowValues.keySet());
+                }
+
+                Map<Long, Object> annotationsByUser = new LinkedHashMap<>();
+                for (AnnotatorExportColumn annotatorColumn : annotatorColumns) {
+                    annotationsByUser.put(
+                            annotatorColumn.userId(),
+                            findStepAnnotation(datasetItem, annotatorColumn.userId(), stepIndex));
+                }
+
+                exportRows.add(new ExportStepRow(
+                        datasetItem,
+                        stepIndex,
+                        stepDefinition.previewForStep(stepIndex),
+                        rowValues == null ? Map.of() : rowValues,
+                        annotationsByUser));
+            }
+        }
+
+        boolean isCsvDataset = datasetItems.stream().anyMatch(this::isCsvDatasetItem);
+
+        List<String> headers = new ArrayList<>();
+        if (!isCsvDataset) {
+            headers.add("dataset_item_index");
+            headers.add("source_name");
+        }
+        headers.addAll(csvColumns);
+
+        for (AnnotatorExportColumn annotatorColumn : annotatorColumns) {
+            headers.add(annotatorColumn.annotationHeader());
+            headers.add(annotatorColumn.commentHeader());
+        }
+
+        StringBuilder csvBuilder = new StringBuilder();
+        appendCsvLine(csvBuilder, headers);
+
+        for (ExportStepRow row : exportRows) {
+            DatasetItem datasetItem = row.datasetItem();
+            List<String> values = new ArrayList<>();
+
+            if (!isCsvDataset) {
+                values.add(String.valueOf(datasetItem.getItemIndex()));
+                values.add(valueAsString(datasetItem.getContent().get(CONTENT_KEY_FILE_NAME)));
+            }
+
+            for (String csvColumn : csvColumns) {
+                values.add(row.rowValues().getOrDefault(csvColumn, ""));
+            }
+
+            for (AnnotatorExportColumn annotatorColumn : annotatorColumns) {
+                Object annotation = row.annotationsByUser().get(annotatorColumn.userId());
+                values.add(extractAnnotationValue(annotation));
+                values.add(extractCommentValue(annotation));
+            }
+
+            appendCsvLine(csvBuilder, values);
+        }
+
+        return new ProjectAnnotationExportCsvDto(
+                buildAnnotationExportFileName(project),
+                csvBuilder.toString().getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
@@ -569,8 +683,15 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         List<ProjectSetupLabelDto> normalizedLabels = normalizeLabels(request.labels());
-        validateSetupRequest(request.projectType(), normalizedLabels, request.guidelineText(),
-                request.guidelinePdfBase64());
+        String normalizedAnnotationTargetColumn = StringUtils.trimToNull(request.annotationTargetColumn());
+
+        validateSetupRequest(
+                project.getId(),
+                request.projectType(),
+                normalizedLabels,
+                request.guidelineText(),
+                request.guidelinePdfBase64(),
+                normalizedAnnotationTargetColumn);
 
         if (request.projectType() == ProjectType.NER) {
             validateNerDatasetCompatibility(project.getId());
@@ -578,6 +699,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         project.setProjectType(request.projectType());
         project.setSetupCompleted(true);
+        project.setAnnotationTargetColumn(normalizedAnnotationTargetColumn);
 
         project.getLabels().clear();
 
@@ -609,6 +731,7 @@ public class ProjectServiceImpl implements ProjectService {
                 normalizedLabels,
                 guidelineText,
                 guidelinePdfBase64,
+                project.getAnnotationTargetColumn(),
                 project.isSetupCompleted());
     }
 
@@ -640,10 +763,12 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     private void validateSetupRequest(
+            Long projectId,
             ProjectType projectType,
             List<ProjectSetupLabelDto> labels,
             String guidelineText,
-            String guidelinePdfBase64) {
+            String guidelinePdfBase64,
+            String annotationTargetColumn) {
         if (projectType == ProjectType.SEQ2SEQ && !labels.isEmpty()) {
             throw new InvalidProjectSetupException("Seq2Seq projects do not allow labels");
         }
@@ -666,6 +791,41 @@ public class ProjectServiceImpl implements ProjectService {
         if (normalizedGuidelineText != null && normalizedGuidelinePdf != null) {
             throw new InvalidProjectSetupException("Guideline text and guideline PDF are mutually exclusive");
         }
+
+        List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
+        boolean hasCsvDataset = datasetItems.stream().anyMatch(this::isCsvDatasetItem);
+
+        if (hasCsvDataset) {
+            if (annotationTargetColumn == null) {
+                throw new InvalidProjectSetupException(
+                        "Annotation target column is required when the dataset includes CSV files");
+            }
+
+            validateAnnotationTargetColumnForCsvDatasetItems(datasetItems, annotationTargetColumn);
+        } else if (annotationTargetColumn != null) {
+            throw new InvalidProjectSetupException(
+                    "Annotation target column can only be configured when the dataset includes CSV files");
+        }
+    }
+
+    private void validateAnnotationTargetColumnForCsvDatasetItems(
+            List<DatasetItem> datasetItems,
+            String annotationTargetColumn) {
+        for (DatasetItem datasetItem : datasetItems) {
+            if (!isCsvDatasetItem(datasetItem)) {
+                continue;
+            }
+
+            List<String> headerColumns = parseCsvHeaderColumns(datasetItem);
+            boolean columnExists = headerColumns.stream()
+                    .anyMatch(headerColumn -> headerColumn.equalsIgnoreCase(annotationTargetColumn));
+
+            if (!columnExists) {
+                throw new InvalidProjectSetupException(
+                        "Selected annotation target column '" + annotationTargetColumn
+                                + "' was not found in CSV file " + describeDatasetItem(datasetItem));
+            }
+        }
     }
 
     private String normalizeHexColor(String value) {
@@ -678,7 +838,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         if (datasetItems.isEmpty()) {
             throw new InvalidProjectSetupException(
-                    "NER projects require at least one dataset file in text or JSON format");
+                    "NER projects require at least one dataset file in text, JSON or CSV format");
         }
 
         List<String> unsupportedFiles = datasetItems.stream()
@@ -689,7 +849,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         if (!unsupportedFiles.isEmpty()) {
             throw new InvalidProjectSetupException(
-                    "NER projects only support text or JSON files. Unsupported files: "
+                    "NER projects only support text, JSON or CSV files. Unsupported files: "
                             + String.join(", ", unsupportedFiles));
         }
     }
@@ -701,11 +861,12 @@ public class ProjectServiceImpl implements ProjectService {
         if (mimeType.equals("text/plain")
                 || mimeType.equals("application/json")
                 || mimeType.equals("text/json")
-                || mimeType.endsWith("+json")) {
+                || mimeType.endsWith("+json")
+                || mimeType.contains("csv")) {
             return true;
         }
 
-        return extension.equals("txt") || extension.equals("json");
+        return extension.equals("txt") || extension.equals("json") || extension.equals("csv");
     }
 
     private String describeDatasetItem(DatasetItem datasetItem) {
@@ -772,6 +933,7 @@ public class ProjectServiceImpl implements ProjectService {
                         valueAsString(datasetItem.getContent().get(CONTENT_KEY_FILE_NAME)),
                         valueAsString(datasetItem.getContent().get(CONTENT_KEY_MIME_TYPE)),
                         definition.previewForStep(stepIndex),
+                        definition.rowValuesForStep(stepIndex),
                         hasAnnotationPayload(annotation),
                         annotation));
             }
@@ -929,8 +1091,8 @@ public class ProjectServiceImpl implements ProjectService {
 
     private DatasetStepDefinition resolveStepDefinition(DatasetItem datasetItem) {
         if (isCsvDatasetItem(datasetItem)) {
-            List<String> rowPreviews = parseCsvRowPreviews(datasetItem);
-            return new DatasetStepDefinition(rowPreviews.size(), rowPreviews);
+            CsvDatasetContent parsedCsv = parseCsvDatasetContent(datasetItem);
+            return new DatasetStepDefinition(parsedCsv.steps());
         }
 
         String fileName = valueAsString(datasetItem.getContent().get(CONTENT_KEY_FILE_NAME));
@@ -938,7 +1100,7 @@ public class ProjectServiceImpl implements ProjectService {
             fileName = "Dataset item #" + (datasetItem.getItemIndex() + 1);
         }
 
-        return new DatasetStepDefinition(1, List.of(fileName));
+        return new DatasetStepDefinition(List.of(new DatasetStepData(fileName, null)));
     }
 
     private boolean isCsvDatasetItem(DatasetItem datasetItem) {
@@ -948,10 +1110,10 @@ public class ProjectServiceImpl implements ProjectService {
         return mimeType.contains("csv") || fileName.endsWith(".csv");
     }
 
-    private List<String> parseCsvRowPreviews(DatasetItem datasetItem) {
+    private CsvDatasetContent parseCsvDatasetContent(DatasetItem datasetItem) {
         String base64Content = valueAsString(datasetItem.getContent().get(CONTENT_KEY_BASE64));
         if (base64Content.isBlank()) {
-            return List.of();
+            return new CsvDatasetContent(List.of(), List.of());
         }
 
         String csvContent;
@@ -961,21 +1123,15 @@ public class ProjectServiceImpl implements ProjectService {
             throw new InvalidProjectDatasetException("CSV dataset item has invalid Base64 content");
         }
 
-        List<String> lines = csvContent.lines().toList();
+        String[] rawLines = csvContent.split("\\r?\\n", -1);
+        List<String> lines = List.of(rawLines);
         if (lines.isEmpty()) {
-            return List.of();
+            return new CsvDatasetContent(List.of(), List.of());
         }
+
         String header = removeUtf8Bom(lines.get(0)).trim();
-
-        if (lines.size() == 1) {
-            if (header.isBlank()) {
-                return List.of();
-            }
-
-            return List.of(truncatePreview(header));
-        }
-
-        List<String> previews = new ArrayList<>();
+        List<String> rawHeaderColumns = parseCsvColumns(header);
+        List<DatasetStepData> steps = new ArrayList<>();
 
         for (int lineIndex = 1; lineIndex < lines.size(); lineIndex++) {
             String row = lines.get(lineIndex);
@@ -984,14 +1140,99 @@ public class ProjectServiceImpl implements ProjectService {
             }
 
             String normalizedRow = row.trim();
+            List<String> rowColumns = parseCsvColumns(normalizedRow);
+            List<String> normalizedHeaders = normalizeCsvHeaderColumns(rawHeaderColumns, rowColumns.size());
+            Map<String, String> rowValues = toCsvRowValues(normalizedHeaders, rowColumns);
+
             if (header.isBlank()) {
-                previews.add(truncatePreview(normalizedRow));
+                steps.add(new DatasetStepData(truncatePreview(normalizedRow), rowValues));
             } else {
-                previews.add(buildCsvStepPreview(header, normalizedRow));
+                steps.add(new DatasetStepData(buildCsvStepPreview(header, normalizedRow), rowValues));
             }
         }
 
-        return previews;
+        List<String> headerColumns = normalizeCsvHeaderColumns(rawHeaderColumns, rawHeaderColumns.size());
+        return new CsvDatasetContent(headerColumns, steps);
+    }
+
+    private List<String> parseCsvHeaderColumns(DatasetItem datasetItem) {
+        CsvDatasetContent csvDatasetContent = parseCsvDatasetContent(datasetItem);
+        return csvDatasetContent.headers();
+    }
+
+    private List<String> normalizeCsvHeaderColumns(List<String> rawHeaderColumns, int minColumns) {
+        int requiredColumns = Math.max(minColumns, rawHeaderColumns.size());
+        List<String> normalizedHeaders = new ArrayList<>(requiredColumns);
+        Set<String> seen = new LinkedHashSet<>();
+
+        for (int index = 0; index < requiredColumns; index++) {
+            String candidate = index < rawHeaderColumns.size()
+                    ? StringUtils.trimToNull(rawHeaderColumns.get(index))
+                    : null;
+
+            if (candidate == null) {
+                candidate = "column_" + (index + 1);
+            }
+
+            String normalizedCandidate = candidate;
+            int duplicateIndex = 2;
+            while (!seen.add(normalizedCandidate.toLowerCase())) {
+                normalizedCandidate = candidate + "_" + duplicateIndex++;
+            }
+
+            normalizedHeaders.add(normalizedCandidate);
+        }
+
+        return normalizedHeaders;
+    }
+
+    private Map<String, String> toCsvRowValues(List<String> headers, List<String> rowColumns) {
+        if (headers.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<String, String> rowValues = new LinkedHashMap<>();
+        for (int index = 0; index < headers.size(); index++) {
+            String value = index < rowColumns.size() ? rowColumns.get(index) : "";
+            rowValues.put(headers.get(index), value);
+        }
+
+        return rowValues;
+    }
+
+    private List<String> parseCsvColumns(String line) {
+        if (line == null || line.isBlank()) {
+            return List.of();
+        }
+
+        List<String> values = new ArrayList<>();
+        StringBuilder currentValue = new StringBuilder();
+        boolean insideQuotes = false;
+
+        for (int index = 0; index < line.length(); index++) {
+            char currentChar = line.charAt(index);
+
+            if (currentChar == '"') {
+                if (insideQuotes && index + 1 < line.length() && line.charAt(index + 1) == '"') {
+                    currentValue.append('"');
+                    index++;
+                } else {
+                    insideQuotes = !insideQuotes;
+                }
+                continue;
+            }
+
+            if (currentChar == ',' && !insideQuotes) {
+                values.add(currentValue.toString().trim());
+                currentValue = new StringBuilder();
+                continue;
+            }
+
+            currentValue.append(currentChar);
+        }
+
+        values.add(currentValue.toString().trim());
+        return values;
     }
 
     private String buildCsvStepPreview(String header, String row) {
@@ -1268,6 +1509,233 @@ public class ProjectServiceImpl implements ProjectService {
         }
     }
 
+    private void appendCsvLine(StringBuilder csvBuilder, List<String> values) {
+        for (int index = 0; index < values.size(); index++) {
+            if (index > 0) {
+                csvBuilder.append(',');
+            }
+
+            csvBuilder.append(escapeCsvValue(values.get(index)));
+        }
+
+        csvBuilder.append('\n');
+    }
+
+    private String escapeCsvValue(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        boolean mustBeQuoted = value.contains(",")
+                || value.contains("\"")
+                || value.contains("\n")
+                || value.contains("\r");
+
+        if (!mustBeQuoted) {
+            return value;
+        }
+
+        return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+
+    private String buildAnnotationExportFileName(Project project) {
+        String projectName = StringUtils.trimToNull(project.getName());
+        if (projectName == null) {
+            return "project-" + project.getId() + "-annotations.csv";
+        }
+
+        String slugifiedName = projectName
+                .toLowerCase()
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("(^-+)|(-+$)", "");
+
+        if (slugifiedName.isBlank()) {
+            return "project-" + project.getId() + "-annotations.csv";
+        }
+
+        return slugifiedName + "-annotations.csv";
+    }
+
+    private List<AnnotatorExportColumn> buildAnnotatorExportColumns(Long projectId) {
+        Map<Long, String> annotatorEmailByUserId = new LinkedHashMap<>();
+
+        for (ProjectParticipant projectParticipant : projectParticipantRepository
+                .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId)) {
+            User annotator = projectParticipant.getUser();
+            if (annotator == null || annotator.getId() == null) {
+                continue;
+            }
+
+            annotatorEmailByUserId.putIfAbsent(annotator.getId(), normalizeExportAnnotatorEmail(annotator));
+        }
+
+        return annotatorEmailByUserId.entrySet().stream()
+                .map(entry -> new AnnotatorExportColumn(
+                        entry.getKey(),
+                        entry.getValue() + EXPORT_ANNOTATION_HEADER_SUFFIX,
+                        entry.getValue() + EXPORT_COMMENT_HEADER_SUFFIX))
+                .toList();
+    }
+
+    private String normalizeExportAnnotatorEmail(User annotator) {
+        String normalizedEmail = StringUtils.trimToNull(annotator.getEmail());
+        if (normalizedEmail == null) {
+            return "user-" + annotator.getId();
+        }
+
+        return normalizedEmail.toLowerCase(Locale.ROOT);
+    }
+
+    private String extractAnnotationValue(Object annotationPayload) {
+        if (!hasAnnotationPayload(annotationPayload)) {
+            return "";
+        }
+
+        String normalizedBoolean = normalizeBooleanValue(annotationPayload);
+        if (normalizedBoolean != null) {
+            return normalizedBoolean;
+        }
+
+        if (annotationPayload instanceof String annotationAsString) {
+            return annotationAsString.trim();
+        }
+
+        if (annotationPayload instanceof Number || annotationPayload instanceof Boolean) {
+            return String.valueOf(annotationPayload);
+        }
+
+        if (annotationPayload instanceof List<?> annotationAsList) {
+            return normalizeListLikeValue(annotationAsList);
+        }
+
+        if (!(annotationPayload instanceof Map<?, ?> annotationAsMap)) {
+            return String.valueOf(annotationPayload);
+        }
+
+        Map<String, Object> annotationMap = toMutableStringObjectMap(annotationAsMap);
+
+        String labelValue = StringUtils.trimToNull(valueAsString(annotationMap.get(ANNOTATION_KEY_LABEL)));
+        if (labelValue != null) {
+            return labelValue;
+        }
+
+        String labelsValue = normalizeListLikeValue(annotationMap.get(ANNOTATION_KEY_LABELS));
+        if (!labelsValue.isBlank()) {
+            return labelsValue;
+        }
+
+        String textValue = StringUtils.trimToNull(valueAsString(annotationMap.get(ANNOTATION_KEY_TEXT)));
+        if (textValue != null) {
+            return textValue;
+        }
+
+        String entitiesValue = normalizeNerEntitiesForExport(annotationMap.get(NER_ANNOTATION_KEY_ENTITIES));
+        if (!entitiesValue.isBlank()) {
+            return entitiesValue;
+        }
+
+        String binaryValue = normalizeBooleanValue(annotationMap.get(ANNOTATION_KEY_BINARY_VALUE));
+        if (binaryValue != null) {
+            return binaryValue;
+        }
+
+        return annotationMap.toString();
+    }
+
+    private String extractCommentValue(Object annotationPayload) {
+        if (!(annotationPayload instanceof Map<?, ?> annotationAsMap)) {
+            return "";
+        }
+
+        Map<String, Object> annotationMap = toMutableStringObjectMap(annotationAsMap);
+        String notes = StringUtils.trimToNull(valueAsString(annotationMap.get(ANNOTATION_KEY_NOTES)));
+
+        return notes == null ? "" : notes;
+    }
+
+    private String normalizeNerEntitiesForExport(Object rawEntities) {
+        if (!(rawEntities instanceof List<?> entities)) {
+            return "";
+        }
+
+        List<String> normalizedEntities = entities.stream()
+                .map(rawEntity -> {
+                    if (!(rawEntity instanceof Map<?, ?> rawEntityMap)) {
+                        return null;
+                    }
+
+                    Map<String, Object> entityMap = toMutableStringObjectMap(rawEntityMap);
+                    String label = StringUtils.trimToNull(valueAsString(entityMap.get(NER_ANNOTATION_KEY_LABEL)));
+                    String text = StringUtils.trimToNull(valueAsString(entityMap.get(NER_ANNOTATION_KEY_TEXT)));
+
+                    if (label != null && text != null) {
+                        return label + ":" + text;
+                    }
+
+                    if (text != null) {
+                        return text;
+                    }
+
+                    return label;
+                })
+                .filter(entityValue -> entityValue != null && !entityValue.isBlank())
+                .distinct()
+                .toList();
+
+        return String.join("|", normalizedEntities);
+    }
+
+    private String normalizeListLikeValue(Object value) {
+        if (value == null) {
+            return "";
+        }
+
+        if (value instanceof String valueAsString) {
+            String normalized = valueAsString.trim();
+            return normalized.isEmpty() ? "" : normalized;
+        }
+
+        if (!(value instanceof List<?> valueAsList)) {
+            return "";
+        }
+
+        List<String> normalizedValues = valueAsList.stream()
+                .filter(entry -> entry != null)
+                .map(String::valueOf)
+                .map(String::trim)
+                .filter(entry -> !entry.isEmpty())
+                .distinct()
+                .toList();
+
+        return String.join("|", normalizedValues);
+    }
+
+    private String normalizeBooleanValue(Object value) {
+        if (value instanceof Boolean booleanValue) {
+            return String.valueOf(booleanValue);
+        }
+
+        if (value instanceof Number numberValue) {
+            long asLong = numberValue.longValue();
+            if (asLong == 0L || asLong == 1L) {
+                return String.valueOf(asLong == 1L);
+            }
+
+            return null;
+        }
+
+        if (!(value instanceof String stringValue)) {
+            return null;
+        }
+
+        String normalized = stringValue.trim().toLowerCase();
+        if (normalized.equals("true") || normalized.equals("false")) {
+            return normalized;
+        }
+
+        return null;
+    }
+
     private ProjectAssignedSummaryDto toAssignedSummaryDto(ProjectParticipant participant) {
         Project project = participant.getProject();
         int completionPercentage = calculateCompletionPercentage(project.getId());
@@ -1304,14 +1772,50 @@ public class ProjectServiceImpl implements ProjectService {
         return buildProjectProgressSnapshot(projectId).completionPercentageForUser(userId);
     }
 
-    private record DatasetStepDefinition(int totalSteps, List<String> previews) {
+    private record DatasetStepDefinition(List<DatasetStepData> steps) {
+        int totalSteps() {
+            return steps.size();
+        }
+
         String previewForStep(int stepIndex) {
-            if (stepIndex >= 0 && stepIndex < previews.size()) {
-                return previews.get(stepIndex);
+            if (stepIndex >= 0 && stepIndex < steps.size()) {
+                return steps.get(stepIndex).preview();
             }
 
             return "Step " + (stepIndex + 1);
         }
+
+        Map<String, String> rowValuesForStep(int stepIndex) {
+            if (stepIndex >= 0 && stepIndex < steps.size()) {
+                return steps.get(stepIndex).rowValues();
+            }
+
+            return null;
+        }
+    }
+
+    private record DatasetStepData(
+            String preview,
+            Map<String, String> rowValues) {
+    }
+
+    private record CsvDatasetContent(
+            List<String> headers,
+            List<DatasetStepData> steps) {
+    }
+
+    private record ExportStepRow(
+            DatasetItem datasetItem,
+            int stepIndex,
+            String preview,
+            Map<String, String> rowValues,
+            Map<Long, Object> annotationsByUser) {
+    }
+
+    private record AnnotatorExportColumn(
+            Long userId,
+            String annotationHeader,
+            String commentHeader) {
     }
 
     private record ProjectProgressSnapshot(
