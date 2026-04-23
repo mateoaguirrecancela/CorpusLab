@@ -8,5 +8,6 @@ public record ResearchGroupMemberDto(
         String firstName,
         String lastName,
         String email,
-        ResearchGroupMemberRole role) {
+        ResearchGroupMemberRole role,
+        long activeProjectsCount) {
 }

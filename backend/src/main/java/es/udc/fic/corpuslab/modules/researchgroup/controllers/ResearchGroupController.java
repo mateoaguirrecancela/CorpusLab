@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -62,6 +63,14 @@ public class ResearchGroupController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateResearchGroupRequestDto request) {
         return researchGroupService.updateResearchGroup(authentication.getName(), id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteGroup(
+            Authentication authentication,
+            @PathVariable Long id) {
+        researchGroupService.deleteResearchGroup(authentication.getName(), id);
     }
 
     @PostMapping("/{id}/members/{memberUserId}/role")

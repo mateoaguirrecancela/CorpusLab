@@ -11,6 +11,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -24,6 +25,7 @@ import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
+import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
 import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.DatasetItemDto;
@@ -40,6 +42,7 @@ import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupResponseDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSummaryDto;
 import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepResponseDto;
+import es.udc.fic.corpuslab.modules.project.dtos.UpdateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.UploadProjectDatasetResponseDto;
 import es.udc.fic.corpuslab.modules.project.entities.DatasetItem;
 import es.udc.fic.corpuslab.modules.project.entities.Guideline;
@@ -95,6 +98,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectParticipantRepository projectParticipantRepository;
     private final DatasetItemRepository datasetItemRepository;
+    private final NotificationRepository notificationRepository;
     private final NotificationService notificationService;
 
     public ProjectServiceImpl(
@@ -104,6 +108,7 @@ public class ProjectServiceImpl implements ProjectService {
             ProjectRepository projectRepository,
             ProjectParticipantRepository projectParticipantRepository,
             DatasetItemRepository datasetItemRepository,
+            NotificationRepository notificationRepository,
             NotificationService notificationService) {
         this.userRepository = userRepository;
         this.researchGroupRepository = researchGroupRepository;
@@ -111,6 +116,7 @@ public class ProjectServiceImpl implements ProjectService {
         this.projectRepository = projectRepository;
         this.projectParticipantRepository = projectParticipantRepository;
         this.datasetItemRepository = datasetItemRepository;
+        this.notificationRepository = notificationRepository;
         this.notificationService = notificationService;
     }
 
@@ -240,6 +246,63 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional
+    public ProjectDetailDto updateProject(
+            String authenticatedEmail,
+            Long researchGroupId,
+            Long projectId,
+            UpdateProjectRequestDto request) {
+        User requester = findUserByEmail(authenticatedEmail);
+
+        Project project = projectRepository.findByIdAndResearchGroupId(projectId, researchGroupId)
+                .orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        ProjectParticipant requesterParticipant = projectParticipantRepository
+                .findByProjectIdAndUserId(projectId, requester.getId())
+                .orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        if (requesterParticipant.getRole() != ProjectParticipantRole.CREATOR) {
+            throw new AccessDeniedException("Only project creators can edit projects");
+        }
+
+        project.setName(request.name().trim());
+        project.setDescription(
+                request.description() != null && !request.description().isBlank()
+                        ? request.description().trim()
+                        : null);
+        projectRepository.save(project);
+
+        replaceProjectParticipants(project, requester, researchGroupId, request.participantUserIds());
+
+        return getAssignedProjectDetail(authenticatedEmail, projectId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteProject(
+            String authenticatedEmail,
+            Long researchGroupId,
+            Long projectId) {
+        User requester = findUserByEmail(authenticatedEmail);
+
+        Project project = projectRepository.findByIdAndResearchGroupId(projectId, researchGroupId)
+                .orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        ProjectParticipant requesterParticipant = projectParticipantRepository
+                .findByProjectIdAndUserId(projectId, requester.getId())
+                .orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        if (requesterParticipant.getRole() != ProjectParticipantRole.CREATOR) {
+            throw new AccessDeniedException("Only project creators can delete projects");
+        }
+
+        notificationRepository.deleteByProjectId(projectId);
+        datasetItemRepository.deleteByProjectId(projectId);
+        projectParticipantRepository.deleteByProjectId(projectId);
+        projectRepository.delete(project);
+    }
+
+    @Override
+    @Transactional
     public UploadProjectDatasetResponseDto uploadDataset(
             String authenticatedEmail,
             Long researchGroupId,
@@ -266,7 +329,7 @@ public class ProjectServiceImpl implements ProjectService {
         boolean hasCsvFile = files.stream().anyMatch(file -> {
             String mimeType = file.getContentType();
             String name = file.getOriginalFilename();
-            return (mimeType != null && mimeType.toLowerCase().contains("csv")) 
+            return (mimeType != null && mimeType.toLowerCase().contains("csv"))
                     || (name != null && name.toLowerCase().endsWith(".csv"));
         });
 
@@ -328,6 +391,16 @@ public class ProjectServiceImpl implements ProjectService {
             throw new AccessDeniedException("Only owners or admins can assign investigators");
         }
 
+        replaceProjectParticipants(project, requester, researchGroupId, participantUserIds);
+    }
+
+    private void replaceProjectParticipants(
+            Project project,
+            User requester,
+            Long researchGroupId,
+            List<Long> participantUserIds) {
+        Long projectId = project.getId();
+
         List<Long> requestedIds = participantUserIds == null
                 ? List.of()
                 : participantUserIds.stream()
@@ -352,21 +425,39 @@ public class ProjectServiceImpl implements ProjectService {
                 .filter(id -> !id.equals(requesterId))
                 .toList();
 
-        Set<Long> existingParticipantIds = projectParticipantRepository
-                .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId)
-                .stream()
+        List<ProjectParticipant> allExistingParticipants = projectParticipantRepository
+                .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId);
+
+        Set<Long> existingParticipantIds = allExistingParticipants.stream()
                 .filter(projectParticipant -> projectParticipant.getRole() == ProjectParticipantRole.PARTICIPANT)
                 .map(projectParticipant -> projectParticipant.getUser().getId())
                 .collect(Collectors.toSet());
 
-        projectParticipantRepository.deleteByProjectIdAndRole(projectId, ProjectParticipantRole.PARTICIPANT);
+        Set<Long> filteredParticipantIds = new HashSet<>(filteredIds);
+        Set<Long> removedParticipantIds = existingParticipantIds.stream()
+                .filter(existingId -> !filteredParticipantIds.contains(existingId))
+                .collect(Collectors.toSet());
 
-        if (filteredIds.isEmpty()) {
+        removeStoredAnnotationsForUsers(projectId, removedParticipantIds);
+
+        List<ProjectParticipant> participantsToRemove = allExistingParticipants.stream()
+                .filter(p -> p.getRole() == ProjectParticipantRole.PARTICIPANT && removedParticipantIds.contains(p.getUser().getId()))
+                .toList();
+
+        if (!participantsToRemove.isEmpty()) {
+            projectParticipantRepository.deleteAll(participantsToRemove);
+        }
+
+        Set<Long> newParticipantIds = filteredIds.stream()
+                .filter(id -> !existingParticipantIds.contains(id))
+                .collect(Collectors.toSet());
+
+        if (newParticipantIds.isEmpty()) {
             return;
         }
 
-        List<User> usersToAssign = userRepository.findAllById(filteredIds);
-        if (usersToAssign.size() != filteredIds.size()) {
+        List<User> usersToAssign = userRepository.findAllById(newParticipantIds);
+        if (usersToAssign.size() != newParticipantIds.size()) {
             throw new InvalidProjectParticipantsException("Some selected investigators do not exist");
         }
 
@@ -380,14 +471,6 @@ public class ProjectServiceImpl implements ProjectService {
 
         projectParticipantRepository.saveAll(participants);
 
-        Set<Long> newParticipantIds = filteredIds.stream()
-                .filter(id -> !existingParticipantIds.contains(id))
-                .collect(Collectors.toSet());
-
-        if (newParticipantIds.isEmpty()) {
-            return;
-        }
-
         Map<Long, User> usersById = usersToAssign.stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
 
@@ -396,6 +479,52 @@ public class ProjectServiceImpl implements ProjectService {
             if (recipient != null) {
                 notificationService.createProjectParticipantAssignedNotification(recipient, requester, project);
             }
+        }
+    }
+
+    private void removeStoredAnnotationsForUsers(Long projectId, Set<Long> removedUserIds) {
+        if (removedUserIds == null || removedUserIds.isEmpty()) {
+            return;
+        }
+
+        List<String> removedUserKeys = removedUserIds.stream()
+                .map(String::valueOf)
+                .toList();
+
+        List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
+        List<DatasetItem> changedItems = new ArrayList<>();
+
+        for (DatasetItem datasetItem : datasetItems) {
+            Map<String, Object> content = ensureMutableContent(datasetItem);
+            Object rawAnnotationsByUser = content.get(CONTENT_KEY_ANNOTATIONS_BY_USER);
+            if (!(rawAnnotationsByUser instanceof Map<?, ?> rawMap)) {
+                continue;
+            }
+
+            Map<String, Object> annotationsByUser = toMutableStringObjectMap(rawMap);
+            boolean removedAnyAnnotation = false;
+
+            for (String removedUserKey : removedUserKeys) {
+                if (annotationsByUser.remove(removedUserKey) != null) {
+                    removedAnyAnnotation = true;
+                }
+            }
+
+            if (!removedAnyAnnotation) {
+                continue;
+            }
+
+            if (annotationsByUser.isEmpty()) {
+                content.remove(CONTENT_KEY_ANNOTATIONS_BY_USER);
+            } else {
+                content.put(CONTENT_KEY_ANNOTATIONS_BY_USER, annotationsByUser);
+            }
+
+            changedItems.add(datasetItem);
+        }
+
+        if (!changedItems.isEmpty()) {
+            datasetItemRepository.saveAll(changedItems);
         }
     }
 
@@ -775,6 +904,10 @@ public class ProjectServiceImpl implements ProjectService {
 
         if (projectType != ProjectType.SEQ2SEQ && labels.isEmpty()) {
             throw new InvalidProjectSetupException("At least one label is required for this project type");
+        }
+
+        if ((projectType == ProjectType.TEXT_CLASSIFICATION_SIMPLE || projectType == ProjectType.TEXT_CLASSIFICATION_MULTILABEL) && labels.size() < 2) {
+            throw new InvalidProjectSetupException("Classification projects require at least 2 labels");
         }
 
         if (projectType == ProjectType.NER && labels.stream().anyMatch(label -> label.color() == null)) {
@@ -1830,6 +1963,23 @@ public class ProjectServiceImpl implements ProjectService {
 
         int completionPercentageForUser(Long userId) {
             return completionPercentageByUser.getOrDefault(userId, 0);
+        }
+    }
+    @Override
+    @Transactional
+    public void removeParticipantFromAllGroupProjects(Long researchGroupId, Long userId) {
+        List<Project> projects = projectRepository.findByResearchGroupId(researchGroupId);
+        for (Project project : projects) {
+            Optional<ProjectParticipant> participantOpt = projectParticipantRepository
+                    .findByProjectIdAndUserId(project.getId(), userId);
+
+            if (participantOpt.isPresent()) {
+                ProjectParticipant participant = participantOpt.get();
+                if (participant.getRole() == ProjectParticipantRole.PARTICIPANT) {
+                    removeStoredAnnotationsForUsers(project.getId(), Set.of(userId));
+                    projectParticipantRepository.delete(participant);
+                }
+            }
         }
     }
 }
