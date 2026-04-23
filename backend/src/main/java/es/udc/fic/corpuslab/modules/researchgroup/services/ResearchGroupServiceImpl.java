@@ -15,9 +15,14 @@ import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
+import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
+import es.udc.fic.corpuslab.modules.project.entities.Project;
+import es.udc.fic.corpuslab.modules.project.repositories.DatasetItemRepository;
+import es.udc.fic.corpuslab.modules.project.repositories.ProjectParticipantRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.ProjectRepository;
+import es.udc.fic.corpuslab.modules.project.services.ProjectService;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.CreateResearchGroupRequestDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupInvitationDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupDetailDto;
@@ -52,6 +57,10 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
         private final ResearchGroupMemberRepository memberRepository;
         private final ResearchGroupInvitationRepository invitationRepository;
         private final ProjectRepository projectRepository;
+        private final ProjectParticipantRepository projectParticipantRepository;
+        private final DatasetItemRepository datasetItemRepository;
+        private final ProjectService projectService;
+        private final NotificationRepository notificationRepository;
         private final EmailService emailService;
         private final NotificationService notificationService;
         private final String frontendBaseUrl;
@@ -62,6 +71,10 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                         ResearchGroupMemberRepository memberRepository,
                         ResearchGroupInvitationRepository invitationRepository,
                         ProjectRepository projectRepository,
+                        ProjectParticipantRepository projectParticipantRepository,
+                        DatasetItemRepository datasetItemRepository,
+                        ProjectService projectService,
+                        NotificationRepository notificationRepository,
                         EmailService emailService,
                         NotificationService notificationService,
                         @Value("${app.frontend.base-url:http://localhost:5173}") String frontendBaseUrl) {
@@ -70,6 +83,10 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                 this.memberRepository = memberRepository;
                 this.invitationRepository = invitationRepository;
                 this.projectRepository = projectRepository;
+                this.projectParticipantRepository = projectParticipantRepository;
+                this.datasetItemRepository = datasetItemRepository;
+                this.projectService = projectService;
+                this.notificationRepository = notificationRepository;
                 this.emailService = emailService;
                 this.notificationService = notificationService;
                 this.frontendBaseUrl = frontendBaseUrl;
@@ -188,6 +205,30 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                                 activeProjects,
                                 group.getCreatedAt(),
                                 members);
+        }
+
+        @Override
+        @Transactional
+        public void deleteResearchGroup(String authenticatedEmail, Long groupId) {
+                User requester = findUserByEmail(authenticatedEmail);
+                validateOwnerPermissions(groupId, requester.getId());
+
+                ResearchGroup group = researchGroupRepository.findById(groupId)
+                                .orElseThrow(() -> new ResearchGroupNotFoundException(groupId));
+
+                List<Project> projects = projectRepository.findByResearchGroupId(groupId);
+                for (Project project : projects) {
+                        Long projectId = project.getId();
+                        notificationRepository.deleteByProjectId(projectId);
+                        datasetItemRepository.deleteByProjectId(projectId);
+                        projectParticipantRepository.deleteByProjectId(projectId);
+                        projectRepository.delete(project);
+                }
+
+                notificationRepository.deleteByResearchGroupId(groupId);
+                invitationRepository.deleteByResearchGroupId(groupId);
+                memberRepository.deleteByResearchGroupId(groupId);
+                researchGroupRepository.delete(group);
         }
 
         @Override
@@ -383,12 +424,17 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                 targetMember.setRole(role);
                 ResearchGroupMember saved = memberRepository.save(targetMember);
 
+                long activeProjectsCount = projectParticipantRepository.countByProjectResearchGroupIdAndUserId(
+                                groupId,
+                                saved.getUser().getId());
+
                 return new ResearchGroupMemberDto(
                                 saved.getUser().getId(),
                                 saved.getUser().getFirstName(),
                                 saved.getUser().getLastName(),
                                 saved.getUser().getEmail(),
-                                saved.getRole());
+                                saved.getRole(),
+                                activeProjectsCount);
         }
 
         @Override
@@ -407,6 +453,8 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
 
                 targetMember.setDeletedAt(Instant.now());
                 memberRepository.save(targetMember);
+
+                projectService.removeParticipantFromAllGroupProjects(groupId, memberUserId);
         }
 
         @Override

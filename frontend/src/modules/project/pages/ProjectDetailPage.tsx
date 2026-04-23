@@ -4,6 +4,7 @@ import {
   Database,
   Download,
   ExternalLink,
+  FilePenLine,
   FileText,
   FolderKanban,
   Layers,
@@ -12,7 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { BackButton } from '@/components/common/BackButton';
 import { PageContainer } from '@/components/common/PageContainer';
@@ -27,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { EditProjectDialog } from '@/modules/project/components/EditProjectDialog';
 import { useProjectDetailQuery } from '@/modules/project/hooks/useProjectQueries';
 import {
   exportProjectAnnotationResultsCsv,
@@ -142,6 +144,7 @@ function triggerBlobDownload(blob: Blob, fileName: string): void {
 export default function ProjectDetailPage() {
   const { t } = useTranslation();
   const { projectId } = useParams();
+  const navigate = useNavigate();
 
   const numericProjectId = useMemo(() => Number(projectId), [projectId]);
   const isInvalidProjectId = !Number.isFinite(numericProjectId) || numericProjectId <= 0;
@@ -288,14 +291,37 @@ export default function ProjectDetailPage() {
         {!isLoading && !detailErrorMessage && project && (
           <div className="flex items-center gap-2">
             {project.participantRole === 'CREATOR' && (
-              <Button
-                className="h-10 shrink-0 gap-2 rounded-lg border border-border bg-transparent px-3 text-sm font-semibold text-foreground transition hover:bg-surface-soft hover:text-primary cursor-pointer"
-                onClick={() => void downloadAnnotationResultsCsv()}
-                type="button"
-              >
-                <Download className="size-4" />
-                {t('project.detail.exportAnnotationsCsv')}
-              </Button>
+              <>
+                <EditProjectDialog
+                  groupId={project.researchGroupId}
+                  initialDescription={project.description}
+                  initialName={project.name}
+                  initialParticipantUserIds={project.participants
+                    .filter((participant) => participant.role === 'PARTICIPANT')
+                    .map((participant) => participant.userId)}
+                  onDeleted={() => navigate(`/home/research-groups/${project.researchGroupId}`)}
+                  projectId={project.id}
+                  showDeleteButton
+                  trigger={
+                    <Button
+                      className="h-10 shrink-0 gap-2 rounded-lg border border-border bg-transparent px-3 text-sm font-semibold text-foreground transition hover:bg-surface-soft hover:text-primary cursor-pointer"
+                      type="button"
+                    >
+                      <FilePenLine className="size-4" />
+                      {t('project.detail.editProject')}
+                    </Button>
+                  }
+                />
+
+                <Button
+                  className="h-10 shrink-0 gap-2 rounded-lg border border-border bg-transparent px-3 text-sm font-semibold text-foreground transition hover:bg-surface-soft hover:text-primary cursor-pointer"
+                  onClick={() => void downloadAnnotationResultsCsv()}
+                  type="button"
+                >
+                  <Download className="size-4" />
+                  {t('project.detail.exportAnnotationsCsv')}
+                </Button>
+              </>
             )}
 
             <Link

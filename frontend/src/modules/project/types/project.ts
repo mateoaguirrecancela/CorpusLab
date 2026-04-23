@@ -34,6 +34,12 @@ export type CreateProjectPayload = {
   description?: string;
 };
 
+export type UpdateProjectPayload = {
+  name: string;
+  description?: string;
+  participantUserIds: number[];
+};
+
 export type DatasetItem = {
   id: number;
   index: number;

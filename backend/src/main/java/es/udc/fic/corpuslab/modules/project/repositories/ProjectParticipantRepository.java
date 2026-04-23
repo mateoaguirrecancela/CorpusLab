@@ -12,7 +12,12 @@ import es.udc.fic.corpuslab.modules.project.enums.ProjectParticipantRole;
 public interface ProjectParticipantRepository extends JpaRepository<ProjectParticipant, Long> {
 
     @Transactional
+    long deleteByProjectId(Long projectId);
+
+    @Transactional
     long deleteByProjectIdAndRole(Long projectId, ProjectParticipantRole role);
+
+    long countByProjectResearchGroupIdAndUserId(Long researchGroupId, Long userId);
 
     List<ProjectParticipant> findByProjectResearchGroupIdAndUserIdOrderByProjectCreatedAtDesc(
             Long researchGroupId,

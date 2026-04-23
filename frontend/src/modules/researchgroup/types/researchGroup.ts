@@ -15,6 +15,7 @@ export type ResearchGroupMember = {
   lastName: string;
   email: string;
   role: ResearchGroupMemberRole;
+  activeProjectsCount: number;
 };
 
 export type ResearchGroupDetail = {

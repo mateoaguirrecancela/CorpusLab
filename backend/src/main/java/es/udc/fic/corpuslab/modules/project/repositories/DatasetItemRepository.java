@@ -11,6 +11,8 @@ public interface DatasetItemRepository extends JpaRepository<DatasetItem, Long> 
 
     long countByProjectId(Long projectId);
 
+    long deleteByProjectId(Long projectId);
+
     List<DatasetItem> findByProjectIdOrderByItemIndexAsc(Long projectId);
 
     Optional<DatasetItem> findByIdAndProjectId(Long id, Long projectId);

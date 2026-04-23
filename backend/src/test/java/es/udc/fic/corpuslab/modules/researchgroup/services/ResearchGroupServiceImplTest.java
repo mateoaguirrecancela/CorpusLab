@@ -23,9 +23,13 @@ import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
+import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
+import es.udc.fic.corpuslab.modules.project.repositories.DatasetItemRepository;
+import es.udc.fic.corpuslab.modules.project.repositories.ProjectParticipantRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.ProjectRepository;
+import es.udc.fic.corpuslab.modules.project.services.ProjectService;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupDetailDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupInvitationDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto;
@@ -69,7 +73,19 @@ class ResearchGroupServiceImplTest {
         private ProjectRepository projectRepository;
 
         @Mock
+        private ProjectParticipantRepository projectParticipantRepository;
+
+        @Mock
+        private DatasetItemRepository datasetItemRepository;
+
+        @Mock
+        private ProjectService projectService;
+
+        @Mock
         private EmailService emailService;
+
+        @Mock
+        private NotificationRepository notificationRepository;
 
         @Mock
         private NotificationService notificationService;
@@ -84,6 +100,10 @@ class ResearchGroupServiceImplTest {
                                 memberRepository,
                                 invitationRepository,
                                 projectRepository,
+                                projectParticipantRepository,
+                                datasetItemRepository,
+                                projectService,
+                                notificationRepository,
                                 emailService,
                                 notificationService,
                                 "http://localhost:5173");
@@ -105,7 +125,8 @@ class ResearchGroupServiceImplTest {
                                 "Elena",
                                 "Alvarez",
                                 "member@example.com",
-                                ResearchGroupMemberRole.OWNER);
+                                ResearchGroupMemberRole.OWNER,
+                                0L);
 
                 when(userRepository.findByEmailIgnoreCase("member@example.com")).thenReturn(Optional.of(requester));
                 when(researchGroupRepository.findById(99L)).thenReturn(Optional.of(group));
@@ -162,7 +183,8 @@ class ResearchGroupServiceImplTest {
                                 "Owner",
                                 "User",
                                 "owner@example.com",
-                                ResearchGroupMemberRole.OWNER);
+                                ResearchGroupMemberRole.OWNER,
+                                0L);
 
                 when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
                 when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
@@ -201,7 +223,8 @@ class ResearchGroupServiceImplTest {
                                 "Owner",
                                 "User",
                                 "owner@example.com",
-                                ResearchGroupMemberRole.OWNER);
+                                ResearchGroupMemberRole.OWNER,
+                                0L);
 
                 when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
                 when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
@@ -796,6 +819,71 @@ class ResearchGroupServiceImplTest {
                 assertThatThrownBy(() -> researchGroupService.removeMember(
                                 "owner.requester@example.com", 10L, 2L))
                                 .isInstanceOf(InvalidResearchGroupMemberRoleException.class);
+        }
+
+        @Test
+        void deleteResearchGroupShouldDeleteGroupAndAssociatedDataWhenRequesterIsOwner() {
+                User owner = UserTestBuilder.validUser().withEmail("owner@example.com").build();
+                setId(owner, 1L);
+
+                ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("To be deleted").build();
+                setGroupFields(group, 10L, Instant.now(), "CODE123");
+
+                ResearchGroupMember ownerMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build();
+
+                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(researchGroupRepository.existsById(10L)).thenReturn(true);
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
+                                .thenReturn(Optional.of(ownerMembership));
+                when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
+                when(projectRepository.findByResearchGroupId(10L)).thenReturn(List.of());
+
+                researchGroupService.deleteResearchGroup("owner@example.com", 10L);
+
+                verify(notificationRepository).deleteByResearchGroupId(10L);
+                verify(invitationRepository).deleteByResearchGroupId(10L);
+                verify(memberRepository).deleteByResearchGroupId(10L);
+                verify(researchGroupRepository).delete(group);
+        }
+
+        @Test
+        void deleteResearchGroupShouldThrowWhenRequesterIsNotOwner() {
+                User admin = UserTestBuilder.validUser().withEmail("admin@example.com").build();
+                setId(admin, 2L);
+
+                ResearchGroupMember adminMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(admin)
+                                .withRole(ResearchGroupMemberRole.ADMIN)
+                                .build();
+
+                when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(admin));
+                when(researchGroupRepository.existsById(10L)).thenReturn(true);
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 2L))
+                                .thenReturn(Optional.of(adminMembership));
+
+                assertThatThrownBy(() -> researchGroupService.deleteResearchGroup("admin@example.com", 10L))
+                                .isInstanceOf(AccessDeniedException.class);
+        }
+
+        @Test
+        void deleteResearchGroupShouldThrowWhenGroupDoesNotExist() {
+                User owner = UserTestBuilder.validUser().withEmail("owner@example.com").build();
+                setId(owner, 1L);
+
+                ResearchGroupMember ownerMembership = ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build();
+
+                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                // researchGroupRepository.existsById defaults to false, so it will throw ResearchGroupNotFoundException
+
+                assertThatThrownBy(() -> researchGroupService.deleteResearchGroup("owner@example.com", 10L))
+                                .isInstanceOf(ResearchGroupNotFoundException.class);
         }
 
         @Test

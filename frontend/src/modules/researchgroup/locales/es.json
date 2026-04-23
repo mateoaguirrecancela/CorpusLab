@@ -11,6 +11,7 @@
       "loadFailed": "No se pudieron cargar los grupos de investigación. Inténtalo más tarde.",
       "createFailed": "No se pudo crear el grupo de investigación. Inténtalo de nuevo.",
       "updateFailed": "No se pudo actualizar el grupo de investigación. Inténtalo de nuevo.",
+      "deleteFailed": "No se pudo eliminar el grupo de investigación. Inténtalo de nuevo.",
       "detailLoadFailed": "No se pudo cargar el detalle del grupo de investigación.",
       "invalidGroupId": "El identificador del grupo no es válido.",
       "inviteFailed": "No se pudo enviar la invitación. Inténtalo de nuevo.",
@@ -41,7 +42,12 @@
       "namePlaceholder": "Nombre del Grupo de Investigación",
       "descriptionLabel": "Descripción",
       "descriptionPlaceholder": "Describe brevemente el propósito del grupo...",
-      "submit": "Guardar cambios"
+      "submit": "Guardar cambios",
+      "delete": "Eliminar grupo",
+      "deleting": "Eliminando...",
+      "deleteTitle": "Eliminar grupo de investigación",
+      "deleteConfirm": "Esta acción eliminará el grupo \"{{groupName}}\" y todos sus proyectos. No se puede deshacer.",
+      "deleteSuccess": "Grupo de investigación eliminado correctamente."
     },
     "invite": {
       "title": "Invitar investigador",
@@ -96,6 +102,7 @@
         "remove": "Eliminar",
         "removing": "Eliminando...",
         "updateSuccess": "Rol actualizado correctamente.",
+        "confirmRemoveTitle": "Eliminar investigador",
         "confirmRemove": "¿Seguro que quieres eliminar a {{name}} del grupo?"
       },
       "columns": {

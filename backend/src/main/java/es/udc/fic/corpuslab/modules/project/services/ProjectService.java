@@ -11,6 +11,7 @@ import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupResponseDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSummaryDto;
 import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepResponseDto;
+import es.udc.fic.corpuslab.modules.project.dtos.UpdateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.UploadProjectDatasetResponseDto;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,6 +29,17 @@ public interface ProjectService {
 
         ProjectSummaryDto createProject(String authenticatedEmail, Long researchGroupId,
                         CreateProjectRequestDto request);
+
+        ProjectDetailDto updateProject(
+                        String authenticatedEmail,
+                        Long researchGroupId,
+                        Long projectId,
+                        UpdateProjectRequestDto request);
+
+        void deleteProject(
+                        String authenticatedEmail,
+                        Long researchGroupId,
+                        Long projectId);
 
         UploadProjectDatasetResponseDto uploadDataset(
                         String authenticatedEmail,
@@ -73,4 +85,8 @@ public interface ProjectService {
                         String authenticatedEmail,
                         Long projectId,
                         SaveProjectAnnotationStepRequestDto request);
+
+        void removeParticipantFromAllGroupProjects(
+                        Long researchGroupId,
+                        Long userId);
 }

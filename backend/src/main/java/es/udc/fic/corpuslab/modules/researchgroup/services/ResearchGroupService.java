@@ -13,37 +13,39 @@ import es.udc.fic.corpuslab.modules.researchgroup.enums.ResearchGroupMemberRole;
 
 public interface ResearchGroupService {
 
-    List<ResearchGroupSummaryDto> findMyResearchGroups(String authenticatedEmail);
+        List<ResearchGroupSummaryDto> findMyResearchGroups(String authenticatedEmail);
 
-    ResearchGroupSummaryDto createResearchGroup(String authenticatedEmail, CreateResearchGroupRequestDto request);
+        ResearchGroupSummaryDto createResearchGroup(String authenticatedEmail, CreateResearchGroupRequestDto request);
 
-    ResearchGroupDetailDto getResearchGroupDetail(String authenticatedEmail, Long groupId);
+        ResearchGroupDetailDto getResearchGroupDetail(String authenticatedEmail, Long groupId);
 
-    ResearchGroupDetailDto updateResearchGroup(
-            String authenticatedEmail,
-            Long groupId,
-            UpdateResearchGroupRequestDto request);
+        ResearchGroupDetailDto updateResearchGroup(
+                        String authenticatedEmail,
+                        Long groupId,
+                        UpdateResearchGroupRequestDto request);
 
-    ResearchGroupInvitationDto inviteResearcherByEmail(
-            String authenticatedEmail,
-            Long groupId,
-            String invitedEmail,
-            ResearchGroupMemberRole role,
-            Instant expiresAt);
+        void deleteResearchGroup(String authenticatedEmail, Long groupId);
 
-    List<ResearchGroupInvitationDto> findMyPendingInvitations(String authenticatedEmail);
+        ResearchGroupInvitationDto inviteResearcherByEmail(
+                        String authenticatedEmail,
+                        Long groupId,
+                        String invitedEmail,
+                        ResearchGroupMemberRole role,
+                        Instant expiresAt);
 
-    ResearchGroupSummaryDto acceptMyInvitation(String authenticatedEmail, Long invitationId);
+        List<ResearchGroupInvitationDto> findMyPendingInvitations(String authenticatedEmail);
 
-    void declineMyInvitation(String authenticatedEmail, Long invitationId);
+        ResearchGroupSummaryDto acceptMyInvitation(String authenticatedEmail, Long invitationId);
 
-    ResearchGroupMemberDto updateMemberRole(
-            String authenticatedEmail,
-            Long groupId,
-            Long memberUserId,
-            ResearchGroupMemberRole role);
+        void declineMyInvitation(String authenticatedEmail, Long invitationId);
 
-    void removeMember(String authenticatedEmail, Long groupId, Long memberUserId);
+        ResearchGroupMemberDto updateMemberRole(
+                        String authenticatedEmail,
+                        Long groupId,
+                        Long memberUserId,
+                        ResearchGroupMemberRole role);
 
-    ResearchGroupSummaryDto joinResearchGroupByCode(String authenticatedEmail, String invitationCode);
+        void removeMember(String authenticatedEmail, Long groupId, Long memberUserId);
+
+        ResearchGroupSummaryDto joinResearchGroupByCode(String authenticatedEmail, String invitationCode);
 }

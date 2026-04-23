@@ -11,6 +11,7 @@
       "loadFailed": "Could not load research groups. Please try again later.",
       "createFailed": "Could not create the research group. Please try again.",
       "updateFailed": "Could not update the research group. Please try again.",
+      "deleteFailed": "Could not delete the research group. Please try again.",
       "detailLoadFailed": "Could not load research group details.",
       "invalidGroupId": "The research group identifier is not valid.",
       "inviteFailed": "Could not send the invitation. Please try again.",
@@ -41,7 +42,12 @@
       "namePlaceholder": "Name of the Research Group",
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "Briefly describe the group's purpose...",
-      "submit": "Save changes"
+      "submit": "Save changes",
+      "delete": "Delete group",
+      "deleting": "Deleting...",
+      "deleteTitle": "Delete research group",
+      "deleteConfirm": "This action will delete the group \"{{groupName}}\" and all its projects. This cannot be undone.",
+      "deleteSuccess": "Research group deleted successfully."
     },
     "invite": {
       "title": "Invite researcher",
@@ -96,6 +102,7 @@
         "remove": "Remove",
         "removing": "Removing...",
         "updateSuccess": "Role updated successfully.",
+        "confirmRemoveTitle": "Remove researcher",
         "confirmRemove": "Are you sure you want to remove {{name}} from the group?"
       },
       "columns": {
