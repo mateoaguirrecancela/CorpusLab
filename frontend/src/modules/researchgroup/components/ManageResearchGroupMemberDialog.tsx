@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ShieldCheck, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { ConfirmDestructiveDialog } from '@/components/common/ConfirmDestructiveDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -27,6 +28,7 @@ export function ManageResearchGroupMemberDialog({
 }: Readonly<ManageResearchGroupMemberDialogProps>) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
 
   const updateRoleMutation = useUpdateResearchGroupMemberRoleMutation(groupId);
   const removeMemberMutation = useRemoveResearchGroupMemberMutation(groupId);
@@ -65,6 +67,7 @@ export function ManageResearchGroupMemberDialog({
 
     try {
       await removeMemberMutation.mutateAsync(member.userId);
+      setConfirmRemoveOpen(false);
       setOpen(false);
       toast.success(t('researchGroup.detail.manage.remove'));
     } catch (error) {
@@ -99,19 +102,29 @@ export function ManageResearchGroupMemberDialog({
         <button
           className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-destructive transition-colors hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-70 cursor-pointer"
           disabled={isBusy}
-          onClick={() => void handleRemoveMember()}
+          onClick={() => {
+            setOpen(false);
+            setConfirmRemoveOpen(true);
+          }}
           type="button"
         >
-          {isRemovingMember ? (
-            <Spinner aria-hidden className="size-4" />
-          ) : (
-            <Trash2 className="size-4" />
-          )}
-          {isRemovingMember
-            ? t('researchGroup.detail.manage.removing')
-            : t('researchGroup.detail.manage.remove')}
+          <Trash2 className="size-4" />
+          {t('researchGroup.detail.manage.remove')}
         </button>
       </PopoverContent>
+
+      <ConfirmDestructiveDialog
+        confirmLabel={t('researchGroup.detail.manage.remove')}
+        confirmingLabel={t('researchGroup.detail.manage.removing')}
+        description={t('researchGroup.detail.manage.confirmRemove', {
+          name: `${member.firstName} ${member.lastName}`,
+        })}
+        isConfirming={isRemovingMember}
+        onConfirm={handleRemoveMember}
+        onOpenChange={setConfirmRemoveOpen}
+        open={confirmRemoveOpen}
+        title={t('researchGroup.detail.manage.confirmRemoveTitle')}
+      />
     </Popover>
   );
 }

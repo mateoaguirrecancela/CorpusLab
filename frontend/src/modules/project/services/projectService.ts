@@ -13,6 +13,7 @@ import {
   type ProjectSummary,
   type SaveProjectAnnotationStepPayload,
   type SaveProjectAnnotationStepResponse,
+  type UpdateProjectPayload,
   type UploadDatasetResponse,
 } from '@/modules/project/types/project';
 
@@ -32,8 +33,38 @@ export async function createProject(
   return response.data;
 }
 
+export async function updateProject(
+  groupId: number,
+  projectId: number,
+  payload: UpdateProjectPayload,
+): Promise<ProjectDetail> {
+  const body = {
+    name: payload.name.trim(),
+    description: payload.description?.trim() || undefined,
+    participantUserIds: payload.participantUserIds,
+  };
+
+  const response = await api.put<ProjectDetail>(
+    `/research-groups/${groupId}/projects/${projectId}`,
+    body,
+  );
+  return response.data;
+}
+
+export async function deleteProject(groupId: number, projectId: number): Promise<void> {
+  await api.delete(`/research-groups/${groupId}/projects/${projectId}`);
+}
+
 export function getCreateProjectErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, i18n.t('project.errors.createFailed'));
+}
+
+export function getUpdateProjectErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, i18n.t('project.errors.updateFailed'));
+}
+
+export function getDeleteProjectErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, i18n.t('project.errors.deleteFailed'));
 }
 
 export async function uploadProjectDataset(

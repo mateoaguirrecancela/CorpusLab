@@ -356,7 +356,7 @@ function getNerSourceText(
 
   if (step.rowValues && annotationTargetColumn) {
     const normalizedTargetColumn = annotationTargetColumn.trim().toLowerCase();
-    
+
     for (const [key, value] of Object.entries(step.rowValues)) {
       if (key.trim().toLowerCase() === normalizedTargetColumn) {
         return value || '';
@@ -1252,8 +1252,8 @@ export default function ProjectAnnotationPage() {
     clearTextSelection();
   };
 
-  const removeNerEntity = (step: AnnotationStep, entityToRemove: NerAnnotationEntity) => {
-    if (isReviewMode) {
+  const removeNerEntity = (step: AnnotationStep | null, entityToRemove: NerAnnotationEntity) => {
+    if (isReviewMode || !step) {
       return;
     }
 

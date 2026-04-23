@@ -4,17 +4,20 @@ import {
   assignProjectParticipants,
   configureProjectSetup,
   createProject,
+  deleteProject,
   getAssignedProjectsByGroup,
   getProjectParticipantAnnotationWorkspace,
   getProjectAnnotationWorkspace,
   getMyAssignedProjects,
   getProjectDetail,
   saveProjectAnnotationStep,
+  updateProject,
   uploadProjectDataset,
 } from '@/modules/project/services/projectService';
 import {
   type ConfigureProjectSetupPayload,
   type CreateProjectPayload,
+  type UpdateProjectPayload,
 } from '@/modules/project/types/project';
 import {
   RESEARCH_GROUPS_QUERY_KEY,
@@ -36,6 +39,53 @@ export function useCreateProjectMutation() {
       invalidateQueryKeys(queryClient, [
         myAssignedProjectsQueryKey(),
         assignedProjectsByGroupQueryKey(variables.groupId),
+        researchGroupDetailQueryKey(variables.groupId),
+        RESEARCH_GROUPS_QUERY_KEY,
+      ]);
+    },
+  });
+}
+
+type UpdateProjectMutationInput = {
+  groupId: number;
+  projectId: number;
+  payload: UpdateProjectPayload;
+};
+
+export function useUpdateProjectMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ groupId, projectId, payload }: UpdateProjectMutationInput) =>
+      updateProject(groupId, projectId, payload),
+    onSuccess: (_, variables) => {
+      invalidateQueryKeys(queryClient, [
+        myAssignedProjectsQueryKey(),
+        assignedProjectsByGroupQueryKey(variables.groupId),
+        projectDetailQueryKey(variables.projectId),
+        researchGroupDetailQueryKey(variables.groupId),
+        RESEARCH_GROUPS_QUERY_KEY,
+      ]);
+    },
+  });
+}
+
+type DeleteProjectMutationInput = {
+  groupId: number;
+  projectId: number;
+};
+
+export function useDeleteProjectMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ groupId, projectId }: DeleteProjectMutationInput) =>
+      deleteProject(groupId, projectId),
+    onSuccess: (_, variables) => {
+      invalidateQueryKeys(queryClient, [
+        myAssignedProjectsQueryKey(),
+        assignedProjectsByGroupQueryKey(variables.groupId),
+        projectDetailQueryKey(variables.projectId),
         researchGroupDetailQueryKey(variables.groupId),
         RESEARCH_GROUPS_QUERY_KEY,
       ]);

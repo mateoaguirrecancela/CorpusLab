@@ -26,6 +26,8 @@ import { type ConfigureProjectSetupPayload } from '@/modules/project/types/proje
 import { useResearchGroupsQuery } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
 
 type WizardStep = 1 | 2 | 3 | 4;
+const MAX_FILE_SIZE_MB = 10;
+const MAX_TOTAL_SIZE_MB = 50;
 
 // eslint-disable-next-line sonarjs/cognitive-complexity
 export default function CreateProjectPage() {
@@ -100,10 +102,24 @@ export default function CreateProjectPage() {
     }
 
     const incomingFiles = Array.from(files);
+
+    for (const file of incomingFiles) {
+      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+        toast.error(t('project.create.fileSizeError', { fileName: file.name, limit: MAX_FILE_SIZE_MB }));
+        return;
+      }
+    }
+
     const candidateFiles = [...selectedFiles, ...incomingFiles];
+    const totalSize = candidateFiles.reduce((sum, file) => sum + file.size, 0);
+
+    if (totalSize > MAX_TOTAL_SIZE_MB * 1024 * 1024) {
+      toast.error(t('project.create.totalSizeError', { limit: MAX_TOTAL_SIZE_MB }));
+      return;
+    }
 
     const containsCsv = candidateFiles.some(
-      (file) => file.name.toLowerCase().endsWith('.csv') || file.type.toLowerCase().includes('csv')
+      (file) => file.name.toLowerCase().endsWith('.csv') || file.type.toLowerCase().includes('csv'),
     );
 
     if (containsCsv && candidateFiles.length > 1) {
@@ -111,7 +127,7 @@ export default function CreateProjectPage() {
       return;
     }
 
-    setSelectedFiles((prev) => [...prev, ...incomingFiles]);
+    setSelectedFiles(candidateFiles);
   };
 
   const handleRemoveFile = (fileName: string, index: number) => {
@@ -231,27 +247,55 @@ export default function CreateProjectPage() {
       return;
     }
 
-    const uploadedDataset = await uploadDatasetForProject(projectId);
-    if (!uploadedDataset) {
-      return;
-    }
+    try {
+      const uploadedDataset = await uploadDatasetForProject(projectId);
+      if (!uploadedDataset) {
+        throw new Error('dataset_upload_failed');
+      }
 
-    const configuredSetup = await configureSetupForProject(projectId);
-    if (!configuredSetup) {
-      return;
-    }
+      const configuredSetup = await configureSetupForProject(projectId);
+      if (!configuredSetup) {
+        throw new Error('setup_config_failed');
+      }
 
-    const assignedParticipants = await assignParticipantsForProject(projectId, participantUserIds);
-    if (!assignedParticipants) {
-      return;
-    }
+      const assignedParticipants = await assignParticipantsForProject(projectId, participantUserIds);
+      if (!assignedParticipants) {
+        throw new Error('participant_assignment_failed');
+      }
 
-    if (isGroupLocked) {
-      navigate(`/home/research-groups/${numericGroupId}`);
-      return;
-    }
+      if (isGroupLocked) {
+        navigate(`/home/research-groups/${numericGroupId}`);
+        return;
+      }
 
-    navigate(`/home/projects/${projectId}`);
+      navigate(`/home/projects/${projectId}`);
+    } catch (error) {
+      // If any step fails after project creation, we delete the project to avoid "ghost" projects
+      // We don't use the mutation onSuccess here because we want it to be silent or handled specifically
+      const errorMessage = (error as Error).message;
+      if (
+        errorMessage === 'dataset_upload_failed' ||
+        errorMessage === 'setup_config_failed' ||
+        errorMessage === 'participant_assignment_failed'
+      ) {
+        try {
+          // Reset project ID so if they try again it creates a new one (or we could try to reuse it,
+          // but deleting it is safer to ensure a clean state)
+          setFinalizationProjectId(null);
+          await createProjectMutation.client.mutate({
+            mutationFn: () =>
+              fetch(`${import.meta.env.VITE_API_BASE_URL}/research-groups/${numericGroupId}/projects/${projectId}`, {
+                method: 'DELETE',
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem('token')}`, // Assuming token is in localStorage
+                },
+              }),
+          });
+        } catch (deleteError) {
+          console.error('Failed to cleanup project after wizard error', deleteError);
+        }
+      }
+    }
   };
 
   const renderMainStepContent = (): ReactNode => {

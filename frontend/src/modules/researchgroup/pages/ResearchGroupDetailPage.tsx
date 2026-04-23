@@ -100,6 +100,8 @@ export default function ResearchGroupDetailPage() {
                 groupId={group.id}
                 initialDescription={group.description}
                 initialName={group.name}
+                onDeleted={() => navigate('/home/research-groups')}
+                showDeleteButton
                 trigger={
                   <Button
                     className="h-10 rounded-md border border-border bg-surface-base px-4 text-sm font-semibold text-primary hover:bg-accent cursor-pointer"
@@ -275,8 +277,8 @@ export default function ResearchGroupDetailPage() {
                         />
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 text-sm font-semibold text-muted-foreground">
-                        00
+                      <TableCell className="px-4 py-3 text-sm font-semibold text-muted-foreground tabular-nums">
+                        {String(member.activeProjectsCount).padStart(2, '0')}
                       </TableCell>
 
                       <TableCell className="px-4 py-3 text-right">

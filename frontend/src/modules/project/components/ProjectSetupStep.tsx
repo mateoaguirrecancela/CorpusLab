@@ -17,6 +17,8 @@ import {
 } from '@/modules/project/types/project';
 import { isNerCompatibleDataset } from '@/modules/project/utils/projectUtils';
 
+const MAX_GUIDELINE_SIZE_MB = 10;
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) {
     return `${bytes} B`;
@@ -298,10 +300,14 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
     guidelineMode === 'TEXT' ? guidelineText.trim().length > 0 : guidelinePdfFile !== null;
   const hasValidAnnotationTargetColumn =
     !requiresAnnotationTargetColumn || annotationTargetColumn.trim().length > 0;
+  const isClassificationProject =
+    projectType === 'TEXT_CLASSIFICATION_SIMPLE' || projectType === 'TEXT_CLASSIFICATION_MULTILABEL';
+  const hasMinLabels = isClassificationProject ? labels.length >= 2 : labels.length > 0;
+
   const canSaveSetup =
     hasValidGuideline &&
     hasValidAnnotationTargetColumn &&
-    (!requiresLabels || labels.length > 0) &&
+    (!requiresLabels || hasMinLabels) &&
     !isPreparingSetup &&
     !isLoadingCsvHeaders;
 
@@ -310,7 +316,13 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
       return;
     }
 
-    setGuidelinePdfFile(files[0]);
+    const file = files[0];
+    if (file.size > MAX_GUIDELINE_SIZE_MB * 1024 * 1024) {
+      toast.error(t('project.create.fileSizeError', { fileName: file.name, limit: MAX_GUIDELINE_SIZE_MB }));
+      return;
+    }
+
+    setGuidelinePdfFile(file);
     setGuidelineText('');
   };
 
@@ -511,6 +523,11 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
               </div>
             )}
           </div>
+          {requiresLabels && isClassificationProject && labels.length > 0 && labels.length < 2 && (
+            <p className="mt-2 text-sm font-medium text-destructive">
+              {t('project.create.labelsMinCountError')}
+            </p>
+          )}
         </section>
       )}
 

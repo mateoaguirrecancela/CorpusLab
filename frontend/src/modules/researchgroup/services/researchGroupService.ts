@@ -45,6 +45,10 @@ export async function updateResearchGroup(
   return response.data;
 }
 
+export async function deleteResearchGroup(groupId: number): Promise<void> {
+  await api.delete(`/research-groups/${groupId}`);
+}
+
 export async function inviteResearchGroupMember(
   groupId: number,
   payload: InviteResearchGroupMemberPayload,
@@ -120,6 +124,10 @@ export function getCreateGroupErrorMessage(error: unknown): string {
 
 export function getUpdateGroupErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, 'researchGroup.errors.updateFailed');
+}
+
+export function getDeleteGroupErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, 'researchGroup.errors.deleteFailed');
 }
 
 export function getResearchGroupDetailErrorMessage(error: unknown): string {

@@ -4,6 +4,7 @@ import { type CreateResearchGroupPayload } from '@/modules/researchgroup/types/c
 import {
   acceptResearchGroupInvitation,
   createResearchGroup,
+  deleteResearchGroup,
   declineResearchGroupInvitation,
   getMyResearchGroupInvitations,
   getMyResearchGroups,
@@ -14,6 +15,10 @@ import {
   updateResearchGroup,
   updateResearchGroupMemberRole,
 } from '@/modules/researchgroup/services/researchGroupService';
+import {
+  assignedProjectsByGroupQueryKey,
+  myAssignedProjectsQueryKey,
+} from '@/modules/project/hooks/useProjectQueries';
 import {
   type InviteResearchGroupMemberPayload,
   type UpdateResearchGroupPayload,
@@ -68,6 +73,22 @@ export function useUpdateResearchGroupMutation(groupId: number) {
       invalidateQueryKeys(queryClient, [
         researchGroupDetailQueryKey(groupId),
         RESEARCH_GROUPS_QUERY_KEY,
+      ]);
+    },
+  });
+}
+
+export function useDeleteResearchGroupMutation(groupId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => deleteResearchGroup(groupId),
+    onSuccess: () => {
+      invalidateQueryKeys(queryClient, [
+        RESEARCH_GROUPS_QUERY_KEY,
+        researchGroupDetailQueryKey(groupId),
+        assignedProjectsByGroupQueryKey(groupId),
+        myAssignedProjectsQueryKey(),
       ]);
     },
   });
@@ -151,6 +172,8 @@ export function useRemoveResearchGroupMemberMutation(groupId: number) {
       invalidateQueryKeys(queryClient, [
         researchGroupDetailQueryKey(groupId),
         RESEARCH_GROUPS_QUERY_KEY,
+        assignedProjectsByGroupQueryKey(groupId),
+        myAssignedProjectsQueryKey(),
       ]);
     },
   });
