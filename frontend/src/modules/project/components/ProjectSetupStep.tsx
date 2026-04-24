@@ -273,7 +273,7 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
             return normalizedCurrentValue;
           }
 
-          return normalizedHeaders[0] ?? '';
+          return normalizedHeaders[0] ?? 'NONE';
         });
       })
       .catch(() => {
@@ -282,7 +282,7 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
         }
 
         setCsvHeaderOptions([]);
-        setAnnotationTargetColumn('');
+        setAnnotationTargetColumn('NONE');
         toast.error(t('project.create.annotationTargetColumnHeadersReadError'));
       })
       .finally(() => {
@@ -319,6 +319,12 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
     const file = files[0];
     if (file.size > MAX_GUIDELINE_SIZE_MB * 1024 * 1024) {
       toast.error(t('project.create.fileSizeError', { fileName: file.name, limit: MAX_GUIDELINE_SIZE_MB }));
+      return;
+    }
+
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    if (extension !== 'pdf') {
+      toast.error(t('project.create.forbiddenExtensionError', { extension }));
       return;
     }
 
@@ -407,9 +413,10 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
         labels,
         guidelineText: guidelineMode === 'TEXT' ? guidelineText.trim() : undefined,
         guidelinePdfBase64,
-        annotationTargetColumn: requiresAnnotationTargetColumn
-          ? annotationTargetColumn.trim()
-          : undefined,
+        annotationTargetColumn:
+          requiresAnnotationTargetColumn && annotationTargetColumn !== 'NONE'
+            ? annotationTargetColumn.trim()
+            : undefined,
       });
     } finally {
       setIsPreparingSetup(false);
@@ -460,10 +467,13 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
           id="create-project-annotation-target-column"
           label={t('project.create.annotationTargetColumnLabel')}
           onValueChange={setAnnotationTargetColumn}
-          options={csvHeaderOptions.map((header) => ({
-            label: header,
-            value: header,
-          }))}
+          options={[
+            { label: t('project.create.annotationTargetColumnNone'), value: 'NONE' },
+            ...csvHeaderOptions.map((header) => ({
+              label: header,
+              value: header,
+            })),
+          ]}
           required
           selectProps={{ required: true }}
           value={annotationTargetColumn}

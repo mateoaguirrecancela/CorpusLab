@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Mail, UserRound, X } from 'lucide-react';
+import { Check, UserRound, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
@@ -190,7 +190,6 @@ export function ResearchGroupInvitationsDialog({
                         <span className="truncate">{invitation.inviterFullName}</span>
                       </span>
                       <span className="inline-flex shrink-0 items-center gap-2">
-                        <Mail className="size-3.5 shrink-0" />
                         <RoleBadge
                           label={t(`researchGroup.roles.${invitation.role}`)}
                           role={invitation.role}
