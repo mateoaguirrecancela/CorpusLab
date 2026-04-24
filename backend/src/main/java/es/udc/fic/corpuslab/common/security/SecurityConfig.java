@@ -67,6 +67,10 @@ public class SecurityConfig {
             return http
                     .securityMatcher("/api/**")
                     .csrf(AbstractHttpConfigurer::disable)
+                    .headers(headers -> headers
+                            .contentTypeOptions(org.springframework.security.config.annotation.web.configurers.HeadersConfigurer.ContentTypeOptionsConfig::disable) // Default is enabled, but showing how to configure
+                            .contentTypeOptions(org.springframework.security.config.Customizer.withDefaults())
+                    )
                     .authorizeHttpRequests(auth -> auth
                             .requestMatchers(
                                     "/api/auth/signup",

@@ -29,6 +29,23 @@ type WizardStep = 1 | 2 | 3 | 4;
 const MAX_FILE_SIZE_MB = 10;
 const MAX_TOTAL_SIZE_MB = 50;
 
+const BANNED_EXTENSIONS = [
+  'exe',
+  'bat',
+  'cmd',
+  'sh',
+  'php',
+  'jsp',
+  'asp',
+  'aspx',
+  'js',
+  'vbs',
+  'jar',
+  'war',
+  'ear',
+  'bin',
+];
+
 // eslint-disable-next-line sonarjs/cognitive-complexity
 export default function CreateProjectPage() {
   const { t } = useTranslation();
@@ -106,6 +123,12 @@ export default function CreateProjectPage() {
     for (const file of incomingFiles) {
       if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
         toast.error(t('project.create.fileSizeError', { fileName: file.name, limit: MAX_FILE_SIZE_MB }));
+        return;
+      }
+
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      if (extension && BANNED_EXTENSIONS.includes(extension)) {
+        toast.error(t('project.create.forbiddenExtensionError', { extension }));
         return;
       }
     }

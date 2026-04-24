@@ -278,7 +278,7 @@ export default function ResearchGroupDetailPage() {
                       </TableCell>
 
                       <TableCell className="px-4 py-3 text-sm font-semibold text-muted-foreground tabular-nums">
-                        {String(member.activeProjectsCount).padStart(2, '0')}
+                        {member.activeProjectsCount}
                       </TableCell>
 
                       <TableCell className="px-4 py-3 text-right">

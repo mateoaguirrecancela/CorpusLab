@@ -15,17 +15,20 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import es.udc.fic.corpuslab.common.utils.FileSecurityService;
 import es.udc.fic.corpuslab.common.utils.StringUtils;
 import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
 import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
+import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
 import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.DatasetItemDto;
@@ -100,6 +103,9 @@ public class ProjectServiceImpl implements ProjectService {
     private final DatasetItemRepository datasetItemRepository;
     private final NotificationRepository notificationRepository;
     private final NotificationService notificationService;
+    private final EmailService emailService;
+    private final FileSecurityService fileSecurityService;
+    private final String frontendBaseUrl;
 
     public ProjectServiceImpl(
             UserRepository userRepository,
@@ -109,7 +115,10 @@ public class ProjectServiceImpl implements ProjectService {
             ProjectParticipantRepository projectParticipantRepository,
             DatasetItemRepository datasetItemRepository,
             NotificationRepository notificationRepository,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            EmailService emailService,
+            FileSecurityService fileSecurityService,
+            @Value("${app.frontend.base-url:http://localhost:5173}") String frontendBaseUrl) {
         this.userRepository = userRepository;
         this.researchGroupRepository = researchGroupRepository;
         this.researchGroupMemberRepository = researchGroupMemberRepository;
@@ -118,6 +127,9 @@ public class ProjectServiceImpl implements ProjectService {
         this.datasetItemRepository = datasetItemRepository;
         this.notificationRepository = notificationRepository;
         this.notificationService = notificationService;
+        this.emailService = emailService;
+        this.fileSecurityService = fileSecurityService;
+        this.frontendBaseUrl = frontendBaseUrl;
     }
 
     @Override
@@ -341,17 +353,22 @@ public class ProjectServiceImpl implements ProjectService {
         List<DatasetItem> createdItems = new ArrayList<>();
 
         for (MultipartFile file : files) {
-            if (file == null || file.isEmpty()) {
-                throw new InvalidProjectDatasetException("All dataset files must have content");
-            }
+            fileSecurityService.validateFile(file);
 
             try {
+                byte[] fileBytes = file.getBytes();
+                String originalFilename = file.getOriginalFilename();
+                String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
+
+                if (isCsvFile(originalFilename, contentType)) {
+                    fileBytes = fileSecurityService.sanitizeCsv(fileBytes);
+                }
+
                 Map<String, Object> content = new LinkedHashMap<>();
-                content.put("fileName", file.getOriginalFilename());
-                content.put("mimeType",
-                        file.getContentType() != null ? file.getContentType() : "application/octet-stream");
-                content.put("sizeBytes", file.getSize());
-                content.put("base64", Base64.getEncoder().encodeToString(file.getBytes()));
+                content.put("fileName", originalFilename);
+                content.put("mimeType", contentType);
+                content.put("sizeBytes", fileBytes.length);
+                content.put("base64", Base64.getEncoder().encodeToString(fileBytes));
                 content.put("uploadedAt", Instant.now().toString());
 
                 DatasetItem item = new DatasetItem();
@@ -474,10 +491,18 @@ public class ProjectServiceImpl implements ProjectService {
         Map<Long, User> usersById = usersToAssign.stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
 
+        String assignerFullName = (requester.getFirstName() + " " + requester.getLastName()).trim();
+        String projectUrl = frontendBaseUrl + "/home/projects/" + project.getId();
+
         for (Long newParticipantId : newParticipantIds) {
             User recipient = usersById.get(newParticipantId);
             if (recipient != null) {
                 notificationService.createProjectParticipantAssignedNotification(recipient, requester, project);
+                emailService.sendProjectAssignmentEmail(
+                        recipient.getEmail(),
+                        project.getName(),
+                        assignerFullName,
+                        projectUrl);
             }
         }
     }
@@ -1240,7 +1265,13 @@ public class ProjectServiceImpl implements ProjectService {
         String mimeType = valueAsString(datasetItem.getContent().get(CONTENT_KEY_MIME_TYPE)).toLowerCase();
         String fileName = valueAsString(datasetItem.getContent().get(CONTENT_KEY_FILE_NAME)).toLowerCase();
 
-        return mimeType.contains("csv") || fileName.endsWith(".csv");
+        return isCsvFile(fileName, mimeType);
+    }
+
+    private boolean isCsvFile(String fileName, String mimeType) {
+        String lowerFileName = fileName != null ? fileName.toLowerCase() : "";
+        String lowerMimeType = mimeType != null ? mimeType.toLowerCase() : "";
+        return lowerMimeType.contains("csv") || lowerFileName.endsWith(".csv");
     }
 
     private CsvDatasetContent parseCsvDatasetContent(DatasetItem datasetItem) {

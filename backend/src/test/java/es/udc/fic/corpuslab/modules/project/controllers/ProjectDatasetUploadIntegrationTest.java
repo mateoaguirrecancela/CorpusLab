@@ -126,22 +126,22 @@ class ProjectDatasetUploadIntegrationTest extends AbstractIntegrationTest {
 
                 String session = loginAs("owner.dataset@example.com");
 
-                MockMultipartFile txt = new MockMultipartFile(
+                MockMultipartFile txt1 = new MockMultipartFile(
                                 "files",
                                 "notes.txt",
                                 MediaType.TEXT_PLAIN_VALUE,
                                 "hello dataset".getBytes());
 
-                MockMultipartFile csv = new MockMultipartFile(
+                MockMultipartFile txt2 = new MockMultipartFile(
                                 "files",
-                                "items.csv",
-                                "text/csv",
-                                "id,value\n1,a".getBytes());
+                                "items.txt",
+                                MediaType.TEXT_PLAIN_VALUE,
+                                "more data".getBytes());
 
                 mockMvc.perform(multipart("/api/research-groups/{groupId}/projects/{projectId}/dataset", group.getId(),
                                 project.getId())
-                                .file(txt)
-                                .file(csv)
+                                .file(txt1)
+                                .file(txt2)
                                 .header("Authorization", "Bearer " + session))
                                 .andExpect(status().isCreated())
                                 .andExpect(jsonPath("$.projectId").value(project.getId()))
