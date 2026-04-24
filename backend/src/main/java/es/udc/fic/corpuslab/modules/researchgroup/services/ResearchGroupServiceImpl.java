@@ -298,7 +298,7 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                 }
 
                 String inviterFullName = (inviter.getFirstName() + " " + inviter.getLastName()).trim();
-                String invitationUrl = frontendBaseUrl + "/home/invitations?token=" + invitation.getToken();
+                String invitationUrl = frontendBaseUrl + "/home/research-groups";
                 String signupUrl = frontendBaseUrl + "/auth/signup?invitationToken=" + invitation.getToken();
 
                 try {

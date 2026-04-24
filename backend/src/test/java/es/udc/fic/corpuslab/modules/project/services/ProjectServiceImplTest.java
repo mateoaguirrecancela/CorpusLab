@@ -21,7 +21,9 @@ import org.springframework.security.access.AccessDeniedException;
 import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
+import es.udc.fic.corpuslab.common.utils.FileSecurityService;
 import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
+import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
 import es.udc.fic.corpuslab.modules.project.dtos.UpdateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.entities.Project;
@@ -67,6 +69,12 @@ class ProjectServiceImplTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private FileSecurityService fileSecurityService;
+    
+    @Mock
+    private EmailService emailService;
+
     private ProjectService projectService;
 
     @BeforeEach
@@ -79,7 +87,10 @@ class ProjectServiceImplTest {
                 projectParticipantRepository,
                 datasetItemRepository,
                 notificationRepository,
-                notificationService);
+                notificationService,
+                emailService,
+                fileSecurityService,
+                "http://localhost:5173");
     }
 
     @Test

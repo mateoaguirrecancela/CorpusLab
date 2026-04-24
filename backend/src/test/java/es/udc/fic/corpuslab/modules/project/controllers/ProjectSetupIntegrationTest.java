@@ -307,7 +307,7 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
 
                 ProjectSetupRequestDto request = new ProjectSetupRequestDto(
                                 ProjectType.TEXT_CLASSIFICATION_SIMPLE,
-                                List.of(new ProjectSetupLabelDto("Correct", null)),
+                                List.of(new ProjectSetupLabelDto("Correct", null), new ProjectSetupLabelDto("Incorrect", null)),
                                 "Validar explicaciones",
                                 null,
                                 null);
@@ -344,7 +344,7 @@ class ProjectSetupIntegrationTest extends AbstractIntegrationTest {
 
                 ProjectSetupRequestDto request = new ProjectSetupRequestDto(
                                 ProjectType.TEXT_CLASSIFICATION_SIMPLE,
-                                List.of(new ProjectSetupLabelDto("Correct", null)),
+                                List.of(new ProjectSetupLabelDto("Correct", null), new ProjectSetupLabelDto("Incorrect", null)),
                                 "Validar explicaciones",
                                 null,
                                 "distil_predictions");

@@ -35,4 +35,13 @@ public class EmailServiceTest implements EmailService {
         LOGGER.info("[TEST] Simulated new-user invitation email to {} for group {} by {}. Signup URL: {}",
                 to, groupName, inviterFullName, signupUrl);
     }
+    @Override
+    public void sendProjectAssignmentEmail(
+            String to,
+            String projectName,
+            String assignerFullName,
+            String projectUrl) {
+        LOGGER.info("[TEST] Simulated project assignment email to {} for project {} by {}. Project URL: {}",
+                to, projectName, assignerFullName, projectUrl);
+    }
 }

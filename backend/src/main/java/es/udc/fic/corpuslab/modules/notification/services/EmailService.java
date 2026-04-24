@@ -14,4 +14,10 @@ public interface EmailService {
             String groupName,
             String inviterFullName,
             String signupUrl);
+
+    void sendProjectAssignmentEmail(
+            String to,
+            String projectName,
+            String assignerFullName,
+            String projectUrl);
 }
