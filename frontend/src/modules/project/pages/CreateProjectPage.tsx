@@ -17,6 +17,7 @@ import {
   useUploadProjectDatasetMutation,
 } from '@/modules/project/hooks/useProjectQueries';
 import {
+  deleteProject,
   getAssignParticipantsErrorMessage,
   getCreateProjectErrorMessage,
   getProjectSetupErrorMessage,
@@ -122,7 +123,9 @@ export default function CreateProjectPage() {
 
     for (const file of incomingFiles) {
       if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-        toast.error(t('project.create.fileSizeError', { fileName: file.name, limit: MAX_FILE_SIZE_MB }));
+        toast.error(
+          t('project.create.fileSizeError', { fileName: file.name, limit: MAX_FILE_SIZE_MB }),
+        );
         return;
       }
 
@@ -281,7 +284,10 @@ export default function CreateProjectPage() {
         throw new Error('setup_config_failed');
       }
 
-      const assignedParticipants = await assignParticipantsForProject(projectId, participantUserIds);
+      const assignedParticipants = await assignParticipantsForProject(
+        projectId,
+        participantUserIds,
+      );
       if (!assignedParticipants) {
         throw new Error('participant_assignment_failed');
       }
@@ -305,15 +311,7 @@ export default function CreateProjectPage() {
           // Reset project ID so if they try again it creates a new one (or we could try to reuse it,
           // but deleting it is safer to ensure a clean state)
           setFinalizationProjectId(null);
-          await createProjectMutation.client.mutate({
-            mutationFn: () =>
-              fetch(`${import.meta.env.VITE_API_BASE_URL}/research-groups/${numericGroupId}/projects/${projectId}`, {
-                method: 'DELETE',
-                headers: {
-                  Authorization: `Bearer ${localStorage.getItem('token')}`, // Assuming token is in localStorage
-                },
-              }),
-          });
+          await deleteProject(numericGroupId, projectId);
         } catch (deleteError) {
           console.error('Failed to cleanup project after wizard error', deleteError);
         }

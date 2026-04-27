@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -201,6 +202,96 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
 
                 Notification notification = notificationRepository.findAll().getFirst();
                 assertThat(notification.getProjectName()).isEqualTo(projectName);
+        }
+
+        @Test
+        void shouldMarkStepAsPendingWhenAnnotationIsCleared() throws Exception {
+                User owner = createUser("owner.annotation.clear@example.com");
+                User annotator = createUser("annotator.annotation.clear@example.com");
+
+                ResearchGroup group = createGroup("Annotation Clear Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Clear Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createCsvDatasetItem(project, "id,text\n1,alpha\n2,beta");
+
+                String token = loginAs("annotator.annotation.clear@example.com");
+
+                saveAnnotationStep(token, project.getId(), item.getId(), 0, "POSITIVE");
+
+                Map<String, Object> clearRequest = new LinkedHashMap<>();
+                clearRequest.put("datasetItemId", item.getId());
+                clearRequest.put("stepIndex", 0);
+                clearRequest.put("annotation", null);
+
+                mockMvc.perform(put("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(clearRequest)))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.participantCompletedSteps").value(0))
+                                .andExpect(jsonPath("$.participantCompletionPercentage").value(0));
+
+                mockMvc.perform(get("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .param("offset", "0")
+                                .param("limit", "10")
+                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.completedSteps").value(0))
+                                .andExpect(jsonPath("$.completionPercentage").value(0))
+                                .andExpect(jsonPath("$.firstPendingStepIndex").value(1))
+                                .andExpect(jsonPath("$.steps[0].completed").value(false));
+        }
+
+        @Test
+        void shouldReturnFirstPendingStepIndexForPartialAndCompletedProgress() throws Exception {
+                User owner = createUser("owner.annotation.pending-index@example.com");
+                User annotator = createUser("annotator.annotation.pending-index@example.com");
+
+                ResearchGroup group = createGroup("Annotation Pending Index Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Annotation Pending Index Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createCsvDatasetItem(project, "id,text\n1,a\n2,b\n3,c\n4,d\n5,e\n6,f");
+
+                String token = loginAs("annotator.annotation.pending-index@example.com");
+
+                saveAnnotationStep(token, project.getId(), item.getId(), 0, "POSITIVE");
+                saveAnnotationStep(token, project.getId(), item.getId(), 1, "POSITIVE");
+                saveAnnotationStep(token, project.getId(), item.getId(), 3, "POSITIVE");
+                saveAnnotationStep(token, project.getId(), item.getId(), 4, "POSITIVE");
+                saveAnnotationStep(token, project.getId(), item.getId(), 5, "POSITIVE");
+
+                mockMvc.perform(get("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .param("offset", "0")
+                                .param("limit", "10")
+                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.firstPendingStepIndex").value(3));
+
+                saveAnnotationStep(token, project.getId(), item.getId(), 2, "POSITIVE");
+
+                mockMvc.perform(get("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .param("offset", "0")
+                                .param("limit", "10")
+                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.completionPercentage").value(100))
+                                .andExpect(jsonPath("$.firstPendingStepIndex").value(1));
         }
 
         @Test

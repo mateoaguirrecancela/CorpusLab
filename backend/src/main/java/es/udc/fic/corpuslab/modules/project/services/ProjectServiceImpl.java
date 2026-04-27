@@ -47,6 +47,7 @@ import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepReques
 import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepResponseDto;
 import es.udc.fic.corpuslab.modules.project.dtos.UpdateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.UploadProjectDatasetResponseDto;
+import es.udc.fic.corpuslab.modules.project.entities.Annotation;
 import es.udc.fic.corpuslab.modules.project.entities.DatasetItem;
 import es.udc.fic.corpuslab.modules.project.entities.Guideline;
 import es.udc.fic.corpuslab.modules.project.entities.Label;
@@ -58,6 +59,7 @@ import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectDatasetExce
 import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectParticipantsException;
 import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectSetupException;
 import es.udc.fic.corpuslab.modules.project.exceptions.ProjectNotFoundException;
+import es.udc.fic.corpuslab.modules.project.repositories.AnnotationRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.DatasetItemRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.ProjectParticipantRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.ProjectRepository;
@@ -77,8 +79,6 @@ public class ProjectServiceImpl implements ProjectService {
     private static final String CONTENT_KEY_MIME_TYPE = "mimeType";
     private static final String CONTENT_KEY_SIZE_BYTES = "sizeBytes";
     private static final String CONTENT_KEY_BASE64 = "base64";
-    private static final String CONTENT_KEY_ANNOTATIONS_BY_USER = "annotationsByUser";
-    private static final String USER_ANNOTATION_STEPS_KEY = "steps";
     private static final String ANNOTATION_KEY_NOTES = "notes";
     private static final String NER_ANNOTATION_KEY_ENTITIES = "entities";
     private static final String NER_ANNOTATION_KEY_LABEL = "label";
@@ -89,6 +89,7 @@ public class ProjectServiceImpl implements ProjectService {
     private static final String ANNOTATION_KEY_LABEL = "label";
     private static final String ANNOTATION_KEY_LABELS = "labels";
     private static final String ANNOTATION_KEY_TEXT = "text";
+    private static final String ANNOTATION_WRAPPED_VALUE_KEY = "value";
     private static final String EXPORT_ANNOTATION_HEADER_SUFFIX = "_annotation";
     private static final String EXPORT_COMMENT_HEADER_SUFFIX = "_coment";
     private static final int DEFAULT_ANNOTATION_STEPS_LIMIT = 50;
@@ -101,6 +102,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectParticipantRepository projectParticipantRepository;
     private final DatasetItemRepository datasetItemRepository;
+    private final AnnotationRepository annotationRepository;
     private final NotificationRepository notificationRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
@@ -114,6 +116,7 @@ public class ProjectServiceImpl implements ProjectService {
             ProjectRepository projectRepository,
             ProjectParticipantRepository projectParticipantRepository,
             DatasetItemRepository datasetItemRepository,
+            AnnotationRepository annotationRepository,
             NotificationRepository notificationRepository,
             NotificationService notificationService,
             EmailService emailService,
@@ -125,6 +128,7 @@ public class ProjectServiceImpl implements ProjectService {
         this.projectRepository = projectRepository;
         this.projectParticipantRepository = projectParticipantRepository;
         this.datasetItemRepository = datasetItemRepository;
+        this.annotationRepository = annotationRepository;
         this.notificationRepository = notificationRepository;
         this.notificationService = notificationService;
         this.emailService = emailService;
@@ -183,7 +187,11 @@ public class ProjectServiceImpl implements ProjectService {
         List<DatasetItemDto> datasetItemDtos = datasetItems.stream().map(this::toDatasetItemDto).toList();
         List<ProjectParticipant> projectParticipants = projectParticipantRepository
                 .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId);
-        ProjectProgressSnapshot progressSnapshot = buildProjectProgressSnapshot(projectParticipants, datasetItems);
+        Map<Long, Map<Long, Map<Integer, Object>>> annotationLookup = buildAnnotationLookup(projectId);
+        ProjectProgressSnapshot progressSnapshot = buildProjectProgressSnapshot(
+                projectParticipants,
+                datasetItems,
+                annotationLookup);
 
         List<ProjectDetailParticipantDto> participants = projectParticipants
                 .stream()
@@ -308,6 +316,7 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         notificationRepository.deleteByProjectId(projectId);
+        annotationRepository.deleteByDatasetItemProjectId(projectId);
         datasetItemRepository.deleteByProjectId(projectId);
         projectParticipantRepository.deleteByProjectId(projectId);
         projectRepository.delete(project);
@@ -458,7 +467,8 @@ public class ProjectServiceImpl implements ProjectService {
         removeStoredAnnotationsForUsers(projectId, removedParticipantIds);
 
         List<ProjectParticipant> participantsToRemove = allExistingParticipants.stream()
-                .filter(p -> p.getRole() == ProjectParticipantRole.PARTICIPANT && removedParticipantIds.contains(p.getUser().getId()))
+                .filter(p -> p.getRole() == ProjectParticipantRole.PARTICIPANT
+                        && removedParticipantIds.contains(p.getUser().getId()))
                 .toList();
 
         if (!participantsToRemove.isEmpty()) {
@@ -512,45 +522,7 @@ public class ProjectServiceImpl implements ProjectService {
             return;
         }
 
-        List<String> removedUserKeys = removedUserIds.stream()
-                .map(String::valueOf)
-                .toList();
-
-        List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
-        List<DatasetItem> changedItems = new ArrayList<>();
-
-        for (DatasetItem datasetItem : datasetItems) {
-            Map<String, Object> content = ensureMutableContent(datasetItem);
-            Object rawAnnotationsByUser = content.get(CONTENT_KEY_ANNOTATIONS_BY_USER);
-            if (!(rawAnnotationsByUser instanceof Map<?, ?> rawMap)) {
-                continue;
-            }
-
-            Map<String, Object> annotationsByUser = toMutableStringObjectMap(rawMap);
-            boolean removedAnyAnnotation = false;
-
-            for (String removedUserKey : removedUserKeys) {
-                if (annotationsByUser.remove(removedUserKey) != null) {
-                    removedAnyAnnotation = true;
-                }
-            }
-
-            if (!removedAnyAnnotation) {
-                continue;
-            }
-
-            if (annotationsByUser.isEmpty()) {
-                content.remove(CONTENT_KEY_ANNOTATIONS_BY_USER);
-            } else {
-                content.put(CONTENT_KEY_ANNOTATIONS_BY_USER, annotationsByUser);
-            }
-
-            changedItems.add(datasetItem);
-        }
-
-        if (!changedItems.isEmpty()) {
-            datasetItemRepository.saveAll(changedItems);
-        }
+        annotationRepository.deleteByDatasetItemProjectIdAndUserIdIn(projectId, removedUserIds);
     }
 
     @Override
@@ -609,8 +581,12 @@ public class ProjectServiceImpl implements ProjectService {
         List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
         List<ProjectParticipant> participants = projectParticipantRepository
                 .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId);
+        Map<Long, Map<Long, Map<Integer, Object>>> annotationLookup = buildAnnotationLookup(projectId);
 
-        ProjectProgressSnapshot progressSnapshot = buildProjectProgressSnapshot(participants, datasetItems);
+        ProjectProgressSnapshot progressSnapshot = buildProjectProgressSnapshot(
+                participants,
+                datasetItems,
+                annotationLookup);
 
         int sanitizedOffset = Math.max(offset, 0);
         int sanitizedLimit = sanitizeAnnotationStepsLimit(limit);
@@ -627,7 +603,9 @@ public class ProjectServiceImpl implements ProjectService {
                 progressSnapshot.totalSteps(),
                 progressSnapshot.completedStepsForUser(annotationUserId),
                 progressSnapshot.completionPercentageForUser(annotationUserId),
-                buildAnnotationSteps(datasetItems, annotationUserId, sanitizedOffset, sanitizedLimit));
+                findFirstPendingStepIndex(datasetItems, annotationUserId, annotationLookup),
+                buildAnnotationSteps(datasetItems, annotationUserId, sanitizedOffset, sanitizedLimit,
+                        annotationLookup));
     }
 
     @Override
@@ -684,6 +662,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         Project project = requesterParticipant.getProject();
         List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
+        Map<Long, Map<Long, Map<Integer, Object>>> annotationLookup = buildAnnotationLookup(projectId);
 
         List<AnnotatorExportColumn> annotatorColumns = buildAnnotatorExportColumns(projectId);
 
@@ -704,7 +683,8 @@ public class ProjectServiceImpl implements ProjectService {
                 for (AnnotatorExportColumn annotatorColumn : annotatorColumns) {
                     annotationsByUser.put(
                             annotatorColumn.userId(),
-                            findStepAnnotation(datasetItem, annotatorColumn.userId(), stepIndex));
+                            findStepAnnotation(annotationLookup, datasetItem.getId(), annotatorColumn.userId(),
+                                    stepIndex));
                 }
 
                 exportRows.add(new ExportStepRow(
@@ -780,12 +760,20 @@ public class ProjectServiceImpl implements ProjectService {
                 .findFirst()
                 .orElseThrow(() -> new InvalidProjectDatasetException("Dataset item does not belong to this project"));
 
-        ProjectProgressSnapshot progressBeforeSave = buildProjectProgressSnapshot(participants, datasetItems);
+        Map<Long, Map<Long, Map<Integer, Object>>> annotationLookupBeforeSave = buildAnnotationLookup(projectId);
+        ProjectProgressSnapshot progressBeforeSave = buildProjectProgressSnapshot(
+                participants,
+                datasetItems,
+                annotationLookupBeforeSave);
         int completionBeforeSave = progressBeforeSave.completionPercentageForUser(user.getId());
 
-        Object normalizedAnnotation = normalizeAnnotationPayload(request.annotation());
-        if (participant.getProject().getProjectType() == ProjectType.NER) {
-            normalizedAnnotation = normalizeNerAnnotationPayload(normalizedAnnotation);
+        Object rawAnnotation = request.annotation();
+        Object normalizedAnnotation = rawAnnotation;
+        if (rawAnnotation != null) {
+            normalizedAnnotation = normalizeAnnotationPayload(rawAnnotation);
+            if (participant.getProject().getProjectType() == ProjectType.NER) {
+                normalizedAnnotation = normalizeNerAnnotationPayload(normalizedAnnotation);
+            }
         }
         DatasetStepDefinition stepDefinition = resolveStepDefinition(targetItem);
 
@@ -795,10 +783,17 @@ public class ProjectServiceImpl implements ProjectService {
 
         int stepIndex = resolveStepIndex(request.stepIndex(), stepDefinition.totalSteps());
 
-        storeStepAnnotation(targetItem, user.getId(), stepIndex, normalizedAnnotation);
-        datasetItemRepository.save(targetItem);
+        if (normalizedAnnotation == null) {
+            removeStepAnnotation(targetItem, user, stepIndex);
+        } else {
+            storeStepAnnotation(targetItem, user, stepIndex, normalizedAnnotation);
+        }
 
-        ProjectProgressSnapshot progressAfterSave = buildProjectProgressSnapshot(participants, datasetItems);
+        Map<Long, Map<Long, Map<Integer, Object>>> annotationLookupAfterSave = buildAnnotationLookup(projectId);
+        ProjectProgressSnapshot progressAfterSave = buildProjectProgressSnapshot(
+                participants,
+                datasetItems,
+                annotationLookupAfterSave);
         int completionAfterSave = progressAfterSave.completionPercentageForUser(user.getId());
 
         if (completionBeforeSave < 100 && completionAfterSave == 100) {
@@ -931,7 +926,8 @@ public class ProjectServiceImpl implements ProjectService {
             throw new InvalidProjectSetupException("At least one label is required for this project type");
         }
 
-        if ((projectType == ProjectType.TEXT_CLASSIFICATION_SIMPLE || projectType == ProjectType.TEXT_CLASSIFICATION_MULTILABEL) && labels.size() < 2) {
+        if ((projectType == ProjectType.TEXT_CLASSIFICATION_SIMPLE
+                || projectType == ProjectType.TEXT_CLASSIFICATION_MULTILABEL) && labels.size() < 2) {
             throw new InvalidProjectSetupException("Classification projects require at least 2 labels");
         }
 
@@ -1060,7 +1056,8 @@ public class ProjectServiceImpl implements ProjectService {
             List<DatasetItem> datasetItems,
             Long userId,
             int offset,
-            int limit) {
+            int limit,
+            Map<Long, Map<Long, Map<Integer, Object>>> annotationLookup) {
         List<ProjectAnnotationStepDto> steps = new ArrayList<>();
         long absoluteIndex = 0;
 
@@ -1081,7 +1078,7 @@ public class ProjectServiceImpl implements ProjectService {
                     return steps;
                 }
 
-                Object annotation = findStepAnnotation(datasetItem, userId, stepIndex);
+                Object annotation = findStepAnnotation(annotationLookup, datasetItem.getId(), userId, stepIndex);
 
                 steps.add(new ProjectAnnotationStepDto(
                         datasetItem.getId(),
@@ -1098,6 +1095,55 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         return steps;
+    }
+
+    private Map<Long, Map<Long, Map<Integer, Object>>> buildAnnotationLookup(Long projectId) {
+        List<Annotation> annotations = annotationRepository.findByDatasetItemProjectId(projectId);
+
+        Map<Long, Map<Long, Map<Integer, Object>>> annotationLookup = new LinkedHashMap<>();
+        for (Annotation annotation : annotations) {
+            if (annotation.getDatasetItem() == null || annotation.getUser() == null) {
+                continue;
+            }
+
+            Long datasetItemId = annotation.getDatasetItem().getId();
+            Long userId = annotation.getUser().getId();
+            Integer stepIndex = annotation.getStepIndex();
+
+            if (datasetItemId == null || userId == null || stepIndex == null) {
+                continue;
+            }
+
+            annotationLookup
+                    .computeIfAbsent(datasetItemId, ignored -> new LinkedHashMap<>())
+                    .computeIfAbsent(userId, ignored -> new LinkedHashMap<>())
+                    .put(stepIndex, annotation.getPayload());
+        }
+
+        return annotationLookup;
+    }
+
+    private int findFirstPendingStepIndex(
+            List<DatasetItem> datasetItems,
+            Long userId,
+            Map<Long, Map<Long, Map<Integer, Object>>> annotationLookup) {
+        int globalStepIndex = 1;
+
+        for (DatasetItem datasetItem : datasetItems) {
+            DatasetStepDefinition stepDefinition = resolveStepDefinition(datasetItem);
+            int totalStepsForItem = stepDefinition.totalSteps();
+
+            for (int stepIndex = 0; stepIndex < totalStepsForItem; stepIndex++) {
+                Object annotation = findStepAnnotation(annotationLookup, datasetItem.getId(), userId, stepIndex);
+                if (!hasAnnotationPayload(annotation)) {
+                    return globalStepIndex;
+                }
+
+                globalStepIndex++;
+            }
+        }
+
+        return globalStepIndex > 1 ? 1 : 0;
     }
 
     private Object normalizeAnnotationPayload(Object annotationPayload) {
@@ -1232,19 +1278,59 @@ public class ProjectServiceImpl implements ProjectService {
         return stepIndex;
     }
 
-    private void storeStepAnnotation(DatasetItem datasetItem, Long userId, int stepIndex, Object annotationPayload) {
-        Map<String, Object> content = ensureMutableContent(datasetItem);
-        Map<String, Object> annotationsByUser = getOrCreateNestedMap(content, CONTENT_KEY_ANNOTATIONS_BY_USER);
-        Map<String, Object> userAnnotations = getOrCreateNestedMap(annotationsByUser, String.valueOf(userId));
-        Map<String, Object> steps = getOrCreateNestedMap(userAnnotations, USER_ANNOTATION_STEPS_KEY);
-        steps.put(String.valueOf(stepIndex), annotationPayload);
+    private void storeStepAnnotation(DatasetItem datasetItem, User user, int stepIndex, Object annotationPayload) {
+        Map<String, Object> annotationMap = normalizeAnnotationAsMap(annotationPayload);
+
+        Annotation annotation = annotationRepository
+                .findByDatasetItemIdAndUserIdAndStepIndex(datasetItem.getId(), user.getId(), stepIndex)
+                .orElseGet(() -> {
+                    Annotation created = new Annotation();
+                    created.setDatasetItem(datasetItem);
+                    created.setUser(user);
+                    created.setStepIndex(stepIndex);
+                    return created;
+                });
+
+        annotation.setPayload(annotationMap);
+        annotationRepository.save(annotation);
     }
 
-    private Object findStepAnnotation(DatasetItem datasetItem, Long userId, int stepIndex) {
-        Map<String, Object> annotationsByUser = readAnnotationsByUser(datasetItem.getContent());
-        Map<String, Object> userAnnotations = readNestedMap(annotationsByUser.get(String.valueOf(userId)));
-        Map<String, Object> steps = readNestedMap(userAnnotations.get(USER_ANNOTATION_STEPS_KEY));
-        return steps.get(String.valueOf(stepIndex));
+    private void removeStepAnnotation(DatasetItem datasetItem, User user, int stepIndex) {
+        annotationRepository.deleteByDatasetItemIdAndUserIdAndStepIndex(datasetItem.getId(), user.getId(), stepIndex);
+    }
+
+    private Map<String, Object> normalizeAnnotationAsMap(Object annotationPayload) {
+        if (annotationPayload instanceof Map<?, ?> payloadMap) {
+            return toMutableStringObjectMap(payloadMap);
+        }
+
+        Map<String, Object> wrappedPayload = new LinkedHashMap<>();
+        wrappedPayload.put(ANNOTATION_WRAPPED_VALUE_KEY, annotationPayload);
+        return wrappedPayload;
+    }
+
+    private Object findStepAnnotation(
+            Map<Long, Map<Long, Map<Integer, Object>>> annotationLookup,
+            Long datasetItemId,
+            Long userId,
+            int stepIndex) {
+        Map<Long, Map<Integer, Object>> userAnnotationsByDataset = annotationLookup.get(datasetItemId);
+        if (userAnnotationsByDataset == null) {
+            return null;
+        }
+
+        Map<Integer, Object> stepsByUser = userAnnotationsByDataset.get(userId);
+        if (stepsByUser == null) {
+            return null;
+        }
+
+        Object annotationPayload = stepsByUser.get(stepIndex);
+        if (!(annotationPayload instanceof Map<?, ?> rawMap) || !rawMap.containsKey(ANNOTATION_WRAPPED_VALUE_KEY)
+                || rawMap.size() != 1) {
+            return annotationPayload;
+        }
+
+        return rawMap.get(ANNOTATION_WRAPPED_VALUE_KEY);
     }
 
     private DatasetStepDefinition resolveStepDefinition(DatasetItem datasetItem) {
@@ -1440,55 +1526,6 @@ public class ProjectServiceImpl implements ProjectService {
         return trimmedBase64;
     }
 
-    private Map<String, Object> ensureMutableContent(DatasetItem datasetItem) {
-        Map<String, Object> content = datasetItem.getContent();
-        if (content == null) {
-            Map<String, Object> created = new LinkedHashMap<>();
-            datasetItem.setContent(created);
-            return created;
-        }
-
-        if (content instanceof LinkedHashMap<?, ?>) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> existing = (Map<String, Object>) content;
-            return existing;
-        }
-
-        Map<String, Object> copied = new LinkedHashMap<>(content);
-        datasetItem.setContent(copied);
-        return copied;
-    }
-
-    private Map<String, Object> getOrCreateNestedMap(Map<String, Object> parent, String key) {
-        Object rawValue = parent.get(key);
-        if (rawValue instanceof Map<?, ?> rawMap) {
-            Map<String, Object> normalized = toMutableStringObjectMap(rawMap);
-            parent.put(key, normalized);
-            return normalized;
-        }
-
-        Map<String, Object> created = new LinkedHashMap<>();
-        parent.put(key, created);
-        return created;
-    }
-
-    private Map<String, Object> readAnnotationsByUser(Map<String, Object> content) {
-        if (content == null) {
-            return Map.of();
-        }
-
-        Object rawAnnotations = content.get(CONTENT_KEY_ANNOTATIONS_BY_USER);
-        return readNestedMap(rawAnnotations);
-    }
-
-    private Map<String, Object> readNestedMap(Object rawValue) {
-        if (!(rawValue instanceof Map<?, ?> rawMap)) {
-            return Map.of();
-        }
-
-        return toMutableStringObjectMap(rawMap);
-    }
-
     private Map<String, Object> toMutableStringObjectMap(Map<?, ?> source) {
         Map<String, Object> result = new LinkedHashMap<>();
         for (Map.Entry<?, ?> entry : source.entrySet()) {
@@ -1539,12 +1576,14 @@ public class ProjectServiceImpl implements ProjectService {
         List<ProjectParticipant> participants = projectParticipantRepository
                 .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId);
         List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
-        return buildProjectProgressSnapshot(participants, datasetItems);
+        Map<Long, Map<Long, Map<Integer, Object>>> annotationLookup = buildAnnotationLookup(projectId);
+        return buildProjectProgressSnapshot(participants, datasetItems, annotationLookup);
     }
 
     private ProjectProgressSnapshot buildProjectProgressSnapshot(
             List<ProjectParticipant> participants,
-            List<DatasetItem> datasetItems) {
+            List<DatasetItem> datasetItems,
+            Map<Long, Map<Long, Map<Integer, Object>>> annotationLookup) {
         Map<Long, Long> completedStepsByUser = new LinkedHashMap<>();
         for (ProjectParticipant participant : participants) {
             completedStepsByUser.put(participant.getUser().getId(), 0L);
@@ -1561,14 +1600,11 @@ public class ProjectServiceImpl implements ProjectService {
                 continue;
             }
 
-            Map<String, Object> annotationsByUser = readAnnotationsByUser(datasetItem.getContent());
-            for (Map.Entry<String, Object> userEntry : annotationsByUser.entrySet()) {
-                Long userId = parseLong(userEntry.getKey());
-                if (userId == null || !completedStepsByUser.containsKey(userId)) {
-                    continue;
-                }
+            Map<Long, Map<Integer, Object>> annotationsByUser = annotationLookup
+                    .getOrDefault(datasetItem.getId(), Map.of());
 
-                long itemCompletedSteps = countCompletedSteps(userEntry.getValue(), itemTotalSteps);
+            for (Long userId : completedStepsByUser.keySet()) {
+                long itemCompletedSteps = countCompletedSteps(annotationsByUser.get(userId), itemTotalSteps);
                 completedStepsByUser.put(userId, completedStepsByUser.get(userId) + itemCompletedSteps);
             }
         }
@@ -1590,13 +1626,14 @@ public class ProjectServiceImpl implements ProjectService {
                 completionPercentageByUser);
     }
 
-    private long countCompletedSteps(Object userAnnotationData, int maxSteps) {
-        Map<String, Object> userData = readNestedMap(userAnnotationData);
-        Map<String, Object> steps = readNestedMap(userData.get(USER_ANNOTATION_STEPS_KEY));
+    private long countCompletedSteps(Map<Integer, Object> steps, int maxSteps) {
+        if (steps == null || steps.isEmpty()) {
+            return 0L;
+        }
 
         Set<Integer> validStepIndexes = new HashSet<>();
-        for (Map.Entry<String, Object> stepEntry : steps.entrySet()) {
-            Integer stepIndex = parseInteger(stepEntry.getKey());
+        for (Map.Entry<Integer, Object> stepEntry : steps.entrySet()) {
+            Integer stepIndex = stepEntry.getKey();
             if (stepIndex == null || stepIndex < 0 || stepIndex >= maxSteps) {
                 continue;
             }
@@ -1609,22 +1646,6 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         return validStepIndexes.size();
-    }
-
-    private Long parseLong(String value) {
-        try {
-            return Long.parseLong(value);
-        } catch (NumberFormatException ex) {
-            return null;
-        }
-    }
-
-    private Integer parseInteger(String value) {
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException ex) {
-            return null;
-        }
     }
 
     private int toPercentage(long numerator, long denominator) {
@@ -1996,6 +2017,7 @@ public class ProjectServiceImpl implements ProjectService {
             return completionPercentageByUser.getOrDefault(userId, 0);
         }
     }
+
     @Override
     @Transactional
     public void removeParticipantFromAllGroupProjects(Long researchGroupId, Long userId) {

@@ -32,6 +32,7 @@ import es.udc.fic.corpuslab.modules.project.enums.ProjectParticipantRole;
 import es.udc.fic.corpuslab.modules.project.exceptions.ProjectNotFoundException;
 import es.udc.fic.corpuslab.modules.project.fixtures.ProjectParticipantTestBuilder;
 import es.udc.fic.corpuslab.modules.project.fixtures.ProjectTestBuilder;
+import es.udc.fic.corpuslab.modules.project.repositories.AnnotationRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.DatasetItemRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.ProjectParticipantRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.ProjectRepository;
@@ -64,6 +65,9 @@ class ProjectServiceImplTest {
     private DatasetItemRepository datasetItemRepository;
 
     @Mock
+    private AnnotationRepository annotationRepository;
+
+    @Mock
     private NotificationRepository notificationRepository;
 
     @Mock
@@ -71,7 +75,7 @@ class ProjectServiceImplTest {
 
     @Mock
     private FileSecurityService fileSecurityService;
-    
+
     @Mock
     private EmailService emailService;
 
@@ -86,6 +90,7 @@ class ProjectServiceImplTest {
                 projectRepository,
                 projectParticipantRepository,
                 datasetItemRepository,
+                annotationRepository,
                 notificationRepository,
                 notificationService,
                 emailService,
@@ -116,7 +121,8 @@ class ProjectServiceImplTest {
 
         when(userRepository.findByEmailIgnoreCase("creator@example.com")).thenReturn(Optional.of(creator));
         when(projectRepository.findByIdAndResearchGroupId(100L, 10L)).thenReturn(Optional.of(project));
-        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(creatorParticipant));
+        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L))
+                .thenReturn(Optional.of(creatorParticipant));
         when(datasetItemRepository.findByProjectIdOrderByItemIndexAsc(100L)).thenReturn(List.of());
         when(projectParticipantRepository.findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(100L))
                 .thenReturn(List.of(creatorParticipant));
@@ -161,21 +167,26 @@ class ProjectServiceImplTest {
         // Mocks for updateProject authorization and data fetching
         when(userRepository.findByEmailIgnoreCase("creator@example.com")).thenReturn(Optional.of(creator));
         when(projectRepository.findByIdAndResearchGroupId(100L, 10L)).thenReturn(Optional.of(project));
-        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(creatorParticipant));
+        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L))
+                .thenReturn(Optional.of(creatorParticipant));
 
         // Mocks for replaceProjectParticipants
-        ResearchGroupMemberDto creatorMemberDto = new ResearchGroupMemberDto(1L, "C", "R", "creator@example.com", ResearchGroupMemberRole.OWNER, 0L);
-        ResearchGroupMemberDto existingMemberDto = new ResearchGroupMemberDto(2L, "E", "P", "existing@example.com", ResearchGroupMemberRole.ANNOTATOR, 0L);
-        ResearchGroupMemberDto newMemberDto = new ResearchGroupMemberDto(3L, "N", "P", "new@example.com", ResearchGroupMemberRole.ANNOTATOR, 0L);
-        
-        when(researchGroupMemberRepository.findMembersByGroupId(10L)).thenReturn(List.of(creatorMemberDto, existingMemberDto, newMemberDto));
+        ResearchGroupMemberDto creatorMemberDto = new ResearchGroupMemberDto(1L, "C", "R", "creator@example.com",
+                ResearchGroupMemberRole.OWNER, 0L);
+        ResearchGroupMemberDto existingMemberDto = new ResearchGroupMemberDto(2L, "E", "P", "existing@example.com",
+                ResearchGroupMemberRole.ANNOTATOR, 0L);
+        ResearchGroupMemberDto newMemberDto = new ResearchGroupMemberDto(3L, "N", "P", "new@example.com",
+                ResearchGroupMemberRole.ANNOTATOR, 0L);
+
+        when(researchGroupMemberRepository.findMembersByGroupId(10L))
+                .thenReturn(List.of(creatorMemberDto, existingMemberDto, newMemberDto));
         when(projectParticipantRepository.findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(100L))
                 .thenReturn(List.of(creatorParticipant, existingParticipantRecord));
         when(datasetItemRepository.findByProjectIdOrderByItemIndexAsc(100L)).thenReturn(List.of());
         when(userRepository.findAllById(any())).thenReturn(List.of(newParticipant));
-        
+
         // Mock getAssignedProjectDetail (called at the end of updateProject)
-        // For simplicity, we just return null or mock the behavior. 
+        // For simplicity, we just return null or mock the behavior.
         // Actually, updateProject returns ProjectDetailDto.
         // Let's just verify the interactions for now.
 
@@ -206,7 +217,8 @@ class ProjectServiceImplTest {
 
         when(userRepository.findByEmailIgnoreCase("participant@example.com")).thenReturn(Optional.of(participant));
         when(projectRepository.findByIdAndResearchGroupId(100L, 10L)).thenReturn(Optional.of(project));
-        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.of(participantRecord));
+        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 2L))
+                .thenReturn(Optional.of(participantRecord));
 
         UpdateProjectRequestDto request = new UpdateProjectRequestDto("New Name", "New Description", List.of());
         assertThatThrownBy(() -> projectService.updateProject("participant@example.com", 10L, 100L, request))
@@ -232,11 +244,13 @@ class ProjectServiceImplTest {
 
         when(userRepository.findByEmailIgnoreCase("creator@example.com")).thenReturn(Optional.of(creator));
         when(projectRepository.findByIdAndResearchGroupId(100L, 10L)).thenReturn(Optional.of(project));
-        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(creatorParticipant));
+        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L))
+                .thenReturn(Optional.of(creatorParticipant));
 
         projectService.deleteProject("creator@example.com", 10L, 100L);
 
         verify(notificationRepository).deleteByProjectId(100L);
+        verify(annotationRepository).deleteByDatasetItemProjectId(100L);
         verify(datasetItemRepository).deleteByProjectId(100L);
         verify(projectParticipantRepository).deleteByProjectId(100L);
         verify(projectRepository).delete(project);
@@ -261,7 +275,8 @@ class ProjectServiceImplTest {
 
         when(userRepository.findByEmailIgnoreCase("participant@example.com")).thenReturn(Optional.of(participant));
         when(projectRepository.findByIdAndResearchGroupId(100L, 10L)).thenReturn(Optional.of(project));
-        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.of(participantRecord));
+        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 2L))
+                .thenReturn(Optional.of(participantRecord));
 
         assertThatThrownBy(() -> projectService.deleteProject("participant@example.com", 10L, 100L))
                 .isInstanceOf(AccessDeniedException.class);
