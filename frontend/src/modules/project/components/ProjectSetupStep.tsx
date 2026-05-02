@@ -273,7 +273,7 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
             return normalizedCurrentValue;
           }
 
-          return normalizedHeaders[0] ?? 'NONE';
+          return normalizedHeaders[0] ?? '';
         });
       })
       .catch(() => {
@@ -282,7 +282,7 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
         }
 
         setCsvHeaderOptions([]);
-        setAnnotationTargetColumn('NONE');
+        setAnnotationTargetColumn('');
         toast.error(t('project.create.annotationTargetColumnHeadersReadError'));
       })
       .finally(() => {
@@ -414,7 +414,7 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
         guidelineText: guidelineMode === 'TEXT' ? guidelineText.trim() : undefined,
         guidelinePdfBase64,
         annotationTargetColumn:
-          requiresAnnotationTargetColumn && annotationTargetColumn !== 'NONE'
+          requiresAnnotationTargetColumn && annotationTargetColumn.trim().length > 0
             ? annotationTargetColumn.trim()
             : undefined,
       });
@@ -468,7 +468,7 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
           label={t('project.create.annotationTargetColumnLabel')}
           onValueChange={setAnnotationTargetColumn}
           options={[
-            { label: t('project.create.annotationTargetColumnNone'), value: 'NONE' },
+
             ...csvHeaderOptions.map((header) => ({
               label: header,
               value: header,

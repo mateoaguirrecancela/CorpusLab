@@ -178,7 +178,6 @@
       "annotationTargetColumnLabel": "Column to annotate",
       "annotationTargetColumnPlaceholder": "Ex: distil_predictions",
       "annotationTargetColumnLoading": "Reading CSV columns...",
-      "annotationTargetColumnNone": "None",
       "annotationTargetColumnHeadersReadError": "Could not read CSV headers. Enter the column manually.",
       "nerDatasetIncompatibleHint": "NER is only available if all dataset files are text, JSON, or CSV.",
       "nerDatasetIncompatibleError": "You cannot select NER with the current dataset. Use only text, JSON, or CSV files.",

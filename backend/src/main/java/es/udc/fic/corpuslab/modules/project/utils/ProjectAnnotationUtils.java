@@ -262,6 +262,8 @@ public class ProjectAnnotationUtils {
     public record AnnotatorExportColumn(
             Long userId,
             String annotationHeader,
-            String commentHeader) {
+            String commentHeader,
+            boolean hasAnnotation,
+            boolean hasComment) {
     }
 }

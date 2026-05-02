@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
@@ -225,6 +224,35 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
 
         boolean isCsvDataset = datasetItems.stream().anyMatch(ProjectDatasetUtils::isCsvDatasetItem);
 
+        // Determine which annotator columns have at least one non-empty value
+        List<ProjectAnnotationUtils.AnnotatorExportColumn> nonEmptyAnnotatorColumns = new ArrayList<>();
+        for (ProjectAnnotationUtils.AnnotatorExportColumn annotatorColumn : annotatorColumns) {
+            boolean hasAnnotation = false;
+            boolean hasComment = false;
+
+            for (ProjectAnnotationUtils.ExportStepRow row : exportRows) {
+                Object annotation = row.annotationsByUser().get(annotatorColumn.userId());
+                if (!hasAnnotation && !extractAnnotationValue(annotation).isEmpty()) {
+                    hasAnnotation = true;
+                }
+                if (!hasComment && !extractCommentValue(annotation).isEmpty()) {
+                    hasComment = true;
+                }
+                if (hasAnnotation && hasComment) {
+                    break;
+                }
+            }
+
+            if (hasAnnotation || hasComment) {
+                nonEmptyAnnotatorColumns.add(new ProjectAnnotationUtils.AnnotatorExportColumn(
+                        annotatorColumn.userId(),
+                        annotatorColumn.annotationHeader(),
+                        annotatorColumn.commentHeader(),
+                        hasAnnotation,
+                        hasComment));
+            }
+        }
+
         List<String> headers = new ArrayList<>();
         if (!isCsvDataset) {
             headers.add("dataset_item_index");
@@ -232,9 +260,13 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
         }
         headers.addAll(csvColumns);
 
-        for (ProjectAnnotationUtils.AnnotatorExportColumn annotatorColumn : annotatorColumns) {
-            headers.add(annotatorColumn.annotationHeader());
-            headers.add(annotatorColumn.commentHeader());
+        for (ProjectAnnotationUtils.AnnotatorExportColumn annotatorColumn : nonEmptyAnnotatorColumns) {
+            if (annotatorColumn.hasAnnotation()) {
+                headers.add(annotatorColumn.annotationHeader());
+            }
+            if (annotatorColumn.hasComment()) {
+                headers.add(annotatorColumn.commentHeader());
+            }
         }
 
         StringBuilder csvBuilder = new StringBuilder();
@@ -254,10 +286,14 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                 values.add(row.rowValues().getOrDefault(csvColumn, ""));
             }
 
-            for (ProjectAnnotationUtils.AnnotatorExportColumn annotatorColumn : annotatorColumns) {
+            for (ProjectAnnotationUtils.AnnotatorExportColumn annotatorColumn : nonEmptyAnnotatorColumns) {
                 Object annotation = row.annotationsByUser().get(annotatorColumn.userId());
-                values.add(extractAnnotationValue(annotation));
-                values.add(extractCommentValue(annotation));
+                if (annotatorColumn.hasAnnotation()) {
+                    values.add(extractAnnotationValue(annotation));
+                }
+                if (annotatorColumn.hasComment()) {
+                    values.add(extractCommentValue(annotation));
+                }
             }
 
             appendCsvLine(csvBuilder, values);
@@ -473,25 +509,25 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
     }
 
     private List<ProjectAnnotationUtils.AnnotatorExportColumn> buildAnnotatorExportColumns(Long projectId) {
-        Map<Long, String> annotatorEmailByUserId = new LinkedHashMap<>();
+        Map<Long, String> annotatorIdByUserId = new LinkedHashMap<>();
         for (ProjectParticipant pp : projectParticipantRepository
                 .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId)) {
             User annotator = pp.getUser();
             if (annotator == null || annotator.getId() == null) continue;
-            annotatorEmailByUserId.putIfAbsent(annotator.getId(), normalizeExportAnnotatorEmail(annotator));
+            annotatorIdByUserId.putIfAbsent(annotator.getId(), normalizeExportAnnotatorId(annotator));
         }
-        return annotatorEmailByUserId.entrySet().stream()
+        return annotatorIdByUserId.entrySet().stream()
                 .map(entry -> new ProjectAnnotationUtils.AnnotatorExportColumn(
                         entry.getKey(),
                         entry.getValue() + ProjectConstants.EXPORT_ANNOTATION_HEADER_SUFFIX,
-                        entry.getValue() + ProjectConstants.EXPORT_COMMENT_HEADER_SUFFIX))
+                        entry.getValue() + ProjectConstants.EXPORT_COMMENT_HEADER_SUFFIX,
+                        true,
+                        true))
                 .toList();
     }
 
-    private String normalizeExportAnnotatorEmail(User annotator) {
-        String normalizedEmail = StringUtils.trimToNull(annotator.getEmail());
-        if (normalizedEmail == null) return "user-" + annotator.getId();
-        return normalizedEmail.toLowerCase(Locale.ROOT);
+    private String normalizeExportAnnotatorId(User annotator) {
+        return annotator.getId().toString();
     }
 
     private String extractAnnotationValue(Object annotationPayload) {

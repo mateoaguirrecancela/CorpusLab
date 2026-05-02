@@ -26,14 +26,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+
 import { Textarea } from '@/components/ui/textarea';
 import {
   useProjectParticipantAnnotationWorkspaceQuery,
@@ -59,7 +52,7 @@ import {
 } from '@/modules/project/utils/projectUtils';
 
 const ANNOTATION_PAGE_SIZE = 50;
-const MAX_VISIBLE_CSV_COLUMNS = 8;
+
 
 type AnnotationDraft = {
   value: string;
@@ -97,6 +90,16 @@ function normalizeStepIndex(stepIndex: number, totalSteps: number): number {
   }
 
   return Math.min(Math.max(stepIndex, 1), totalSteps);
+}
+
+function projectTypeI18nKey(type: ProjectType): string {
+  const map: Record<ProjectType, string> = {
+    TEXT_CLASSIFICATION_SIMPLE: 'project.create.projectTypes.textClassificationSimple',
+    TEXT_CLASSIFICATION_MULTILABEL: 'project.create.projectTypes.textClassificationMultiLabel',
+    NER: 'project.create.projectTypes.ner',
+    SEQ2SEQ: 'project.create.projectTypes.seq2seq',
+  };
+  return map[type];
 }
 
 function normalizeStringArray(value: unknown): string[] {
@@ -345,83 +348,105 @@ function getNerSourceText(
   return step.preview;
 }
 
-function rangesOverlap(left: NerAnnotationEntity, right: NerAnnotationEntity): boolean {
-  return left.startOffset < right.endOffset && right.startOffset < left.endOffset;
-}
-
 function mergeNerEntity(
   existingEntities: NerAnnotationEntity[],
   nextEntity: NerAnnotationEntity,
-): NerAnnotationEntity[] | null {
-  const entitiesWithoutSameRange = existingEntities.filter(
+): NerAnnotationEntity[] {
+  const entitiesWithoutExactDuplicate = existingEntities.filter(
     (entity) =>
-      !(entity.startOffset === nextEntity.startOffset && entity.endOffset === nextEntity.endOffset),
+      !(
+        entity.startOffset === nextEntity.startOffset &&
+        entity.endOffset === nextEntity.endOffset &&
+        entity.label === nextEntity.label
+      ),
   );
 
-  const hasOverlap = entitiesWithoutSameRange.some((entity) => rangesOverlap(entity, nextEntity));
-  if (hasOverlap) {
-    return null;
-  }
-
-  return normalizeNerEntities([...entitiesWithoutSameRange, nextEntity]);
+  return normalizeNerEntities([...entitiesWithoutExactDuplicate, nextEntity]);
 }
 
 type NerTextSegment = {
   key: string;
   text: string;
-  entity: NerAnnotationEntity | null;
+  entities: NerAnnotationEntity[];
 };
 
 function buildNerTextSegments(
   sourceText: string,
   entities: NerAnnotationEntity[],
 ): NerTextSegment[] {
-  const segments: NerTextSegment[] = [];
   const normalizedEntities = normalizeNerEntities(entities).filter(
     (entity) => entity.endOffset <= sourceText.length,
   );
 
-  let cursor = 0;
-
-  normalizedEntities.forEach((entity, index) => {
-    if (entity.startOffset < cursor) {
-      return;
-    }
-
-    if (entity.startOffset > cursor) {
-      segments.push({
-        key: `text-${cursor}-${entity.startOffset}`,
-        text: sourceText.slice(cursor, entity.startOffset),
-        entity: null,
-      });
-    }
-
-    segments.push({
-      key: `entity-${entity.startOffset}-${entity.endOffset}-${index}`,
-      text: sourceText.slice(entity.startOffset, entity.endOffset),
-      entity,
-    });
-
-    cursor = entity.endOffset;
-  });
-
-  if (cursor < sourceText.length) {
-    segments.push({
-      key: `text-${cursor}-${sourceText.length}`,
-      text: sourceText.slice(cursor),
-      entity: null,
-    });
+  if (normalizedEntities.length === 0) {
+    return [
+      {
+        key: 'text-full',
+        text: sourceText,
+        entities: [],
+      },
+    ];
   }
 
-  if (segments.length === 0) {
+  // Collect all boundary points from entity start/end offsets
+  const boundarySet = new Set<number>();
+  boundarySet.add(0);
+  boundarySet.add(sourceText.length);
+
+  normalizedEntities.forEach((entity) => {
+    boundarySet.add(entity.startOffset);
+    boundarySet.add(entity.endOffset);
+  });
+
+  const boundaries = Array.from(boundarySet).sort((a, b) => a - b);
+  const segments: NerTextSegment[] = [];
+
+  for (let i = 0; i < boundaries.length - 1; i += 1) {
+    const segStart = boundaries[i];
+    const segEnd = boundaries[i + 1];
+
+    if (segStart >= segEnd) {
+      continue;
+    }
+
+    // Find all entities that cover this sub-range
+    const coveringEntities = normalizedEntities.filter(
+      (entity) => entity.startOffset <= segStart && entity.endOffset >= segEnd,
+    );
+
     segments.push({
-      key: 'text-full',
-      text: sourceText,
-      entity: null,
+      key: `seg-${segStart}-${segEnd}`,
+      text: sourceText.slice(segStart, segEnd),
+      entities: coveringEntities,
     });
   }
 
   return segments;
+}
+
+/**
+ * Regex matching leading/trailing whitespace and punctuation characters
+ * to strip from annotation text selections.
+ */
+const SELECTION_TRIM_PATTERN = /^(?:[\s]|(?![()\[\]{}])\p{P})+|(?:[\s]|(?![()\[\]{}])\p{P})+$/gu;
+
+function cleanSelectedText(
+  rawText: string,
+  rawStartOffset: number,
+): { text: string; startOffset: number; endOffset: number } | null {
+  const cleanedText = rawText.replace(SELECTION_TRIM_PATTERN, '');
+  if (cleanedText.length === 0) {
+    return null;
+  }
+
+  const leadingStripped = rawText.indexOf(cleanedText);
+  const adjustedStart = rawStartOffset + leadingStripped;
+
+  return {
+    text: cleanedText,
+    startOffset: adjustedStart,
+    endOffset: adjustedStart + cleanedText.length,
+  };
 }
 
 function selectionOffsetsWithinElement(
@@ -438,21 +463,25 @@ function selectionOffsetsWithinElement(
     return null;
   }
 
-  const selectedText = range.toString();
-  if (selectedText.trim().length === 0) {
+  const rawSelectedText = range.toString();
+  if (rawSelectedText.trim().length === 0) {
     return null;
   }
 
   const anchorRange = range.cloneRange();
   anchorRange.selectNodeContents(element);
   anchorRange.setEnd(range.startContainer, range.startOffset);
-  const startOffset = anchorRange.toString().length;
-  const endOffset = startOffset + selectedText.length;
+  const rawStartOffset = anchorRange.toString().length;
+
+  const cleaned = cleanSelectedText(rawSelectedText, rawStartOffset);
+  if (!cleaned) {
+    return null;
+  }
 
   return {
-    selectedText,
-    startOffset,
-    endOffset,
+    selectedText: cleaned.text,
+    startOffset: cleaned.startOffset,
+    endOffset: cleaned.endOffset,
   };
 }
 
@@ -1200,12 +1229,6 @@ export default function ProjectAnnotationPage() {
     };
 
     const mergedEntities = mergeNerEntity(getDraft(currentStep).entities, nextEntity);
-    if (mergedEntities == null) {
-      toast.error(t('project.annotationPage.errors.nerOverlappingEntities'));
-      clearTextSelection();
-      return;
-    }
-
     updateDraft(currentStep, { entities: mergedEntities });
     clearTextSelection();
   };
@@ -1339,55 +1362,33 @@ export default function ProjectAnnotationPage() {
     return parseCsvStepPreview(currentStep.preview);
   }, [currentStep]);
 
-  const csvTableColumns = useMemo(() => {
+  const csvTargetColumnValue = useMemo(() => {
     if (!currentStep || !isCsvMimeType(currentStep.sourceMimeType)) {
-      return [] as Array<{ header: string; value: string }>;
+      return null;
     }
 
-    if (currentStep.rowValues) {
-      const rowEntries = Object.entries(currentStep.rowValues);
-      if (rowEntries.length > 0) {
-        return rowEntries.map(([header, value], columnIndex) => ({
-          header: header.trim() || `column_${columnIndex + 1}`,
-          value,
-        }));
+    const normalizedTarget = annotationTargetColumn?.trim().toLowerCase() ?? '';
+
+    if (normalizedTarget.length > 0 && currentStep.rowValues) {
+      for (const [key, value] of Object.entries(currentStep.rowValues)) {
+        if (key.trim().toLowerCase() === normalizedTarget) {
+          return value || '';
+        }
       }
     }
 
-    if (!csvStepPreview) {
-      return [] as Array<{ header: string; value: string }>;
+    if (normalizedTarget.length > 0 && csvStepPreview) {
+      const targetIndex = csvStepPreview.headerColumns.findIndex(
+        (header) => header.trim().toLowerCase() === normalizedTarget,
+      );
+
+      if (targetIndex >= 0) {
+        return csvStepPreview.rowColumns[targetIndex] ?? '';
+      }
     }
 
-    return csvStepPreview.headerColumns.map((header, columnIndex) => ({
-      header: header || `column_${columnIndex + 1}`,
-      value: csvStepPreview.rowColumns[columnIndex] ?? '-',
-    }));
-  }, [csvStepPreview, currentStep]);
-
-  const visibleCsvTableColumns = useMemo(() => {
-    if (csvTableColumns.length <= MAX_VISIBLE_CSV_COLUMNS) {
-      return csvTableColumns;
-    }
-
-    const normalizedTargetColumn = annotationTargetColumn?.trim().toLowerCase() ?? '';
-    if (normalizedTargetColumn.length === 0) {
-      return csvTableColumns.slice(0, MAX_VISIBLE_CSV_COLUMNS);
-    }
-
-    const targetColumnIndex = csvTableColumns.findIndex(
-      (column) => column.header.toLowerCase() === normalizedTargetColumn,
-    );
-
-    if (targetColumnIndex < 0) {
-      return csvTableColumns.slice(0, MAX_VISIBLE_CSV_COLUMNS);
-    }
-
-    const halfWindow = Math.floor(MAX_VISIBLE_CSV_COLUMNS / 2);
-    const maxStartIndex = csvTableColumns.length - MAX_VISIBLE_CSV_COLUMNS;
-    const startIndex = Math.min(Math.max(targetColumnIndex - halfWindow, 0), maxStartIndex);
-
-    return csvTableColumns.slice(startIndex, startIndex + MAX_VISIBLE_CSV_COLUMNS);
-  }, [annotationTargetColumn, csvTableColumns]);
+    return currentStep.preview;
+  }, [annotationTargetColumn, csvStepPreview, currentStep]);
 
   const selectedLabels = useMemo(() => {
     return parseCommaSeparatedLabels(currentDraft.value);
@@ -1435,105 +1436,87 @@ export default function ProjectAnnotationPage() {
   const classificationHeading = isReviewMode
     ? t('project.annotationPage.classificationTitle')
     : `${t('project.annotationPage.classificationTitle')} *`;
-  const normalizedAnnotationTargetColumn = annotationTargetColumn?.trim().toLowerCase() ?? '';
-
   let csvSourceContent: ReactNode = (
     <pre className="whitespace-pre-wrap px-3 py-2 text-sm leading-relaxed text-foreground/90">
       {currentStep?.preview ?? ''}
     </pre>
   );
 
-  if (visibleCsvTableColumns.length > 0) {
-    csvSourceContent = (
-      <Table className="min-w-max table-auto text-left text-sm">
-        <TableHeader className="bg-muted/40">
-          <TableRow className="hover:bg-transparent">
-            {visibleCsvTableColumns.map((column, columnIndex) => {
-              const isTargetColumn =
-                normalizedAnnotationTargetColumn.length > 0 &&
-                normalizedAnnotationTargetColumn === column.header.toLowerCase();
+  if (csvTargetColumnValue != null) {
+    const columnHeader = annotationTargetColumn ? (
+      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        {annotationTargetColumn}
+      </span>
+    ) : null;
+
+    if (annotationProjectType === 'NER') {
+      csvSourceContent = (
+        <div>
+          {columnHeader}
+          <div
+            aria-label={t('project.annotationPage.nerSelectionAreaLabel')}
+            className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90 select-text"
+            ref={nerSourceSelectionRef}
+          >
+            {nerTextSegments.map((segment) => {
+              if (segment.entities.length === 0) {
+                return <span key={segment.key}>{segment.text}</span>;
+              }
+
+              const segEnd = Number.parseInt(segment.key.split('-')[2], 10);
+
+              const nestedMarks = segment.entities.reduce(
+                (acc, entity) => (
+                  <mark
+                    className="rounded-xs px-px text-current"
+                    key={`${entity.label}-${entity.startOffset}`}
+                    style={getNerEntityStyle(entity.label, nerLabelColorMap)}
+                    title={entity.label}
+                  >
+                    {acc}
+                  </mark>
+                ),
+                <>{segment.text}</>,
+              );
 
               return (
-                <TableHead
-                  className={[
-                    'h-auto max-w-xl border-b border-border p-4 font-semibold whitespace-normal wrap-break-word',
-                    isTargetColumn ? 'bg-primary/5 text-primary' : 'text-foreground',
-                  ].join(' ')}
-                  key={`${column.header}-${columnIndex}`}
-                  scope="col"
-                >
-                  {column.header}
-                </TableHead>
+                <span className="group/ner relative inline" key={segment.key}>
+                  {nestedMarks}
+                  {!isReviewMode &&
+                    segment.entities
+                      .filter((entity) => entity.endOffset === segEnd)
+                      .map((entity, index) => (
+                        <button
+                          aria-label={t('project.annotationPage.removeEntity')}
+                          className="absolute -top-2 -right-2 inline-flex size-4 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-destructive group-hover/ner:opacity-100"
+                          key={`${entity.label}-${entity.startOffset}`}
+                          onClick={() => removeNerEntity(currentStep, entity)}
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                          }}
+                          style={{ transform: index > 0 ? `translateX(${index * 1}rem)` : undefined }}
+                          type="button"
+                        >
+                          <X aria-hidden className="size-3" />
+                        </button>
+                      ))}
+                </span>
               );
             })}
-          </TableRow>
-        </TableHeader>
-        <TableBody className="bg-surface-base">
-          <TableRow className="align-top hover:bg-transparent">
-            {visibleCsvTableColumns.map((column, columnIndex) => {
-              const isTargetColumn =
-                normalizedAnnotationTargetColumn.length > 0 &&
-                normalizedAnnotationTargetColumn === column.header.toLowerCase();
-
-              return (
-                <TableCell
-                  className={[
-                    'max-w-xl border-b border-border/60 p-4 align-top whitespace-normal wrap-break-word',
-                    isTargetColumn
-                      ? 'bg-primary/5 text-foreground font-medium'
-                      : 'text-foreground/90',
-                  ].join(' ')}
-                  key={`${column.header}-${column.value}-${columnIndex}`}
-                >
-                  {isTargetColumn && annotationProjectType === 'NER' ? (
-                    <div
-                      aria-label={t('project.annotationPage.nerSelectionAreaLabel')}
-                      className="whitespace-pre-wrap select-text"
-                      ref={nerSourceSelectionRef}
-                    >
-                      {nerTextSegments.map((segment) => {
-                        const entity = segment.entity;
-                        if (!entity) {
-                          return <span key={segment.key}>{segment.text}</span>;
-                        }
-
-                        return (
-                          <span className="group/ner relative inline" key={segment.key}>
-                            <mark
-                              className="rounded-xs px-px text-current"
-                              style={getNerEntityStyle(entity.label, nerLabelColorMap)}
-                              title={entity.label}
-                            >
-                              {segment.text}
-                            </mark>
-                            {!isReviewMode && (
-                              <button
-                                aria-label={t('project.annotationPage.removeEntity')}
-                                className="absolute -top-2 -right-2 inline-flex size-4 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-destructive group-hover/ner:opacity-100"
-                                onClick={() => removeNerEntity(currentStep, entity)}
-                                onMouseDown={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                }}
-                                type="button"
-                              >
-                                <X aria-hidden className="size-3" />
-                              </button>
-                            )}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    column.value || '-'
-                  )}
-                </TableCell>
-              );
-            })}
-          </TableRow>
-        </TableBody>
-      </Table>
-    );
+          </div>
+        </div>
+      );
+    } else {
+      csvSourceContent = (
+        <div>
+          {columnHeader}
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+            {csvTargetColumnValue}
+          </p>
+        </div>
+      );
+    }
   }
 
   let guidelineContent = (
@@ -1565,7 +1548,7 @@ export default function ProjectAnnotationPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer className="mb-16">
       <div className="flex items-center justify-between gap-3">
         <BackButton
           disabled={areStepActionsDisabled}
@@ -1591,9 +1574,9 @@ export default function ProjectAnnotationPage() {
       </div>
 
       {isReviewMode && (
-        <h2 className="text-3xl font-black tracking-tight text-primary sm:text-4xl">
+        <h1 className="text-3xl font-black tracking-tight text-primary sm:text-4xl">
           {reviewedParticipantLabel ?? String(reviewedParticipantUserId)}
-        </h2>
+        </h1>
       )}
 
       {(isProjectLoading || isAnnotationWorkspaceLoading) && (
@@ -1693,8 +1676,8 @@ export default function ProjectAnnotationPage() {
                     {!isSourceLoading &&
                       sourceLoadError.length === 0 &&
                       isCsvMimeType(currentStep.sourceMimeType) && (
-                        <div className="max-h-130 w-full max-w-full overflow-hidden rounded-lg border border-border/70 bg-surface-base">
-                          <div className="max-h-130 w-full overflow-y-auto">{csvSourceContent}</div>
+                        <div className="max-h-130 w-full overflow-y-auto">
+                          {csvSourceContent}
                         </div>
                       )}
 
@@ -1743,34 +1726,50 @@ export default function ProjectAnnotationPage() {
                             ref={nerSourceSelectionRef}
                           >
                             {nerTextSegments.map((segment) => {
-                              const entity = segment.entity;
-                              if (!entity) {
+                              if (segment.entities.length === 0) {
                                 return <span key={segment.key}>{segment.text}</span>;
                               }
 
-                              return (
-                                <span className="group/ner relative inline" key={segment.key}>
+                              const segEnd = Number.parseInt(segment.key.split('-')[2], 10);
+
+                              const nestedMarks = segment.entities.reduce(
+                                (acc, entity) => (
                                   <mark
                                     className="rounded-xs px-px text-current"
+                                    key={`${entity.label}-${entity.startOffset}`}
                                     style={getNerEntityStyle(entity.label, nerLabelColorMap)}
                                     title={entity.label}
                                   >
-                                    {segment.text}
+                                    {acc}
                                   </mark>
-                                  {!isReviewMode && (
-                                    <button
-                                      aria-label={t('project.annotationPage.removeEntity')}
-                                      className="absolute -top-2 -right-2 inline-flex size-4 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-destructive group-hover/ner:opacity-100"
-                                      onClick={() => removeNerEntity(currentStep, entity)}
-                                      onMouseDown={(event) => {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                      }}
-                                      type="button"
-                                    >
-                                      <X aria-hidden className="size-3" />
-                                    </button>
-                                  )}
+                                ),
+                                <>{segment.text}</>,
+                              );
+
+                              return (
+                                <span className="group/ner relative inline" key={segment.key}>
+                                  {nestedMarks}
+                                  {!isReviewMode &&
+                                    segment.entities
+                                      .filter((entity) => entity.endOffset === segEnd)
+                                      .map((entity, index) => (
+                                        <button
+                                          aria-label={t('project.annotationPage.removeEntity')}
+                                          className="absolute -top-2 -right-2 inline-flex size-4 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-destructive group-hover/ner:opacity-100"
+                                          key={`${entity.label}-${entity.startOffset}`}
+                                          onClick={() => removeNerEntity(currentStep, entity)}
+                                          onMouseDown={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                          }}
+                                          style={{
+                                            transform: index > 0 ? `translateX(${index * 1}rem)` : undefined,
+                                          }}
+                                          type="button"
+                                        >
+                                          <X aria-hidden className="size-3" />
+                                        </button>
+                                      ))}
                                 </span>
                               );
                             })}
@@ -1799,10 +1798,15 @@ export default function ProjectAnnotationPage() {
 
               <aside className="space-y-4 rounded-xl border border-border bg-surface-base p-5 sm:p-6">
                 <section>
-                  <h2 className="flex items-center gap-2 text-sm font-bold tracking-[0.12em] text-muted-foreground uppercase">
-                    <Tag className="size-4" />
-                    {classificationHeading}
-                  </h2>
+                  {project && (
+                      <h1 className="mb-4 text-md font-bold tracking-wider text-muted-foreground uppercase">
+                        {t(projectTypeI18nKey(project.projectType))}
+                      </h1>
+                    )}
+                    <h3 className="flex items-center gap-2 text-sm font-bold tracking-[0.12em] text-muted-foreground uppercase">
+                      <Tag className="size-4" />
+                      {classificationHeading}
+                    </h3>
 
                   <div className="mt-4 space-y-3">
                     {annotationProjectType === 'TEXT_CLASSIFICATION_SIMPLE' &&
@@ -1930,20 +1934,12 @@ export default function ProjectAnnotationPage() {
                       </p>
                     )}
                   </div>
-
-                  {annotationTargetColumn && (
-                    <p className="mt-3 text-xs font-semibold text-muted-foreground">
-                      {t('project.annotationPage.csvTargetColumnBadge', {
-                        column: annotationTargetColumn,
-                      })}
-                    </p>
-                  )}
                 </section>
 
                 <section>
-                  <h2 className="text-sm font-bold tracking-[0.12em] text-muted-foreground uppercase">
+                  <h3 className="text-sm font-bold tracking-[0.12em] text-muted-foreground uppercase">
                     {t('project.annotationPage.notesTitle')}
-                  </h2>
+                  </h3>
                   <Textarea
                     className="mt-3"
                     disabled={isReviewMode}
