@@ -19,18 +19,17 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @Slf4j
 public class FileSecurityService {
+    // TODO Convertir en un Util
 
     private static final Tika TIKA = new Tika();
-    
+
     // Dangerous extensions that should NEVER be allowed
     private static final Set<String> BANNED_EXTENSIONS = Set.of(
-        "exe", "bat", "cmd", "sh", "php", "jsp", "asp", "aspx", "js", "vbs", "jar", "war", "ear", "bin"
-    );
+            "exe", "bat", "cmd", "sh", "php", "jsp", "asp", "aspx", "js", "vbs", "jar", "war", "ear", "bin");
 
     // Whitelist of common safe extensions (can be expanded)
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
-        "txt", "pdf", "csv", "json", "png", "jpg", "jpeg", "gif", "doc", "docx", "xls", "xlsx"
-    );
+            "txt", "pdf", "csv", "json", "png", "jpg", "jpeg", "gif", "doc", "docx", "xls", "xlsx");
 
     // CSV Injection characters
     private static final List<String> CSV_INJECTION_CHARS = Arrays.asList("=", "+", "-", "@");
@@ -56,7 +55,8 @@ public class FileSecurityService {
     }
 
     /**
-     * Validates that the filename doesn't contain path traversal sequences and has a safe extension.
+     * Validates that the filename doesn't contain path traversal sequences and has
+     * a safe extension.
      */
     private void validateFilename(String filename) {
         String cleanName = StringUtils.cleanPath(filename);
@@ -86,18 +86,20 @@ public class FileSecurityService {
             String detectedMimeType = TIKA.detect(is);
             String declaredMimeType = file.getContentType();
 
-            log.debug("File: {}, Declared: {}, Detected: {}", file.getOriginalFilename(), declaredMimeType, detectedMimeType);
+            log.debug("File: {}, Declared: {}, Detected: {}", file.getOriginalFilename(), declaredMimeType,
+                    detectedMimeType);
 
             // Basic check for executable/dangerous formats detected by Tika
-            if (detectedMimeType.equals("application/x-msdownload") || 
-                detectedMimeType.equals("application/x-sh") ||
-                detectedMimeType.equals("application/x-executable") ||
-                detectedMimeType.equals("application/x-sharedlib")) {
+            if (detectedMimeType.equals("application/x-msdownload") ||
+                    detectedMimeType.equals("application/x-sh") ||
+                    detectedMimeType.equals("application/x-executable") ||
+                    detectedMimeType.equals("application/x-sharedlib")) {
                 log.warn("Dangerous binary format detected: {}", detectedMimeType);
                 throw new InvalidProjectDatasetException("Binary/Executable files are not allowed");
             }
 
-            // We could also check if detectedMimeType matches declaredMimeType if we want to be stricter
+            // We could also check if detectedMimeType matches declaredMimeType if we want
+            // to be stricter
         } catch (IOException e) {
             log.error("Error reading file for magic bytes validation", e);
             throw new InvalidProjectDatasetException("Could not validate file content");
@@ -124,7 +126,8 @@ public class FileSecurityService {
     }
 
     private String sanitizeCsvLine(String line) {
-        if (line == null || line.isBlank()) return line;
+        if (line == null || line.isBlank())
+            return line;
 
         List<String> cells = parseCsvColumns(line);
         for (int i = 0; i < cells.size(); i++) {
@@ -166,8 +169,9 @@ public class FileSecurityService {
     }
 
     private String sanitizeCell(String cell) {
-        if (cell == null || cell.isBlank()) return cell;
-        
+        if (cell == null || cell.isBlank())
+            return cell;
+
         String checkValue = cell.trim();
         // If it's quoted, look at the first character inside the quotes
         if (checkValue.startsWith("\"") && checkValue.length() > 1) {

@@ -1,37 +1,50 @@
 package es.udc.fic.corpuslab.modules.notification.services;
 
-import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.notification.dtos.NotificationDto;
 import es.udc.fic.corpuslab.modules.notification.dtos.NotificationListResponseDto;
-import es.udc.fic.corpuslab.modules.project.entities.Project;
-import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroup;
 
+/**
+ * Public API for the notification module.
+ * All method signatures use exclusively primitives and DTOs — no entity imports.
+ */
 public interface NotificationService {
 
-        NotificationListResponseDto findMyNotifications(String authenticatedEmail, int limit);
+    NotificationListResponseDto findMyNotifications(String authenticatedEmail, int limit);
 
-        NotificationDto markNotificationAsRead(String authenticatedEmail, Long notificationId);
+    NotificationDto markNotificationAsRead(String authenticatedEmail, Long notificationId);
 
-        void markAllNotificationsAsRead(String authenticatedEmail);
+    void markAllNotificationsAsRead(String authenticatedEmail);
 
-        void createResearchGroupInvitationReceivedNotification(
-                        User recipient,
-                        User inviter,
-                        ResearchGroup researchGroup,
-                        Long invitationId);
+    void createResearchGroupInvitationReceivedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName,
+            Long invitationId);
 
-        void createResearchGroupInvitationAcceptedNotification(
-                        User recipient,
-                        User actor,
-                        ResearchGroup researchGroup);
+    void createResearchGroupInvitationAcceptedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName);
 
-        void createProjectParticipantAssignedNotification(
-                        User recipient,
-                        User actor,
-                        Project project);
+    void createProjectParticipantAssignedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName);
 
-        void createProjectAnnotationCompletedNotification(
-                        User recipient,
-                        User actor,
-                        Project project);
+    void createProjectAnnotationCompletedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void deleteNotificationsByProjectId(Long projectId);
+
+    void deleteNotificationsByResearchGroupId(Long researchGroupId);
 }

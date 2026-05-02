@@ -130,6 +130,7 @@ export type ProjectAnnotationWorkspace = {
   totalSteps: number;
   completedSteps: number;
   completionPercentage: number;
+  firstPendingStepIndex: number;
   steps: AnnotationStep[];
 };
 

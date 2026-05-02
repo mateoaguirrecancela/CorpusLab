@@ -91,28 +91,6 @@ function annotationStepKey(step: AnnotationStep): string {
   return `${step.datasetItemId}:${step.stepIndex}`;
 }
 
-function annotationResumeStorageKey(projectId: number): string {
-  return `project-annotation-resume-step:${projectId}`;
-}
-
-function readStoredResumeStep(projectId: number): number | null {
-  if (globalThis.window === undefined || !Number.isFinite(projectId) || projectId <= 0) {
-    return null;
-  }
-
-  const rawValue = globalThis.localStorage.getItem(annotationResumeStorageKey(projectId));
-  if (!rawValue) {
-    return null;
-  }
-
-  const parsedValue = Number(rawValue);
-  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
-    return null;
-  }
-
-  return parsedValue;
-}
-
 function normalizeStepIndex(stepIndex: number, totalSteps: number): number {
   if (totalSteps <= 0) {
     return 0;
@@ -1085,14 +1063,17 @@ export default function ProjectAnnotationPage() {
       return;
     }
 
-    const storedStep = readStoredResumeStep(numericProjectId);
-    const fallbackStep =
-      annotationWorkspace.completedSteps >= total ? total : annotationWorkspace.completedSteps + 1;
-    const initialStep = normalizeStepIndex(storedStep ?? fallbackStep, total);
+    const isCompleted = annotationWorkspace.completionPercentage >= 100;
+    const isFirstTime = annotationWorkspace.completedSteps <= 0;
+
+    const initialStep = normalizeStepIndex(
+      isCompleted || isFirstTime ? 1 : annotationWorkspace.firstPendingStepIndex,
+      total,
+    );
 
     setResumeGlobalStepIndex(initialStep);
     setHasResolvedResumeStep(true);
-  }, [annotationWorkspace, hasResolvedResumeStep, isInvalidProjectId, numericProjectId]);
+  }, [annotationWorkspace, hasResolvedResumeStep, isInvalidProjectId]);
 
   const {
     activeStepOnPage,
@@ -1109,29 +1090,6 @@ export default function ProjectAnnotationPage() {
     resumeGlobalStepIndex,
     setResumeGlobalStepIndex,
   );
-
-  useEffect(() => {
-    if (
-      isInvalidProjectId ||
-      !hasResolvedResumeStep ||
-      resumeGlobalStepIndex != null ||
-      currentGlobalStepIndex <= 0 ||
-      globalThis.window === undefined
-    ) {
-      return;
-    }
-
-    globalThis.localStorage.setItem(
-      annotationResumeStorageKey(numericProjectId),
-      String(currentGlobalStepIndex),
-    );
-  }, [
-    currentGlobalStepIndex,
-    hasResolvedResumeStep,
-    isInvalidProjectId,
-    numericProjectId,
-    resumeGlobalStepIndex,
-  ]);
 
   const currentStep =
     steps.length === 0 ? null : steps[Math.min(activeStepOnPage, steps.length - 1)];
@@ -1302,9 +1260,6 @@ export default function ProjectAnnotationPage() {
       draft.notes,
       draft.entities,
     );
-    if (payload == null) {
-      return 'skipped';
-    }
 
     const stepId = annotationStepKey(currentStep);
     setSavingStepId(stepId);
@@ -1363,34 +1318,11 @@ export default function ProjectAnnotationPage() {
   const currentDraft = currentStep
     ? getDraft(currentStep)
     : { value: '', notes: '', entities: [] as NerAnnotationEntity[] };
-  const isClassificationCompleted = useMemo(() => {
-    if (isReviewMode) {
-      return true;
-    }
-
-    return (
-      buildAnnotationPayload(
-        annotationProjectType,
-        currentDraft.value,
-        '',
-        currentDraft.entities,
-      ) != null
-    );
-  }, [annotationProjectType, currentDraft.entities, currentDraft.value, isReviewMode]);
-
   const handleNextAction = async () => {
-    if (!isClassificationCompleted) {
-      return;
-    }
-
     await runAfterPersist(goToNextStep);
   };
 
   const handleFinishAction = async () => {
-    if (!isClassificationCompleted) {
-      return;
-    }
-
     await runAfterPersist(() => navigate(`/home/projects/${numericProjectId}`));
   };
 
@@ -2048,7 +1980,7 @@ export default function ProjectAnnotationPage() {
 
             {isLastStep ? (
               <Button
-                disabled={areStepActionsDisabled || !isClassificationCompleted}
+                disabled={areStepActionsDisabled}
                 onClick={handleFinishAction}
                 type="button"
                 className="h-10 rounded-md bg-primary px-6 text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
@@ -2058,7 +1990,7 @@ export default function ProjectAnnotationPage() {
               </Button>
             ) : (
               <Button
-                disabled={!canMoveNext || areStepActionsDisabled || !isClassificationCompleted}
+                disabled={!canMoveNext || areStepActionsDisabled}
                 onClick={handleNextAction}
                 type="button"
                 className="h-10 rounded-md bg-primary px-6 text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-secondary cursor-pointer"

@@ -21,34 +21,36 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 
+import es.udc.fic.corpuslab.modules.auth.api.AuthApiService;
+import es.udc.fic.corpuslab.modules.auth.api.dtos.UserInfo;
 import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
-import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.notification.dtos.NotificationDto;
 import es.udc.fic.corpuslab.modules.notification.dtos.NotificationListResponseDto;
 import es.udc.fic.corpuslab.modules.notification.entities.Notification;
 import es.udc.fic.corpuslab.modules.notification.enums.NotificationType;
 import es.udc.fic.corpuslab.modules.notification.exceptions.NotificationNotFoundException;
 import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
-import es.udc.fic.corpuslab.modules.project.entities.Project;
-import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroup;
-import es.udc.fic.corpuslab.modules.researchgroup.fixtures.ResearchGroupTestBuilder;
+import jakarta.persistence.EntityManager;
 
 @ExtendWith(MockitoExtension.class)
 class NotificationServiceImplTest {
 
     @Mock
-    private UserRepository userRepository;
+    private AuthApiService authApiService;
 
     @Mock
     private NotificationRepository notificationRepository;
+
+    @Mock
+    private EntityManager entityManager;
 
     private NotificationService notificationService;
 
     @BeforeEach
     void setUp() {
-        notificationService = new NotificationServiceImpl(userRepository, notificationRepository);
+        notificationService = new NotificationServiceImpl(authApiService, notificationRepository, entityManager);
     }
 
     @Test
@@ -58,6 +60,9 @@ class NotificationServiceImplTest {
 
         User actor = UserTestBuilder.validUser().withFirstName("Ada").withLastName("Lovelace").build();
         setField(actor, "id", 12L);
+
+        when(authApiService.findUserByEmail("reader@example.com"))
+                .thenReturn(new UserInfo(11L, "reader@example.com", "Reader", "User"));
 
         Notification unread = new Notification();
         unread.setRecipientUser(recipient);
@@ -79,8 +84,6 @@ class NotificationServiceImplTest {
         setField(alreadyRead, "id", 901L);
         setField(alreadyRead, "createdAt", Instant.parse("2026-04-04T09:00:00Z"));
 
-        when(userRepository.findByEmailIgnoreCase("reader@example.com"))
-                .thenReturn(Optional.of(recipient));
         when(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(eq(11L), any(Pageable.class)))
                 .thenReturn(List.of(unread, alreadyRead));
         when(notificationRepository.countByRecipientUserIdAndReadAtIsNull(11L)).thenReturn(1L);
@@ -107,10 +110,8 @@ class NotificationServiceImplTest {
 
     @Test
     void findMyNotificationsShouldCapLimitAtFifty() {
-        User recipient = UserTestBuilder.validUser().withEmail("reader@example.com").build();
-        setField(recipient, "id", 11L);
-
-        when(userRepository.findByEmailIgnoreCase("reader@example.com")).thenReturn(Optional.of(recipient));
+        when(authApiService.findUserByEmail("reader@example.com"))
+                .thenReturn(new UserInfo(11L, "reader@example.com", "Reader", "User"));
         when(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(eq(11L), any(Pageable.class)))
                 .thenReturn(List.of());
         when(notificationRepository.countByRecipientUserIdAndReadAtIsNull(11L)).thenReturn(0L);
@@ -127,13 +128,15 @@ class NotificationServiceImplTest {
         User recipient = UserTestBuilder.validUser().withEmail("reader@example.com").build();
         setField(recipient, "id", 11L);
 
+        when(authApiService.findUserByEmail("reader@example.com"))
+                .thenReturn(new UserInfo(11L, "reader@example.com", "Reader", "User"));
+
         Notification notification = new Notification();
         notification.setRecipientUser(recipient);
         notification.setType(NotificationType.RESEARCH_GROUP_INVITATION_RECEIVED);
         setField(notification, "id", 33L);
         setField(notification, "createdAt", Instant.parse("2026-04-04T10:00:00Z"));
 
-        when(userRepository.findByEmailIgnoreCase("reader@example.com")).thenReturn(Optional.of(recipient));
         when(notificationRepository.findByIdAndRecipientUserId(33L, 11L)).thenReturn(Optional.of(notification));
         when(notificationRepository.save(notification)).thenReturn(notification);
 
@@ -149,6 +152,9 @@ class NotificationServiceImplTest {
         User recipient = UserTestBuilder.validUser().withEmail("reader@example.com").build();
         setField(recipient, "id", 11L);
 
+        when(authApiService.findUserByEmail("reader@example.com"))
+                .thenReturn(new UserInfo(11L, "reader@example.com", "Reader", "User"));
+
         Notification notification = new Notification();
         notification.setRecipientUser(recipient);
         notification.setType(NotificationType.RESEARCH_GROUP_INVITATION_RECEIVED);
@@ -156,7 +162,6 @@ class NotificationServiceImplTest {
         setField(notification, "id", 33L);
         setField(notification, "createdAt", Instant.parse("2026-04-04T10:00:00Z"));
 
-        when(userRepository.findByEmailIgnoreCase("reader@example.com")).thenReturn(Optional.of(recipient));
         when(notificationRepository.findByIdAndRecipientUserId(33L, 11L)).thenReturn(Optional.of(notification));
 
         NotificationDto result = notificationService.markNotificationAsRead("reader@example.com", 33L);
@@ -167,10 +172,8 @@ class NotificationServiceImplTest {
 
     @Test
     void markNotificationAsReadShouldThrowWhenNotificationDoesNotBelongToUser() {
-        User recipient = UserTestBuilder.validUser().withEmail("reader@example.com").build();
-        setField(recipient, "id", 11L);
-
-        when(userRepository.findByEmailIgnoreCase("reader@example.com")).thenReturn(Optional.of(recipient));
+        when(authApiService.findUserByEmail("reader@example.com"))
+                .thenReturn(new UserInfo(11L, "reader@example.com", "Reader", "User"));
         when(notificationRepository.findByIdAndRecipientUserId(99L, 11L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> notificationService.markNotificationAsRead("reader@example.com", 99L))
@@ -180,10 +183,8 @@ class NotificationServiceImplTest {
 
     @Test
     void markAllNotificationsAsReadShouldDelegateToRepository() {
-        User recipient = UserTestBuilder.validUser().withEmail("reader@example.com").build();
-        setField(recipient, "id", 11L);
-
-        when(userRepository.findByEmailIgnoreCase("reader@example.com")).thenReturn(Optional.of(recipient));
+        when(authApiService.findUserByEmail("reader@example.com"))
+                .thenReturn(new UserInfo(11L, "reader@example.com", "Reader", "User"));
 
         notificationService.markAllNotificationsAsRead("reader@example.com");
 
@@ -192,19 +193,22 @@ class NotificationServiceImplTest {
 
     @Test
     void createInvitationReceivedNotificationShouldSaveExpectedData() {
-        User recipient = UserTestBuilder.validUser().withEmail("recipient@example.com").build();
-        User inviter = UserTestBuilder.validUser().withEmail("inviter@example.com").build();
+        User recipientRef = UserTestBuilder.validUser().build();
+        setField(recipientRef, "id", 10L);
+        User actorRef = UserTestBuilder.validUser().build();
+        setField(actorRef, "id", 20L);
 
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("NLP Group").build();
-        setField(group, "id", 201L);
+        when(entityManager.getReference(User.class, 10L)).thenReturn(recipientRef);
+        when(entityManager.getReference(User.class, 20L)).thenReturn(actorRef);
 
-        notificationService.createResearchGroupInvitationReceivedNotification(recipient, inviter, group, 9000L);
+        notificationService.createResearchGroupInvitationReceivedNotification(
+                10L, 20L, 201L, "NLP Group", 9000L);
 
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository).save(captor.capture());
         Notification saved = captor.getValue();
-        assertThat(saved.getRecipientUser()).isEqualTo(recipient);
-        assertThat(saved.getActorUser()).isEqualTo(inviter);
+        assertThat(saved.getRecipientUser()).isEqualTo(recipientRef);
+        assertThat(saved.getActorUser()).isEqualTo(actorRef);
         assertThat(saved.getType()).isEqualTo(NotificationType.RESEARCH_GROUP_INVITATION_RECEIVED);
         assertThat(saved.getResearchGroupId()).isEqualTo(201L);
         assertThat(saved.getResearchGroupName()).isEqualTo("NLP Group");
@@ -213,19 +217,22 @@ class NotificationServiceImplTest {
 
     @Test
     void createInvitationAcceptedNotificationShouldSaveExpectedData() {
-        User recipient = UserTestBuilder.validUser().withEmail("owner@example.com").build();
-        User actor = UserTestBuilder.validUser().withEmail("member@example.com").build();
+        User recipientRef = UserTestBuilder.validUser().build();
+        setField(recipientRef, "id", 10L);
+        User actorRef = UserTestBuilder.validUser().build();
+        setField(actorRef, "id", 20L);
 
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("Corpus Group").build();
-        setField(group, "id", 301L);
+        when(entityManager.getReference(User.class, 10L)).thenReturn(recipientRef);
+        when(entityManager.getReference(User.class, 20L)).thenReturn(actorRef);
 
-        notificationService.createResearchGroupInvitationAcceptedNotification(recipient, actor, group);
+        notificationService.createResearchGroupInvitationAcceptedNotification(
+                10L, 20L, 301L, "Corpus Group");
 
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository).save(captor.capture());
         Notification saved = captor.getValue();
-        assertThat(saved.getRecipientUser()).isEqualTo(recipient);
-        assertThat(saved.getActorUser()).isEqualTo(actor);
+        assertThat(saved.getRecipientUser()).isEqualTo(recipientRef);
+        assertThat(saved.getActorUser()).isEqualTo(actorRef);
         assertThat(saved.getType()).isEqualTo(NotificationType.RESEARCH_GROUP_INVITATION_ACCEPTED);
         assertThat(saved.getResearchGroupId()).isEqualTo(301L);
         assertThat(saved.getResearchGroupName()).isEqualTo("Corpus Group");
@@ -234,24 +241,22 @@ class NotificationServiceImplTest {
 
     @Test
     void createProjectParticipantAssignedNotificationShouldSaveExpectedData() {
-        User recipient = UserTestBuilder.validUser().withEmail("assignee@example.com").build();
-        User actor = UserTestBuilder.validUser().withEmail("owner@example.com").build();
+        User recipientRef = UserTestBuilder.validUser().build();
+        setField(recipientRef, "id", 30L);
+        User actorRef = UserTestBuilder.validUser().build();
+        setField(actorRef, "id", 40L);
 
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("Project Group").build();
-        setField(group, "id", 401L);
+        when(entityManager.getReference(User.class, 30L)).thenReturn(recipientRef);
+        when(entityManager.getReference(User.class, 40L)).thenReturn(actorRef);
 
-        Project project = new Project();
-        project.setResearchGroup(group);
-        project.setName("Annotation Project");
-        setField(project, "id", 501L);
-
-        notificationService.createProjectParticipantAssignedNotification(recipient, actor, project);
+        notificationService.createProjectParticipantAssignedNotification(
+                30L, 40L, 501L, "Annotation Project", 401L, "Project Group");
 
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository).save(captor.capture());
         Notification saved = captor.getValue();
-        assertThat(saved.getRecipientUser()).isEqualTo(recipient);
-        assertThat(saved.getActorUser()).isEqualTo(actor);
+        assertThat(saved.getRecipientUser()).isEqualTo(recipientRef);
+        assertThat(saved.getActorUser()).isEqualTo(actorRef);
         assertThat(saved.getType()).isEqualTo(NotificationType.PROJECT_PARTICIPANT_ASSIGNED);
         assertThat(saved.getProjectId()).isEqualTo(501L);
         assertThat(saved.getProjectName()).isEqualTo("Annotation Project");
@@ -261,88 +266,47 @@ class NotificationServiceImplTest {
 
     @Test
     void createProjectAnnotationCompletedNotificationShouldSaveWhenNoPreviousNotificationExists() {
-        User recipient = UserTestBuilder.validUser().withEmail("recipient@example.com").build();
-        setField(recipient, "id", 41L);
+        User recipientRef = UserTestBuilder.validUser().build();
+        setField(recipientRef, "id", 41L);
+        User actorRef = UserTestBuilder.validUser().build();
+        setField(actorRef, "id", 42L);
 
-        User actor = UserTestBuilder.validUser().withEmail("actor@example.com").build();
-        setField(actor, "id", 42L);
-
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("Completion Group").build();
-        setField(group, "id", 601L);
-
-        Project project = new Project();
-        project.setResearchGroup(group);
-        project.setName("Completion Project");
-        setField(project, "id", 701L);
-
+        when(entityManager.getReference(User.class, 41L)).thenReturn(recipientRef);
+        when(entityManager.getReference(User.class, 42L)).thenReturn(actorRef);
         when(notificationRepository.existsByRecipientUserIdAndActorUserIdAndTypeAndProjectId(
-                41L,
-                42L,
-                NotificationType.PROJECT_ANNOTATION_COMPLETED,
-                701L)).thenReturn(false);
+                41L, 42L, NotificationType.PROJECT_ANNOTATION_COMPLETED, 701L)).thenReturn(false);
 
-        notificationService.createProjectAnnotationCompletedNotification(recipient, actor, project);
-
-        verify(notificationRepository).existsByRecipientUserIdAndActorUserIdAndTypeAndProjectId(
-                41L,
-                42L,
-                NotificationType.PROJECT_ANNOTATION_COMPLETED,
-                701L);
+        notificationService.createProjectAnnotationCompletedNotification(
+                41L, 42L, 701L, "Completion Project", 601L, "Completion Group");
 
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository).save(captor.capture());
         Notification saved = captor.getValue();
-        assertThat(saved.getRecipientUser()).isEqualTo(recipient);
-        assertThat(saved.getActorUser()).isEqualTo(actor);
         assertThat(saved.getType()).isEqualTo(NotificationType.PROJECT_ANNOTATION_COMPLETED);
         assertThat(saved.getProjectId()).isEqualTo(701L);
         assertThat(saved.getProjectName()).isEqualTo("Completion Project");
-        assertThat(saved.getResearchGroupId()).isEqualTo(601L);
-        assertThat(saved.getResearchGroupName()).isEqualTo("Completion Group");
     }
 
     @Test
     void createProjectAnnotationCompletedNotificationShouldSkipWhenDuplicateExists() {
-        User recipient = UserTestBuilder.validUser().withEmail("recipient@example.com").build();
-        setField(recipient, "id", 41L);
-
-        User actor = UserTestBuilder.validUser().withEmail("actor@example.com").build();
-        setField(actor, "id", 42L);
-
-        ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("Completion Group").build();
-        setField(group, "id", 601L);
-
-        Project project = new Project();
-        project.setResearchGroup(group);
-        project.setName("Completion Project");
-        setField(project, "id", 701L);
-
         when(notificationRepository.existsByRecipientUserIdAndActorUserIdAndTypeAndProjectId(
-                41L,
-                42L,
-                NotificationType.PROJECT_ANNOTATION_COMPLETED,
-                701L)).thenReturn(true);
+                41L, 42L, NotificationType.PROJECT_ANNOTATION_COMPLETED, 701L)).thenReturn(true);
 
-        notificationService.createProjectAnnotationCompletedNotification(recipient, actor, project);
+        notificationService.createProjectAnnotationCompletedNotification(
+                41L, 42L, 701L, "Completion Project", 601L, "Completion Group");
 
-        verify(notificationRepository).existsByRecipientUserIdAndActorUserIdAndTypeAndProjectId(
-                41L,
-                42L,
-                NotificationType.PROJECT_ANNOTATION_COMPLETED,
-                701L);
         verify(notificationRepository, never()).save(any(Notification.class));
     }
 
     @Test
     void findMyNotificationsShouldIncludeProjectFieldsInDto() {
-        User recipient = UserTestBuilder.validUser().withEmail("reader.project@example.com").build();
-        setField(recipient, "id", 21L);
-
         User actor = UserTestBuilder.validUser().withFirstName("Grace").withLastName("Hopper").build();
         setField(actor, "id", 22L);
 
+        when(authApiService.findUserByEmail("reader.project@example.com"))
+                .thenReturn(new UserInfo(21L, "reader.project@example.com", "Reader", "Project"));
+
         Notification notification = new Notification();
-        notification.setRecipientUser(recipient);
         notification.setActorUser(actor);
         notification.setType(NotificationType.PROJECT_PARTICIPANT_ASSIGNED);
         notification.setResearchGroupId(801L);
@@ -352,8 +316,6 @@ class NotificationServiceImplTest {
         setField(notification, "id", 1001L);
         setField(notification, "createdAt", Instant.parse("2026-04-04T10:00:00Z"));
 
-        when(userRepository.findByEmailIgnoreCase("reader.project@example.com"))
-                .thenReturn(Optional.of(recipient));
         when(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(eq(21L), any(Pageable.class)))
                 .thenReturn(List.of(notification));
         when(notificationRepository.countByRecipientUserIdAndReadAtIsNull(21L)).thenReturn(1L);
@@ -365,13 +327,12 @@ class NotificationServiceImplTest {
         assertThat(dto.projectId()).isEqualTo(901L);
         assertThat(dto.projectName()).isEqualTo("Project X");
         assertThat(dto.actorFullName()).isEqualTo("Grace Hopper");
-        assertThat(dto.researchGroupId()).isEqualTo(801L);
-        assertThat(dto.researchGroupName()).isEqualTo("Project RG");
     }
 
     @Test
     void findMyNotificationsShouldThrowWhenUserEmailDoesNotExist() {
-        when(userRepository.findByEmailIgnoreCase("missing@example.com")).thenReturn(Optional.empty());
+        when(authApiService.findUserByEmail("missing@example.com"))
+                .thenThrow(new EmailNotFoundException("missing@example.com"));
 
         assertThatThrownBy(() -> notificationService.findMyNotifications("missing@example.com", 20))
                 .isInstanceOf(EmailNotFoundException.class)
