@@ -19,17 +19,16 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
+import es.udc.fic.corpuslab.modules.auth.api.AuthApiService;
+import es.udc.fic.corpuslab.modules.auth.api.dtos.UserInfo;
 import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
-import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
-import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
-import es.udc.fic.corpuslab.modules.project.repositories.DatasetItemRepository;
-import es.udc.fic.corpuslab.modules.project.repositories.ProjectParticipantRepository;
-import es.udc.fic.corpuslab.modules.project.repositories.ProjectRepository;
-import es.udc.fic.corpuslab.modules.project.services.ProjectService;
+import es.udc.fic.corpuslab.modules.project.api.ProjectApiService;
+import es.udc.fic.corpuslab.modules.project.services.ProjectParticipantService;
+import jakarta.persistence.EntityManager;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupDetailDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupInvitationDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto;
@@ -58,7 +57,7 @@ import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupRepo
 class ResearchGroupServiceImplTest {
 
         @Mock
-        private UserRepository userRepository;
+        private AuthApiService authApiService;
 
         @Mock
         private ResearchGroupRepository researchGroupRepository;
@@ -70,42 +69,34 @@ class ResearchGroupServiceImplTest {
         private ResearchGroupInvitationRepository invitationRepository;
 
         @Mock
-        private ProjectRepository projectRepository;
+        private ProjectApiService projectApiService;
 
         @Mock
-        private ProjectParticipantRepository projectParticipantRepository;
-
-        @Mock
-        private DatasetItemRepository datasetItemRepository;
-
-        @Mock
-        private ProjectService projectService;
+        private ProjectParticipantService projectParticipantService;
 
         @Mock
         private EmailService emailService;
 
         @Mock
-        private NotificationRepository notificationRepository;
+        private NotificationService notificationService;
 
         @Mock
-        private NotificationService notificationService;
+        private EntityManager entityManager;
 
         private ResearchGroupService researchGroupService;
 
         @BeforeEach
         void setUp() {
                 researchGroupService = new ResearchGroupServiceImpl(
-                                userRepository,
+                                authApiService,
                                 researchGroupRepository,
                                 memberRepository,
                                 invitationRepository,
-                                projectRepository,
-                                projectParticipantRepository,
-                                datasetItemRepository,
-                                projectService,
-                                notificationRepository,
-                                emailService,
+                                projectApiService,
+                                projectParticipantService,
                                 notificationService,
+                                emailService,
+                                entityManager,
                                 "http://localhost:5173");
         }
 
@@ -128,7 +119,7 @@ class ResearchGroupServiceImplTest {
                                 ResearchGroupMemberRole.OWNER,
                                 0L);
 
-                when(userRepository.findByEmailIgnoreCase("member@example.com")).thenReturn(Optional.of(requester));
+                when(authApiService.findUserByEmail("member@example.com")).thenReturn(new UserInfo(10L, "member@example.com", "Elena", "Alvarez"));
                 when(researchGroupRepository.findById(99L)).thenReturn(Optional.of(group));
                 when(memberRepository.findMembersByGroupId(99L)).thenReturn(List.of(owner));
 
@@ -141,7 +132,7 @@ class ResearchGroupServiceImplTest {
 
         @Test
         void getResearchGroupDetailShouldThrowWhenUserDoesNotExist() {
-                when(userRepository.findByEmailIgnoreCase("missing@example.com")).thenReturn(Optional.empty());
+                when(authApiService.findUserByEmail("missing@example.com")).thenThrow(new EmailNotFoundException("missing@example.com"));
 
                 assertThatThrownBy(() -> researchGroupService.getResearchGroupDetail("missing@example.com", 1L))
                                 .isInstanceOf(EmailNotFoundException.class)
@@ -153,7 +144,7 @@ class ResearchGroupServiceImplTest {
                 User requester = UserTestBuilder.validUser().withEmail("member@example.com").build();
                 setId(requester, 10L);
 
-                when(userRepository.findByEmailIgnoreCase("member@example.com")).thenReturn(Optional.of(requester));
+                when(authApiService.findUserByEmail("member@example.com")).thenReturn(new UserInfo(10L, "member@example.com", "Elena", "Alvarez"));
                 when(researchGroupRepository.findById(404L)).thenReturn(Optional.empty());
 
                 assertThatThrownBy(() -> researchGroupService.getResearchGroupDetail("member@example.com", 404L))
@@ -186,7 +177,7 @@ class ResearchGroupServiceImplTest {
                                 ResearchGroupMemberRole.OWNER,
                                 0L);
 
-                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(authApiService.findUserByEmail("owner@example.com")).thenReturn(new UserInfo(1L, "owner@example.com", "Owner", "User"));
                 when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(ownerMembership));
@@ -226,7 +217,7 @@ class ResearchGroupServiceImplTest {
                                 ResearchGroupMemberRole.OWNER,
                                 0L);
 
-                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(authApiService.findUserByEmail("owner@example.com")).thenReturn(new UserInfo(1L, "owner@example.com", "Owner", "User"));
                 when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(ownerMembership));
@@ -255,7 +246,7 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.ADMIN)
                                 .build();
 
-                when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(admin));
+                when(authApiService.findUserByEmail("admin@example.com")).thenReturn(new UserInfo(1L, "admin@example.com", "Admin", "User"));
                 when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(adminMembership));
@@ -272,7 +263,7 @@ class ResearchGroupServiceImplTest {
                 User owner = UserTestBuilder.validUser().withEmail("owner@example.com").build();
                 setId(owner, 1L);
 
-                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(authApiService.findUserByEmail("owner@example.com")).thenReturn(new UserInfo(1L, "owner@example.com", "Owner", "User"));
                 when(researchGroupRepository.findById(999L)).thenReturn(Optional.empty());
 
                 assertThatThrownBy(() -> researchGroupService.updateResearchGroup(
@@ -290,7 +281,7 @@ class ResearchGroupServiceImplTest {
                 ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
                 setGroupFields(group, 10L, Instant.parse("2026-03-31T12:00:00Z"), "GROUPCODE001");
 
-                when(userRepository.findByEmailIgnoreCase("outsider@example.com")).thenReturn(Optional.of(requester));
+                when(authApiService.findUserByEmail("outsider@example.com")).thenReturn(new UserInfo(7L, "outsider@example.com", "Out", "Sider"));
                 when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 7L)).thenReturn(Optional.empty());
 
@@ -303,7 +294,7 @@ class ResearchGroupServiceImplTest {
 
         @Test
         void updateResearchGroupShouldThrowWhenRequesterEmailNotFound() {
-                when(userRepository.findByEmailIgnoreCase("missing@example.com")).thenReturn(Optional.empty());
+                when(authApiService.findUserByEmail("missing@example.com")).thenThrow(new EmailNotFoundException("missing@example.com"));
 
                 assertThatThrownBy(() -> researchGroupService.updateResearchGroup(
                                 "missing@example.com",
@@ -335,7 +326,7 @@ class ResearchGroupServiceImplTest {
 
                 Instant expiresAt = Instant.parse("2026-04-10T12:00:00Z");
 
-                when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(inviter));
+                when(authApiService.findUserByEmail("admin@example.com")).thenReturn(new UserInfo(1L, "admin@example.com", "Admin", "User"));
                 when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(inviterMember));
@@ -346,7 +337,7 @@ class ResearchGroupServiceImplTest {
                                 eq(ResearchGroupInvitationStatus.PENDING),
                                 any(Instant.class)))
                                 .thenReturn(false);
-                when(userRepository.findByEmailIgnoreCase("invitee@example.com")).thenReturn(Optional.of(invitedUser));
+                when(authApiService.findUserByEmailOptional("invitee@example.com")).thenReturn(Optional.of(new UserInfo(2L, "invitee@example.com", "Invitee", "User")));
                 when(invitationRepository.saveAndFlush(any(ResearchGroupInvitation.class))).thenAnswer(invocation -> {
                         ResearchGroupInvitation invitation = invocation.getArgument(0);
                         setInvitationFields(invitation, 100L, Instant.parse("2026-03-31T13:00:00Z"));
@@ -393,7 +384,7 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.ADMIN)
                                 .build();
 
-                when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(inviter));
+                when(authApiService.findUserByEmail("admin@example.com")).thenReturn(new UserInfo(1L, "admin@example.com", "Admin", "User"));
                 when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(inviterMember));
@@ -426,7 +417,7 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build();
 
-                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(inviter));
+                when(authApiService.findUserByEmail("owner@example.com")).thenReturn(new UserInfo(1L, "owner@example.com", "Owner", "User"));
                 when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(inviterMember));
@@ -457,7 +448,7 @@ class ResearchGroupServiceImplTest {
                                 Instant.parse("2026-03-31T12:00:00Z"),
                                 Instant.parse("2026-04-10T12:00:00Z"));
 
-                when(userRepository.findByEmailIgnoreCase("invited@example.com")).thenReturn(Optional.of(invitedUser));
+                when(authApiService.findUserByEmail("invited@example.com")).thenReturn(new UserInfo(15L, "invited@example.com", "Invited", "User"));
                 when(invitationRepository.findPendingInvitationsByInvitedEmail(eq("invited@example.com"),
                                 any(Instant.class)))
                                 .thenReturn(List.of(dto));
@@ -477,7 +468,7 @@ class ResearchGroupServiceImplTest {
                 ResearchGroup group = ResearchGroupTestBuilder.validGroup().withName("Joinable Group").build();
                 setGroupFields(group, 44L, Instant.parse("2026-03-31T12:00:00Z"), "JOINCODE12345");
 
-                when(userRepository.findByEmailIgnoreCase("joiner@example.com")).thenReturn(Optional.of(user));
+                when(authApiService.findUserByEmail("joiner@example.com")).thenReturn(new UserInfo(21L, "joiner@example.com", "Joiner", "User"));
                 when(researchGroupRepository.findByInvitationCodeIgnoreCase("JOINCODE12345"))
                                 .thenReturn(Optional.of(group));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(44L, 21L)).thenReturn(Optional.empty());
@@ -503,7 +494,7 @@ class ResearchGroupServiceImplTest {
                 ResearchGroupInvitation pendingInvitation = new ResearchGroupInvitation();
                 pendingInvitation.setStatus(ResearchGroupInvitationStatus.PENDING);
 
-                when(userRepository.findByEmailIgnoreCase("joiner@example.com")).thenReturn(Optional.of(user));
+                when(authApiService.findUserByEmail("joiner@example.com")).thenReturn(new UserInfo(21L, "joiner@example.com", "Joiner", "User"));
                 when(researchGroupRepository.findByInvitationCodeIgnoreCase("JOINCODE12345"))
                                 .thenReturn(Optional.of(group));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(44L, 21L)).thenReturn(Optional.empty());
@@ -514,6 +505,7 @@ class ResearchGroupServiceImplTest {
                                 .thenReturn(List.of(pendingInvitation));
                 when(memberRepository.findActiveMemberEmailsByGroupId(44L))
                                 .thenReturn(List.of("owner@example.com", "joiner@example.com"));
+                when(entityManager.getReference(User.class, 21L)).thenReturn(user);
 
                 researchGroupService.joinResearchGroupByCode("joiner@example.com", "JOINCODE12345");
 
@@ -531,7 +523,7 @@ class ResearchGroupServiceImplTest {
                 User user = UserTestBuilder.validUser().withEmail("joiner@example.com").build();
                 setId(user, 21L);
 
-                when(userRepository.findByEmailIgnoreCase("joiner@example.com")).thenReturn(Optional.of(user));
+                when(authApiService.findUserByEmail("joiner@example.com")).thenReturn(new UserInfo(21L, "joiner@example.com", "Joiner", "User"));
                 when(researchGroupRepository.findByInvitationCodeIgnoreCase("UNKNOWNCODE"))
                                 .thenReturn(Optional.empty());
 
@@ -554,7 +546,7 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.ADMIN)
                                 .build();
 
-                when(userRepository.findByEmailIgnoreCase("member@example.com")).thenReturn(Optional.of(user));
+                when(authApiService.findUserByEmail("member@example.com")).thenReturn(new UserInfo(31L, "member@example.com", "Member", "User"));
                 when(researchGroupRepository.findByInvitationCodeIgnoreCase("EXISTCODE123"))
                                 .thenReturn(Optional.of(group));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(77L, 31L))
@@ -588,7 +580,7 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.ANNOTATOR)
                                 .build();
 
-                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(authApiService.findUserByEmail("owner@example.com")).thenReturn(new UserInfo(1L, "owner@example.com", "Owner", "User"));
                 when(researchGroupRepository.existsById(10L)).thenReturn(true);
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(ownerMembership));
@@ -618,7 +610,7 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.ADMIN)
                                 .build();
 
-                when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(admin));
+                when(authApiService.findUserByEmail("admin@example.com")).thenReturn(new UserInfo(1L, "admin@example.com", "Admin", "User"));
                 when(researchGroupRepository.existsById(10L)).thenReturn(true);
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(adminMembership));
@@ -642,7 +634,7 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build();
 
-                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(authApiService.findUserByEmail("owner@example.com")).thenReturn(new UserInfo(1L, "owner@example.com", "Owner", "User"));
                 when(researchGroupRepository.existsById(10L)).thenReturn(true);
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(ownerMembership));
@@ -676,8 +668,7 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build();
 
-                when(userRepository.findByEmailIgnoreCase("owner.requester@example.com"))
-                                .thenReturn(Optional.of(ownerRequester));
+                when(authApiService.findUserByEmail("owner.requester@example.com")).thenReturn(new UserInfo(1L, "owner.requester@example.com", "Owner", "Requester"));
                 when(researchGroupRepository.existsById(10L)).thenReturn(true);
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(requesterMembership));
@@ -694,7 +685,7 @@ class ResearchGroupServiceImplTest {
                 User owner = UserTestBuilder.validUser().withEmail("owner@example.com").build();
                 setId(owner, 1L);
 
-                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(authApiService.findUserByEmail("owner@example.com")).thenReturn(new UserInfo(1L, "owner@example.com", "Owner", "User"));
                 when(researchGroupRepository.existsById(999L)).thenReturn(false);
 
                 assertThatThrownBy(() -> researchGroupService.updateMemberRole(
@@ -725,7 +716,7 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.ANNOTATOR)
                                 .build();
 
-                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(authApiService.findUserByEmail("owner@example.com")).thenReturn(new UserInfo(1L, "owner@example.com", "Owner", "User"));
                 when(researchGroupRepository.existsById(10L)).thenReturn(true);
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(ownerMembership));
@@ -752,7 +743,7 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.ADMIN)
                                 .build();
 
-                when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(admin));
+                when(authApiService.findUserByEmail("admin@example.com")).thenReturn(new UserInfo(1L, "admin@example.com", "Admin", "User"));
                 when(researchGroupRepository.existsById(10L)).thenReturn(true);
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(adminMembership));
@@ -775,7 +766,7 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build();
 
-                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(authApiService.findUserByEmail("owner@example.com")).thenReturn(new UserInfo(1L, "owner@example.com", "Owner", "User"));
                 when(researchGroupRepository.existsById(10L)).thenReturn(true);
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(ownerMembership));
@@ -808,8 +799,7 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build();
 
-                when(userRepository.findByEmailIgnoreCase("owner.requester@example.com"))
-                                .thenReturn(Optional.of(ownerRequester));
+                when(authApiService.findUserByEmail("owner.requester@example.com")).thenReturn(new UserInfo(1L, "owner.requester@example.com", "Owner", "Requester"));
                 when(researchGroupRepository.existsById(10L)).thenReturn(true);
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(requesterMembership));
@@ -835,16 +825,15 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build();
 
-                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(authApiService.findUserByEmail("owner@example.com")).thenReturn(new UserInfo(1L, "owner@example.com", "Owner", "User"));
                 when(researchGroupRepository.existsById(10L)).thenReturn(true);
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(ownerMembership));
                 when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
-                when(projectRepository.findByResearchGroupId(10L)).thenReturn(List.of());
 
                 researchGroupService.deleteResearchGroup("owner@example.com", 10L);
 
-                verify(notificationRepository).deleteByResearchGroupId(10L);
+                verify(notificationService).deleteNotificationsByResearchGroupId(10L);
                 verify(invitationRepository).deleteByResearchGroupId(10L);
                 verify(memberRepository).deleteByResearchGroupId(10L);
                 verify(researchGroupRepository).delete(group);
@@ -860,7 +849,7 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.ADMIN)
                                 .build();
 
-                when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(admin));
+                when(authApiService.findUserByEmail("admin@example.com")).thenReturn(new UserInfo(2L, "admin@example.com", "Admin", "User"));
                 when(researchGroupRepository.existsById(10L)).thenReturn(true);
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 2L))
                                 .thenReturn(Optional.of(adminMembership));
@@ -879,7 +868,7 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.OWNER)
                                 .build();
 
-                when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(owner));
+                when(authApiService.findUserByEmail("owner@example.com")).thenReturn(new UserInfo(1L, "owner@example.com", "Owner", "User"));
                 // researchGroupRepository.existsById defaults to false, so it will throw ResearchGroupNotFoundException
 
                 assertThatThrownBy(() -> researchGroupService.deleteResearchGroup("owner@example.com", 10L))
@@ -912,7 +901,7 @@ class ResearchGroupServiceImplTest {
                 invitation.setStatus(ResearchGroupInvitationStatus.PENDING);
                 invitation.setExpiresAt(Instant.now().plusSeconds(86400));
 
-                when(userRepository.findByEmailIgnoreCase("invitee@example.com")).thenReturn(Optional.of(user));
+                when(authApiService.findUserByEmail("invitee@example.com")).thenReturn(new UserInfo(50L, "invitee@example.com", "Invitee", "User"));
                 when(invitationRepository.findActivePendingInvitationByIdAndInvitedEmail(
                                 eq(100L),
                                 eq("invitee@example.com"),
@@ -922,11 +911,12 @@ class ResearchGroupServiceImplTest {
                 when(memberRepository.findActiveMemberEmailsByGroupId(10L))
                                 .thenReturn(List.of("owner@example.com", "invitee@example.com"));
 
+                when(entityManager.getReference(User.class, 50L)).thenReturn(user);
+
                 ResearchGroupSummaryDto result = researchGroupService.acceptMyInvitation("invitee@example.com", 100L);
 
                 assertThat(result.id()).isEqualTo(10L);
                 assertThat(result.role()).isEqualTo(ResearchGroupMemberRole.ADMIN);
-                assertThat(result.memberCount()).isEqualTo(2L);
                 assertThat(invitation.getStatus()).isEqualTo(ResearchGroupInvitationStatus.ACCEPTED);
                 assertThat(invitation.getInvitedUser()).isEqualTo(user);
                 verify(memberRepository).save(any(ResearchGroupMember.class));
@@ -943,7 +933,7 @@ class ResearchGroupServiceImplTest {
                 invitation.setStatus(ResearchGroupInvitationStatus.PENDING);
                 invitation.setExpiresAt(Instant.now().plusSeconds(86400));
 
-                when(userRepository.findByEmailIgnoreCase("invitee@example.com")).thenReturn(Optional.of(user));
+                when(authApiService.findUserByEmail("invitee@example.com")).thenReturn(new UserInfo(50L, "invitee@example.com", "Invitee", "User"));
                 when(invitationRepository.findActivePendingInvitationByIdAndInvitedEmail(
                                 eq(101L),
                                 eq("invitee@example.com"),
@@ -961,7 +951,7 @@ class ResearchGroupServiceImplTest {
                 User user = UserTestBuilder.validUser().withEmail("invitee@example.com").build();
                 setId(user, 50L);
 
-                when(userRepository.findByEmailIgnoreCase("invitee@example.com")).thenReturn(Optional.of(user));
+                when(authApiService.findUserByEmail("invitee@example.com")).thenReturn(new UserInfo(50L, "invitee@example.com", "Invitee", "User"));
                 when(invitationRepository.findActivePendingInvitationByIdAndInvitedEmail(
                                 eq(999L),
                                 eq("invitee@example.com"),

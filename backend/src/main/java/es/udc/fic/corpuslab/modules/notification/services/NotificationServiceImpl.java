@@ -7,18 +7,16 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import es.udc.fic.corpuslab.modules.auth.api.AuthApiService;
+import es.udc.fic.corpuslab.modules.auth.api.dtos.UserInfo;
 import es.udc.fic.corpuslab.modules.auth.entities.User;
-import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
-import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
-import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
 import es.udc.fic.corpuslab.modules.notification.dtos.NotificationDto;
 import es.udc.fic.corpuslab.modules.notification.dtos.NotificationListResponseDto;
 import es.udc.fic.corpuslab.modules.notification.entities.Notification;
 import es.udc.fic.corpuslab.modules.notification.enums.NotificationType;
 import es.udc.fic.corpuslab.modules.notification.exceptions.NotificationNotFoundException;
 import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
-import es.udc.fic.corpuslab.modules.project.entities.Project;
-import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroup;
+import jakarta.persistence.EntityManager;
 
 @Service
 public class NotificationServiceImpl implements NotificationService {
@@ -26,27 +24,32 @@ public class NotificationServiceImpl implements NotificationService {
     private static final int DEFAULT_LIMIT = 20;
     private static final int MAX_LIMIT = 50;
 
-    private final UserRepository userRepository;
+    private final AuthApiService authApiService;
     private final NotificationRepository notificationRepository;
+    private final EntityManager entityManager;
 
-    public NotificationServiceImpl(UserRepository userRepository, NotificationRepository notificationRepository) {
-        this.userRepository = userRepository;
+    public NotificationServiceImpl(
+            AuthApiService authApiService,
+            NotificationRepository notificationRepository,
+            EntityManager entityManager) {
+        this.authApiService = authApiService;
         this.notificationRepository = notificationRepository;
+        this.entityManager = entityManager;
     }
 
     @Override
     @Transactional(readOnly = true)
     public NotificationListResponseDto findMyNotifications(String authenticatedEmail, int limit) {
-        User recipient = findUserByEmail(authenticatedEmail);
+        UserInfo recipientInfo = authApiService.findUserByEmail(authenticatedEmail);
         int sanitizedLimit = sanitizeLimit(limit);
 
         List<NotificationDto> notifications = notificationRepository
-                .findByRecipientUserIdOrderByCreatedAtDesc(recipient.getId(), PageRequest.of(0, sanitizedLimit))
+                .findByRecipientUserIdOrderByCreatedAtDesc(recipientInfo.userId(), PageRequest.of(0, sanitizedLimit))
                 .stream()
                 .map(this::toDto)
                 .toList();
 
-        long unreadCount = notificationRepository.countByRecipientUserIdAndReadAtIsNull(recipient.getId());
+        long unreadCount = notificationRepository.countByRecipientUserIdAndReadAtIsNull(recipientInfo.userId());
 
         return new NotificationListResponseDto(notifications, unreadCount);
     }
@@ -54,9 +57,10 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public NotificationDto markNotificationAsRead(String authenticatedEmail, Long notificationId) {
-        User recipient = findUserByEmail(authenticatedEmail);
+        UserInfo recipientInfo = authApiService.findUserByEmail(authenticatedEmail);
 
-        Notification notification = notificationRepository.findByIdAndRecipientUserId(notificationId, recipient.getId())
+        Notification notification = notificationRepository
+                .findByIdAndRecipientUserId(notificationId, recipientInfo.userId())
                 .orElseThrow(() -> new NotificationNotFoundException(notificationId));
 
         if (notification.getReadAt() == null) {
@@ -70,23 +74,24 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void markAllNotificationsAsRead(String authenticatedEmail) {
-        User recipient = findUserByEmail(authenticatedEmail);
-        notificationRepository.markAllAsReadByRecipientUserId(recipient.getId(), Instant.now());
+        UserInfo recipientInfo = authApiService.findUserByEmail(authenticatedEmail);
+        notificationRepository.markAllAsReadByRecipientUserId(recipientInfo.userId(), Instant.now());
     }
 
     @Override
     @Transactional
     public void createResearchGroupInvitationReceivedNotification(
-            User recipient,
-            User inviter,
-            ResearchGroup researchGroup,
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName,
             Long invitationId) {
         Notification notification = new Notification();
-        notification.setRecipientUser(recipient);
-        notification.setActorUser(inviter);
+        notification.setRecipientUser(getUserReference(recipientUserId));
+        notification.setActorUser(getUserReference(actorUserId));
         notification.setType(NotificationType.RESEARCH_GROUP_INVITATION_RECEIVED);
-        notification.setResearchGroupId(researchGroup.getId());
-        notification.setResearchGroupName(researchGroup.getName());
+        notification.setResearchGroupId(researchGroupId);
+        notification.setResearchGroupName(researchGroupName);
         notification.setInvitationId(invitationId);
 
         notificationRepository.save(notification);
@@ -94,54 +99,81 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public void createResearchGroupInvitationAcceptedNotification(User recipient, User actor,
-            ResearchGroup researchGroup) {
+    public void createResearchGroupInvitationAcceptedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName) {
         Notification notification = new Notification();
-        notification.setRecipientUser(recipient);
-        notification.setActorUser(actor);
+        notification.setRecipientUser(getUserReference(recipientUserId));
+        notification.setActorUser(getUserReference(actorUserId));
         notification.setType(NotificationType.RESEARCH_GROUP_INVITATION_ACCEPTED);
-        notification.setResearchGroupId(researchGroup.getId());
-        notification.setResearchGroupName(researchGroup.getName());
+        notification.setResearchGroupId(researchGroupId);
+        notification.setResearchGroupName(researchGroupName);
 
         notificationRepository.save(notification);
     }
 
     @Override
     @Transactional
-    public void createProjectParticipantAssignedNotification(User recipient, User actor, Project project) {
+    public void createProjectParticipantAssignedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName) {
         Notification notification = new Notification();
-        notification.setRecipientUser(recipient);
-        notification.setActorUser(actor);
+        notification.setRecipientUser(getUserReference(recipientUserId));
+        notification.setActorUser(getUserReference(actorUserId));
         notification.setType(NotificationType.PROJECT_PARTICIPANT_ASSIGNED);
-        notification.setProjectId(project.getId());
-        notification.setProjectName(project.getName());
-        notification.setResearchGroupId(project.getResearchGroup().getId());
-        notification.setResearchGroupName(project.getResearchGroup().getName());
+        notification.setProjectId(projectId);
+        notification.setProjectName(projectName);
+        notification.setResearchGroupId(researchGroupId);
+        notification.setResearchGroupName(researchGroupName);
 
         notificationRepository.save(notification);
     }
 
     @Override
     @Transactional
-    public void createProjectAnnotationCompletedNotification(User recipient, User actor, Project project) {
+    public void createProjectAnnotationCompletedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName) {
         if (notificationRepository.existsByRecipientUserIdAndActorUserIdAndTypeAndProjectId(
-                recipient.getId(),
-                actor.getId(),
+                recipientUserId,
+                actorUserId,
                 NotificationType.PROJECT_ANNOTATION_COMPLETED,
-                project.getId())) {
+                projectId)) {
             return;
         }
 
         Notification notification = new Notification();
-        notification.setRecipientUser(recipient);
-        notification.setActorUser(actor);
+        notification.setRecipientUser(getUserReference(recipientUserId));
+        notification.setActorUser(getUserReference(actorUserId));
         notification.setType(NotificationType.PROJECT_ANNOTATION_COMPLETED);
-        notification.setProjectId(project.getId());
-        notification.setProjectName(project.getName());
-        notification.setResearchGroupId(project.getResearchGroup().getId());
-        notification.setResearchGroupName(project.getResearchGroup().getName());
+        notification.setProjectId(projectId);
+        notification.setProjectName(projectName);
+        notification.setResearchGroupId(researchGroupId);
+        notification.setResearchGroupName(researchGroupName);
 
         notificationRepository.save(notification);
+    }
+
+    @Override
+    @Transactional
+    public void deleteNotificationsByProjectId(Long projectId) {
+        notificationRepository.deleteByProjectId(projectId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteNotificationsByResearchGroupId(Long researchGroupId) {
+        notificationRepository.deleteByResearchGroupId(researchGroupId);
     }
 
     private NotificationDto toDto(Notification notification) {
@@ -163,17 +195,19 @@ public class NotificationServiceImpl implements NotificationService {
                 notification.getProjectName());
     }
 
-    private User findUserByEmail(String authenticatedEmail) {
-        String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(authenticatedEmail);
-        return userRepository.findByEmailIgnoreCase(normalizedEmail)
-                .orElseThrow(() -> new EmailNotFoundException(normalizedEmail));
-    }
-
     private int sanitizeLimit(int limit) {
         if (limit <= 0) {
             return DEFAULT_LIMIT;
         }
 
         return Math.min(limit, MAX_LIMIT);
+    }
+
+    /**
+     * Creates a JPA proxy reference for User without loading the entity.
+     * Used only to satisfy @ManyToOne FK relationship on Notification.
+     */
+    private User getUserReference(Long userId) {
+        return entityManager.getReference(User.class, userId);
     }
 }

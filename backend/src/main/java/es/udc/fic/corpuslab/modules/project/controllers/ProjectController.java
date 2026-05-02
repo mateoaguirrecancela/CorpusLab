@@ -1,21 +1,19 @@
 package es.udc.fic.corpuslab.modules.project.controllers;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
-import es.udc.fic.corpuslab.modules.project.dtos.AssignProjectParticipantsRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAssignedSummaryDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectDetailDto;
@@ -23,14 +21,11 @@ import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupResponseDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSummaryDto;
 import es.udc.fic.corpuslab.modules.project.dtos.UpdateProjectRequestDto;
-import es.udc.fic.corpuslab.modules.project.dtos.UploadProjectDatasetResponseDto;
 import es.udc.fic.corpuslab.modules.project.services.ProjectService;
 import jakarta.validation.Valid;
 
-import java.util.List;
-
 @RestController
-@RequestMapping("/api/research-groups/{groupId}/projects")
+@RequestMapping("/api")
 public class ProjectController {
 
     private final ProjectService projectService;
@@ -39,7 +34,7 @@ public class ProjectController {
         this.projectService = projectService;
     }
 
-    @GetMapping(path = "/my")
+    @GetMapping("/research-groups/{groupId}/projects/my")
     @ResponseStatus(HttpStatus.OK)
     public List<ProjectAssignedSummaryDto> findMyAssignedProjectsByGroup(
             Authentication authentication,
@@ -47,7 +42,7 @@ public class ProjectController {
         return projectService.findAssignedProjectsByResearchGroup(authentication.getName(), groupId);
     }
 
-    @PostMapping
+    @PostMapping("/research-groups/{groupId}/projects")
     @ResponseStatus(HttpStatus.CREATED)
     public ProjectSummaryDto createProject(
             Authentication authentication,
@@ -56,7 +51,7 @@ public class ProjectController {
         return projectService.createProject(authentication.getName(), groupId, request);
     }
 
-    @PutMapping(path = "/{projectId}")
+    @PutMapping("/research-groups/{groupId}/projects/{projectId}")
     @ResponseStatus(HttpStatus.OK)
     public ProjectDetailDto updateProject(
             Authentication authentication,
@@ -66,7 +61,7 @@ public class ProjectController {
         return projectService.updateProject(authentication.getName(), groupId, projectId, request);
     }
 
-    @DeleteMapping(path = "/{projectId}")
+    @DeleteMapping("/research-groups/{groupId}/projects/{projectId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteProject(
             Authentication authentication,
@@ -75,17 +70,7 @@ public class ProjectController {
         projectService.deleteProject(authentication.getName(), groupId, projectId);
     }
 
-    @PostMapping(path = "/{projectId}/dataset", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @ResponseStatus(HttpStatus.CREATED)
-    public UploadProjectDatasetResponseDto uploadDataset(
-            Authentication authentication,
-            @PathVariable Long groupId,
-            @PathVariable Long projectId,
-            @RequestParam("files") List<MultipartFile> files) {
-        return projectService.uploadDataset(authentication.getName(), groupId, projectId, files);
-    }
-
-    @PutMapping(path = "/{projectId}/setup")
+    @PutMapping("/research-groups/{groupId}/projects/{projectId}/setup")
     @ResponseStatus(HttpStatus.OK)
     public ProjectSetupResponseDto configureProjectSetup(
             Authentication authentication,
@@ -95,17 +80,17 @@ public class ProjectController {
         return projectService.configureProjectSetup(authentication.getName(), groupId, projectId, request);
     }
 
-    @PostMapping(path = "/{projectId}/participants")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void assignParticipants(
+    @GetMapping("/projects/my")
+    @ResponseStatus(HttpStatus.OK)
+    public List<ProjectAssignedSummaryDto> findMyAssignedProjects(Authentication authentication) {
+        return projectService.findMyAssignedProjects(authentication.getName());
+    }
+
+    @GetMapping("/projects/{projectId}")
+    @ResponseStatus(HttpStatus.OK)
+    public ProjectDetailDto getProjectDetail(
             Authentication authentication,
-            @PathVariable("groupId") Long groupId,
-            @PathVariable("projectId") Long projectId,
-            @Valid @RequestBody AssignProjectParticipantsRequestDto request) {
-        projectService.assignParticipants(
-                authentication.getName(),
-                groupId,
-                projectId,
-                request.participantUserIds());
+            @PathVariable Long projectId) {
+        return projectService.getAssignedProjectDetail(authentication.getName(), projectId);
     }
 }
