@@ -6,6 +6,7 @@ import {
   requestPasswordReset,
 } from '@/modules/auth/services/authService';
 import { type ForgotPasswordFormState } from '@/modules/auth/types/forgotPassword';
+import { isEmailValid } from '@/modules/auth/utils/validation';
 
 export function useForgotPasswordForm() {
   const { t } = useTranslation();
@@ -15,7 +16,7 @@ export function useForgotPasswordForm() {
   const [successMessage, setSuccessMessage] = useState('');
 
   const canSubmit = useMemo(
-    () => form.email.trim().length > 0 && !isSubmitting,
+    () => isEmailValid(form.email.trim()) && !isSubmitting,
     [form.email, isSubmitting],
   );
 

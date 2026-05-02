@@ -45,7 +45,6 @@ export function ResetPasswordForm({
             ? t('auth.signup.passwordLength')
             : undefined
         }
-        messageClassName="-mt-2"
         onValueChange={(value) => onFieldChange('newPassword', value)}
         showPasswordLabel={t('common.aria.showPassword')}
         value={form.newPassword}
@@ -59,19 +58,18 @@ export function ResetPasswordForm({
         inputType="password"
         label={t('auth.resetPassword.confirmPassword')}
         message={
-          form.confirmPassword.length > 0 && form.confirmPassword.length < 8
-            ? t('auth.signup.passwordLength')
+          form.confirmPassword.length > 0
+            ? form.confirmPassword !== form.newPassword
+              ? t('auth.resetPassword.passwordMismatch')
+              : form.confirmPassword.length < 8
+                ? t('auth.signup.passwordLength')
+                : undefined
             : undefined
         }
-        messageClassName="-mt-2"
         onValueChange={(value) => onFieldChange('confirmPassword', value)}
         showPasswordLabel={t('common.aria.showPassword')}
         value={form.confirmPassword}
       />
-
-      {form.confirmPassword.length > 0 && form.confirmPassword !== form.newPassword && (
-        <p className="-mt-2 text-xs text-destructive">{t('auth.resetPassword.passwordMismatch')}</p>
-      )}
 
       <SubmitButtonWithSpinner
         className="h-11 w-full rounded-md bg-primary text-sm font-semibold text-white shadow-[var(--shadow-primary-action)] hover:bg-primary-strong disabled:bg-secondary cursor-pointer"

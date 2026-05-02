@@ -141,6 +141,13 @@ function triggerBlobDownload(blob: Blob, fileName: string): void {
   }, 60_000);
 }
 
+function isCsvFile(mimeType: string, fileName: string): boolean {
+  const normalizedMimeType = mimeType.toLowerCase();
+  const normalizedFileName = fileName.toLowerCase();
+
+  return normalizedMimeType.includes('csv') || normalizedFileName.endsWith('.csv');
+}
+
 export default function ProjectDetailPage() {
   const { t } = useTranslation();
   const { projectId } = useParams();
@@ -536,14 +543,16 @@ export default function ProjectDetailPage() {
                         <Download className="size-3.5" />
                         {t('project.detail.downloadDatasetFile')}
                       </Button>
-                      <Button
-                        className="h-9 gap-1.5 rounded-md border border-border bg-transparent px-3 text-xs font-semibold text-foreground hover:bg-surface-soft hover:text-primary cursor-pointer"
-                        onClick={() => void openDatasetFile(item.id)}
-                        type="button"
-                      >
-                        <ExternalLink className="size-3.5" />
-                        {t('project.detail.openDatasetFile')}
-                      </Button>
+                      {!isCsvFile(item.mimeType || '', item.fileName) && (
+                        <Button
+                          className="h-9 gap-1.5 rounded-md border border-border bg-transparent px-3 text-xs font-semibold text-foreground hover:bg-surface-soft hover:text-primary cursor-pointer"
+                          onClick={() => void openDatasetFile(item.id)}
+                          type="button"
+                        >
+                          <ExternalLink className="size-3.5" />
+                          {t('project.detail.openDatasetFile')}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}

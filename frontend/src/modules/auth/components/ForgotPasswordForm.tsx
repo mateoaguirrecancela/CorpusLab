@@ -6,6 +6,7 @@ import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { useToastMessages } from '@/hooks/useToastMessages';
 import { SubmitButtonWithSpinner } from '@/components/ui/submit-button-with-spinner';
 import { type ForgotPasswordFormState } from '@/modules/auth/types/forgotPassword';
+import { isEmailValid } from '@/modules/auth/utils/validation';
 
 type ForgotPasswordFormProps = {
   form: ForgotPasswordFormState;
@@ -30,21 +31,26 @@ export function ForgotPasswordForm({
   onFieldChange,
 }: Readonly<ForgotPasswordFormProps>) {
   const { t } = useTranslation();
+  const trimmedEmail = form.email.trim();
+  const isEmailInvalid = trimmedEmail.length > 0 && !isEmailValid(trimmedEmail);
 
   useToastMessages({ errorMessage, successMessage });
 
   return (
     <form className="mt-8 space-y-4" onSubmit={onSubmit}>
-      <FormFieldControl
-        icon={<Mail className="size-4" />}
-        id="email"
-        inputProps={{ placeholder: 'example@email.com' }}
-        inputType="email"
-        label={t('auth.login.email')}
-        onValueChange={(value) => onFieldChange('email', value)}
-        required
-        value={form.email}
-      />
+      <div className="space-y-4">
+        <FormFieldControl
+          icon={<Mail className="size-4" />}
+          id="email"
+          inputProps={{ placeholder: 'example@email.com' }}
+          inputType="email"
+          label={t('auth.login.email')}
+          message={isEmailInvalid ? t('auth.login.invalidEmail') : undefined}
+          onValueChange={(value) => onFieldChange('email', value)}
+          required
+          value={form.email}
+        />
+      </div>
 
       <SubmitButtonWithSpinner
         className="h-11 w-full rounded-md bg-primary text-sm font-semibold text-white shadow-[var(--shadow-primary-action)] hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
