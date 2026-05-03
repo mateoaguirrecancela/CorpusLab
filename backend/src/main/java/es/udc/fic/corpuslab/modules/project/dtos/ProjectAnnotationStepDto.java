@@ -12,5 +12,6 @@ public record ProjectAnnotationStepDto(
                 String preview,
                 Map<String, String> rowValues,
                 boolean completed,
+                boolean warning,
                 Object annotation) {
 }

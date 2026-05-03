@@ -133,12 +133,16 @@
         "annotationPlaceholder": "Write the annotation",
         "notesPlaceholder": "Explain your reasoning or add clarifications"
       },
+      "warningToggleLabel": "Toggle review warning",
+      "warningTooltip": "Mark for review",
+      "warningToggled": "Review warning status updated.",
       "errors": {
         "invalidId": "The project identifier is invalid.",
         "emptyPayload": "You must provide an annotation before saving.",
         "classificationRequired": "You must complete the classification before continuing.",
         "nerLabelRequired": "Select a label before highlighting text.",
-        "nerOverlappingEntities": "Overlapping entities are not allowed."
+        "nerOverlappingEntities": "Overlapping entities are not allowed.",
+        "warningToggleFailed": "Could not update the review warning status."
       }
     },
     "create": {

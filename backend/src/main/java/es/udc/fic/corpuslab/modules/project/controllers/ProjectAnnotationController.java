@@ -82,4 +82,22 @@ public class ProjectAnnotationController {
             @Valid @RequestBody SaveProjectAnnotationStepRequestDto request) {
         return projectAnnotationService.saveAnnotationStep(authentication.getName(), projectId, request);
     }
+
+    public record ToggleAnnotationWarningRequest(Long datasetItemId, Integer stepIndex) {
+    }
+
+    @PutMapping("/{projectId}/annotations/participants/{participantUserId}/steps/warning")
+    @ResponseStatus(HttpStatus.OK)
+    public SaveProjectAnnotationStepResponseDto toggleAnnotationWarning(
+            Authentication authentication,
+            @PathVariable Long projectId,
+            @PathVariable Long participantUserId,
+            @Valid @RequestBody ToggleAnnotationWarningRequest request) {
+        return projectAnnotationService.toggleAnnotationWarning(
+                authentication.getName(),
+                projectId,
+                participantUserId,
+                request.datasetItemId(),
+                request.stepIndex());
+    }
 }

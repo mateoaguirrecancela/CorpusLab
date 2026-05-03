@@ -55,6 +55,9 @@ public class Annotation {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "warning", nullable = false)
+    private boolean warning = false;
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
@@ -109,5 +112,13 @@ public class Annotation {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public boolean isWarning() {
+        return warning;
+    }
+
+    public void setWarning(boolean warning) {
+        this.warning = warning;
     }
 }

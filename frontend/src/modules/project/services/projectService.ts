@@ -193,6 +193,22 @@ export async function saveProjectAnnotationStep(
   return response.data;
 }
 
+export async function toggleProjectAnnotationWarning(
+  projectId: number,
+  participantUserId: number,
+  datasetItemId: number,
+  stepIndex: number,
+): Promise<SaveProjectAnnotationStepResponse> {
+  const { data } = await api.put<SaveProjectAnnotationStepResponse>(
+    `/projects/${projectId}/annotations/participants/${participantUserId}/steps/warning`,
+    {
+      datasetItemId,
+      stepIndex,
+    },
+  );
+  return data;
+}
+
 function parseFileNameFromContentDisposition(
   contentDisposition: string | undefined,
 ): string | null {

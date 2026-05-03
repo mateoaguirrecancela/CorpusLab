@@ -133,12 +133,16 @@
         "annotationPlaceholder": "Escribe la anotación",
         "notesPlaceholder": "Explica tu criterio o añade aclaraciones"
       },
+      "warningToggleLabel": "Alternar aviso de revisión",
+      "warningTooltip": "Marcar para revisión",
+      "warningToggled": "Estado de aviso actualizado.",
       "errors": {
         "invalidId": "El identificador del proyecto no es válido.",
         "emptyPayload": "Debes introducir una anotación antes de guardar.",
         "classificationRequired": "Debes completar la clasificación antes de continuar.",
         "nerLabelRequired": "Selecciona una etiqueta antes de resaltar texto.",
-        "nerOverlappingEntities": "No se permiten entidades solapadas."
+        "nerOverlappingEntities": "No se permiten entidades solapadas.",
+        "warningToggleFailed": "No se pudo actualizar el aviso de revisión."
       }
     },
     "create": {

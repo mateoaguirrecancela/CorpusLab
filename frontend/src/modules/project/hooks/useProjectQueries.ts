@@ -11,6 +11,7 @@ import {
   getMyAssignedProjects,
   getProjectDetail,
   saveProjectAnnotationStep,
+  toggleProjectAnnotationWarning,
   updateProject,
   uploadProjectDataset,
 } from '@/modules/project/services/projectService';
@@ -294,6 +295,37 @@ export function useSaveProjectAnnotationStepMutation(offset: number, limit: numb
         myAssignedProjectsQueryKey(),
         projectDetailQueryKey(variables.projectId),
         projectAnnotationWorkspaceQueryKey(variables.projectId, offset, limit),
+      ]);
+    },
+  });
+}
+
+type ToggleProjectAnnotationWarningMutationInput = {
+  projectId: number;
+  participantUserId: number;
+  datasetItemId: number;
+  stepIndex: number;
+};
+
+export function useToggleProjectAnnotationWarningMutation(offset: number, limit: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      participantUserId,
+      datasetItemId,
+      stepIndex,
+    }: ToggleProjectAnnotationWarningMutationInput) =>
+      toggleProjectAnnotationWarning(projectId, participantUserId, datasetItemId, stepIndex),
+    onSuccess: (_, variables) => {
+      invalidateQueryKeys(queryClient, [
+        projectParticipantAnnotationWorkspaceQueryKey(
+          variables.projectId,
+          variables.participantUserId,
+          offset,
+          limit,
+        ),
       ]);
     },
   });

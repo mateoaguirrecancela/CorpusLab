@@ -28,6 +28,10 @@
       "PROJECT_ANNOTATION_COMPLETED": {
         "title": "Un investigador completo su anotacion",
         "description": "{{actor}} completo la anotacion del proyecto {{project}}"
+      },
+      "ANNOTATION_WARNING_MARKED": {
+        "title": "Aviso en anotación",
+        "description": "{{actor}} ha marcado una anotación para revisar en {{project}}"
       }
     },
     "unknownActor": "Alguien",
