@@ -195,6 +195,12 @@
         "ner": "Named Entity Recognition (NER)",
         "seq2seq": "Sequence-to-Sequence (Seq2Seq)"
       },
+      "projectTypesDescriptions": {
+        "textClassificationSimple": "Assign a single category to each item.",
+        "textClassificationMultiLabel": "Assign multiple categories to each item.",
+        "ner": "Identify and classify named entities in the text.",
+        "seq2seq": "Translation, summarization or other text-to-text tasks."
+      },
       "labelsSectionTitle": "Labels",
       "labelsSectionDescription": "Add the labels that can be assigned in the project.",
       "labelsSectionDescriptionNer": "Add entity labels and assign a color to each one.",

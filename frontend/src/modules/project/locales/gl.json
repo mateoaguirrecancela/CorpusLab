@@ -191,6 +191,12 @@
         "ner": "Extracción de Entidades (NER)",
         "seq2seq": "Sequence-to-Sequence (Seq2Seq)"
       },
+      "projectTypesDescriptions": {
+        "textClassificationSimple": "Asignar unha única categoría a cada elemento.",
+        "textClassificationMultiLabel": "Asignar múltiples categorías a cada elemento.",
+        "ner": "Identificar e clasificar entidades nomeadas no texto.",
+        "seq2seq": "Tradución, resumo ou outras tarefas de texto a texto."
+      },
       "labelsSectionTitle": "Etiquetas",
       "labelsSectionDescription": "Engade as etiquetas que poderán asignarse no proxecto.",
       "labelsSectionDescriptionNer": "Engade etiquetas de entidade e asigna unha cor a cada unha.",

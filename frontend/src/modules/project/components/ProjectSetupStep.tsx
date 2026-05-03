@@ -16,6 +16,8 @@ import {
   type ProjectType,
 } from '@/modules/project/types/project';
 import { isNerCompatibleDataset } from '@/modules/project/utils/projectUtils';
+import { ProjectTypeSelector } from '@/modules/project/components/ProjectTypeSelector';
+
 
 const MAX_GUIDELINE_SIZE_MB = 10;
 
@@ -425,34 +427,18 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
 
   return (
     <div className="mt-8 space-y-6">
-      <FormFieldControl
-        controlType="select"
-        id="create-project-type"
-        label={t('project.create.projectTypeLabel')}
-        onValueChange={(value) => handleProjectTypeChange(value as ProjectType)}
-        options={[
-          {
-            label: t('project.create.projectTypes.textClassificationSimple'),
-            value: 'TEXT_CLASSIFICATION_SIMPLE',
-          },
-          {
-            label: t('project.create.projectTypes.textClassificationMultiLabel'),
-            value: 'TEXT_CLASSIFICATION_MULTILABEL',
-          },
-          {
-            label: t('project.create.projectTypes.ner'),
-            disabled: isNerDatasetCompatible === false,
-            value: 'NER',
-          },
-          {
-            label: t('project.create.projectTypes.seq2seq'),
-            value: 'SEQ2SEQ',
-          },
-        ]}
-        required
-        selectProps={{ required: true }}
-        value={projectType}
-      />
+      <section className="space-y-3">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          {t('project.create.projectTypeLabel')} *
+        </p>
+
+        <ProjectTypeSelector
+          disabledTypes={isNerDatasetCompatible === false ? ['NER'] : []}
+          onChange={handleProjectTypeChange}
+          value={projectType}
+        />
+      </section>
+
 
       {requiresAnnotationTargetColumn && isLoadingCsvHeaders && (
         <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
