@@ -17,6 +17,7 @@ import {
   CircleDashed,
   Tag,
   X,
+  AlertTriangle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
@@ -33,6 +34,7 @@ import {
   useProjectAnnotationWorkspaceQuery,
   useProjectDetailQuery,
   useSaveProjectAnnotationStepMutation,
+  useToggleProjectAnnotationWarningMutation,
 } from '@/modules/project/hooks/useProjectQueries';
 import {
   getProjectAnnotationLoadErrorMessage,
@@ -992,6 +994,11 @@ export default function ProjectAnnotationPage() {
     ANNOTATION_PAGE_SIZE,
   );
 
+  const toggleProjectAnnotationWarningMutation = useToggleProjectAnnotationWarningMutation(
+    annotationOffset,
+    ANNOTATION_PAGE_SIZE,
+  );
+
   const reviewedParticipant = useMemo(() => {
     if (!project || reviewedParticipantUserId == null) {
       return null;
@@ -1345,6 +1352,23 @@ export default function ProjectAnnotationPage() {
     await runAfterPersist(goToNextStep);
   };
 
+  const handleToggleWarning = async () => {
+    if (!currentStep || !isReviewMode || reviewedParticipantUserId == null) {
+      return;
+    }
+
+    try {
+      await toggleProjectAnnotationWarningMutation.mutateAsync({
+        projectId: numericProjectId,
+        participantUserId: reviewedParticipantUserId,
+        datasetItemId: currentStep.datasetItemId,
+        stepIndex: currentStep.stepIndex,
+      });
+    } catch (error) {
+      toast.error(t('project.annotationPage.errors.warningToggleFailed'));
+    }
+  };
+
   const handleFinishAction = async () => {
     await runAfterPersist(() => navigate(`/home/projects/${numericProjectId}`));
   };
@@ -1549,6 +1573,12 @@ export default function ProjectAnnotationPage() {
 
   return (
     <PageContainer className="mb-16">
+      {isReviewMode && (
+        <h1 className="text-3xl font-black tracking-tight text-primary sm:text-4xl">
+          {reviewedParticipantLabel ?? String(reviewedParticipantUserId)}
+        </h1>
+      )}
+
       <div className="flex items-center justify-between gap-3">
         <BackButton
           disabled={areStepActionsDisabled}
@@ -1572,12 +1602,6 @@ export default function ProjectAnnotationPage() {
           </div>
         )}
       </div>
-
-      {isReviewMode && (
-        <h1 className="text-3xl font-black tracking-tight text-primary sm:text-4xl">
-          {reviewedParticipantLabel ?? String(reviewedParticipantUserId)}
-        </h1>
-      )}
 
       {(isProjectLoading || isAnnotationWorkspaceLoading) && (
         <div className="text-sm text-muted-foreground">
@@ -1640,26 +1664,44 @@ export default function ProjectAnnotationPage() {
                         {sourceFileName ?? currentStep.sourceName}
                       </p>
                     </div>
-                    <span
-                      className={[
-                        'inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold',
-                        currentStep.completed
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-amber-100 text-amber-700',
-                      ].join(' ')}
-                    >
-                      {currentStep.completed ? (
-                        <CheckCircle2 aria-hidden className="size-3.5" />
-                      ) : (
-                        <CircleDashed aria-hidden className="size-3.5" />
+                    <div className="flex items-center gap-2">
+                      {currentStep.completed && (isReviewMode || currentStep.warning) && (
+                        <button
+                          aria-label={t('project.annotationPage.warningToggleLabel')}
+                          className={[
+                            'inline-flex items-center justify-center transition-colors',
+                            currentStep.warning ? 'text-red-500' : 'text-muted-foreground/40',
+                            isReviewMode ? 'cursor-pointer hover:text-red-400' : 'cursor-default',
+                          ].join(' ')}
+                          disabled={!isReviewMode || toggleProjectAnnotationWarningMutation.isPending}
+                          onClick={handleToggleWarning}
+                          title={t('project.annotationPage.warningTooltip')}
+                          type="button"
+                        >
+                          <AlertTriangle aria-hidden className="size-5" />
+                        </button>
                       )}
-                      {currentStep.completed
-                        ? t('project.annotationPage.status.completed')
-                        : t('project.annotationPage.status.pending')}
-                    </span>
+                      <span
+                        className={[
+                          'inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold',
+                          currentStep.completed
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-amber-100 text-amber-700',
+                        ].join(' ')}
+                      >
+                        {currentStep.completed ? (
+                          <CheckCircle2 aria-hidden className="size-3.5" />
+                        ) : (
+                          <CircleDashed aria-hidden className="size-3.5" />
+                        )}
+                        {currentStep.completed
+                          ? t('project.annotationPage.status.completed')
+                          : t('project.annotationPage.status.pending')}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="mt-4 min-h-105 min-w-0">
+                  <div className="mt-4 xl:min-h-64 min-w-0">
                     {isSourceLoading && (
                       <div className="flex h-95 items-center justify-center text-sm text-muted-foreground">
                         <span className="inline-flex items-center gap-2">

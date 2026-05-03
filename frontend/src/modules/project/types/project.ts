@@ -117,6 +117,7 @@ export type AnnotationStep = {
   preview: string;
   rowValues: Record<string, string> | null;
   completed: boolean;
+  warning: boolean;
   annotation: unknown;
 };
 
