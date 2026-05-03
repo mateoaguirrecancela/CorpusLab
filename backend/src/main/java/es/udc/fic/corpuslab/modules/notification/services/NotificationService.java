@@ -44,6 +44,14 @@ public interface NotificationService {
             Long researchGroupId,
             String researchGroupName);
 
+    void createProjectAnnotationWarningNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName);
+
     void deleteNotificationsByProjectId(Long projectId);
 
     void deleteNotificationsByResearchGroupId(Long researchGroupId);

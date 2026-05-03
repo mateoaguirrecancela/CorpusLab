@@ -166,6 +166,27 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
+    public void createProjectAnnotationWarningNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName) {
+        Notification notification = new Notification();
+        notification.setRecipientUser(getUserReference(recipientUserId));
+        notification.setActorUser(getUserReference(actorUserId));
+        notification.setType(NotificationType.ANNOTATION_WARNING_MARKED);
+        notification.setProjectId(projectId);
+        notification.setProjectName(projectName);
+        notification.setResearchGroupId(researchGroupId);
+        notification.setResearchGroupName(researchGroupName);
+
+        notificationRepository.save(notification);
+    }
+
+    @Override
+    @Transactional
     public void deleteNotificationsByProjectId(Long projectId) {
         notificationRepository.deleteByProjectId(projectId);
     }

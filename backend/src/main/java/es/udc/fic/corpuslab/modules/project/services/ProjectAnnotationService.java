@@ -16,6 +16,9 @@ public interface ProjectAnnotationService {
     SaveProjectAnnotationStepResponseDto saveAnnotationStep(String authenticatedEmail, Long projectId,
             SaveProjectAnnotationStepRequestDto request);
 
+    SaveProjectAnnotationStepResponseDto toggleAnnotationWarning(String authenticatedEmail, Long projectId,
+            Long participantUserId, Long datasetItemId, Integer stepIndex);
+
     ProjectAnnotationExportCsvDto exportAnnotationResultsCsv(String authenticatedEmail, Long projectId);
 
 }
