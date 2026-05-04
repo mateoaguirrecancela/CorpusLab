@@ -100,16 +100,17 @@ INSERT INTO projects (
     description,
     project_type,
     setup_completed,
+    is_archived,
     created_at
 ) VALUES
-    (1, 1, 'News Sentiment Baseline', 'Binary and neutral sentiment over short news snippets.', 'TEXT_CLASSIFICATION_SIMPLE',     true,  now() - interval '60 days'),
-    (2, 1, 'Multi Topic News',        'Multi-label topical annotation for newsroom content.',    'TEXT_CLASSIFICATION_MULTILABEL', true,  now() - interval '50 days'),
-    (3, 2, 'Clinical NER Corpus',     'Named entity extraction in clinical text and JSON.',       'NER',                           true,  now() - interval '45 days'),
-    (4, 2, 'Meeting Note Summaries',  'Abstractive summaries of operational notes.',              'SEQ2SEQ',                       true,  now() - interval '40 days'),
-    (5, 3, 'Clause Classification Pilot', 'Early pilot with partial setup to test flow guards.',  'TEXT_CLASSIFICATION_SIMPLE',    false, now() - interval '20 days'),
-    (6, 3, 'Legal NER Extraction',    'Extract judges, laws, organizations and dates.',           'NER',                           true,  now() - interval '35 days'),
-    (7, 1, 'EN-ES Sentence Rewrites', 'Controlled rewriting and translation-like tasks.',         'SEQ2SEQ',                       true,  now() - interval '30 days'),
-    (8, 2, 'Trial Report Tagging',    'Tagging trial reports with multiple dimensions.',          'TEXT_CLASSIFICATION_MULTILABEL', true, now() - interval '25 days');
+    (1, 1, 'News Sentiment Baseline', 'Binary and neutral sentiment over short news snippets.', 'TEXT_CLASSIFICATION_SIMPLE',     true,  false, now() - interval '60 days'),
+    (2, 1, 'Multi Topic News',        'Multi-label topical annotation for newsroom content.',    'TEXT_CLASSIFICATION_MULTILABEL', true,  false, now() - interval '50 days'),
+    (3, 2, 'Clinical NER Corpus',     'Named entity extraction in clinical text and JSON.',       'NER',                           true,  false, now() - interval '45 days'),
+    (4, 2, 'Meeting Note Summaries',  'Abstractive summaries of operational notes.',              'SEQ2SEQ',                       true,  false, now() - interval '40 days'),
+    (5, 3, 'Clause Classification Pilot', 'Early pilot with partial setup to test flow guards.',  'TEXT_CLASSIFICATION_SIMPLE',    false, false, now() - interval '20 days'),
+    (6, 3, 'Legal NER Extraction',    'Extract judges, laws, organizations and dates.',           'NER',                           true,  false, now() - interval '35 days'),
+    (7, 1, 'EN-ES Sentence Rewrites', 'Controlled rewriting and translation-like tasks.',         'SEQ2SEQ',                       true,  false, now() - interval '30 days'),
+    (8, 2, 'Trial Report Tagging',    'Tagging trial reports with multiple dimensions.',          'TEXT_CLASSIFICATION_MULTILABEL', true, false, now() - interval '25 days');
 
 INSERT INTO project_participants (id, project_id, user_id, role, assigned_at) VALUES
     (1,  1, 1,  'CREATOR',    now() - interval '60 days'),

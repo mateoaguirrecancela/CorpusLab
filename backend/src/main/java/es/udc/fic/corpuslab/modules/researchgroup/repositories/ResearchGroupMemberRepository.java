@@ -46,7 +46,7 @@ public interface ResearchGroupMemberRepository extends JpaRepository<ResearchGro
                             m.role,
                             (SELECT COUNT(pp) FROM ProjectParticipant pp 
                              JOIN pp.project p 
-                             WHERE pp.user = u AND p.researchGroup.id = :groupId)
+                             WHERE pp.user = u AND p.researchGroup.id = :groupId AND p.archived = false)
                         )
                         FROM ResearchGroupMember m
                         JOIN m.user u

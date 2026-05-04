@@ -3,6 +3,7 @@ package es.udc.fic.corpuslab.modules.project.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,6 +13,10 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
@@ -23,6 +28,7 @@ import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
 import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAssignedSummaryDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectDetailDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSummaryDto;
 import es.udc.fic.corpuslab.modules.project.dtos.UpdateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.entities.Project;
@@ -112,7 +118,7 @@ class ProjectServiceImplTest {
     }
 
     @Test
-    void findMyAssignedProjects_ShouldReturnList() {
+    void findMyAssignedProjects_ShouldReturnActiveSlice() {
         User user = UserTestBuilder.validUser().withEmail("user@example.com").build();
         setId(user, 1L);
 
@@ -127,12 +133,52 @@ class ProjectServiceImplTest {
         ProjectParticipant participant = ProjectParticipantTestBuilder.validParticipant()
                 .withUser(user).withProject(project).withRole(ProjectParticipantRole.PARTICIPANT).build();
 
-        when(projectParticipantRepository.findByUserIdOrderByProjectCreatedAtDesc(1L)).thenReturn(List.of(participant));
+        when(projectParticipantRepository.findByUserIdAndProjectArchivedFalseOrderByProjectCreatedAtDesc(
+                eq(1L), any(Pageable.class)))
+                .thenReturn(new SliceImpl<>(List.of(participant), PageRequest.of(0, 12), false));
 
-        List<ProjectAssignedSummaryDto> results = projectService.findMyAssignedProjects("user@example.com");
+        Slice<ProjectAssignedSummaryDto> results = projectService.findMyAssignedProjects(
+                "user@example.com",
+                0,
+                12,
+                false);
 
-        assertThat(results).hasSize(1);
-        assertThat(results.get(0).participantRole()).isEqualTo(ProjectParticipantRole.PARTICIPANT);
+        assertThat(results.getContent()).hasSize(1);
+        assertThat(results.getContent().get(0).participantRole()).isEqualTo(ProjectParticipantRole.PARTICIPANT);
+        assertThat(results.getContent().get(0).archived()).isFalse();
+    }
+
+    @Test
+    void findMyAssignedProjects_ShouldReturnArchivedProjectsForParticipantsToo() {
+        User participantUser = UserTestBuilder.validUser().withEmail("participant@example.com").build();
+        setId(participantUser, 1L);
+
+        when(authApiService.findUserByEmail("participant@example.com"))
+                .thenReturn(new UserInfo(1L, "participant@example.com", "Participant", "User"));
+
+        ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+        setGroupId(group, 10L);
+
+        Project project = ProjectTestBuilder.validProject().withResearchGroup(group).build();
+        project.setArchived(true);
+        setProjectId(project, 100L);
+
+        ProjectParticipant archivedParticipant = ProjectParticipantTestBuilder.validParticipant()
+                .withUser(participantUser).withProject(project).withRole(ProjectParticipantRole.PARTICIPANT).build();
+
+        when(projectParticipantRepository.findByUserIdAndProjectArchivedTrueOrderByProjectCreatedAtDesc(
+                eq(1L), any(Pageable.class)))
+                .thenReturn(new SliceImpl<>(List.of(archivedParticipant), PageRequest.of(0, 12), false));
+
+        Slice<ProjectAssignedSummaryDto> results = projectService.findMyAssignedProjects(
+                "participant@example.com",
+                0,
+                12,
+                true);
+
+        assertThat(results.getContent()).hasSize(1);
+        assertThat(results.getContent().get(0).participantRole()).isEqualTo(ProjectParticipantRole.PARTICIPANT);
+        assertThat(results.getContent().get(0).archived()).isTrue();
     }
 
     @Test
@@ -195,6 +241,94 @@ class ProjectServiceImplTest {
         verify(datasetItemRepository).deleteByProjectId(100L);
         verify(projectParticipantRepository).deleteByProjectId(100L);
         verify(projectRepository).delete(project);
+    }
+
+    @Test
+    void archiveProject_ShouldArchiveProject_WhenRequesterIsCreator() {
+        User creator = UserTestBuilder.validUser().withEmail("creator@example.com").build();
+        setId(creator, 1L);
+
+        when(authApiService.findUserByEmail("creator@example.com"))
+                .thenReturn(new UserInfo(1L, "creator@example.com", "Creator", "User"));
+
+        ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+        setGroupId(group, 10L);
+
+        Project project = ProjectTestBuilder.validProject().withResearchGroup(group).build();
+        setProjectId(project, 100L);
+
+        ProjectParticipant creatorParticipant = ProjectParticipantTestBuilder.validParticipant()
+                .withUser(creator).withProject(project).withRole(ProjectParticipantRole.CREATOR).build();
+
+        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L))
+                .thenReturn(Optional.of(creatorParticipant));
+        when(projectParticipantRepository.findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(100L))
+                .thenReturn(List.of(creatorParticipant));
+        when(datasetItemRepository.findByProjectIdOrderByItemIndexAsc(100L)).thenReturn(List.of());
+        when(annotationRepository.findByDatasetItemProjectId(100L)).thenReturn(List.of());
+
+        ProjectDetailDto result = projectService.archiveProject("creator@example.com", 100L);
+
+        assertThat(project.isArchived()).isTrue();
+        assertThat(result.archived()).isTrue();
+        verify(projectRepository).save(project);
+    }
+
+    @Test
+    void unarchiveProject_ShouldUnarchiveProject_WhenRequesterIsCreator() {
+        User creator = UserTestBuilder.validUser().withEmail("creator@example.com").build();
+        setId(creator, 1L);
+
+        when(authApiService.findUserByEmail("creator@example.com"))
+                .thenReturn(new UserInfo(1L, "creator@example.com", "Creator", "User"));
+
+        ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+        setGroupId(group, 10L);
+
+        Project project = ProjectTestBuilder.validProject().withResearchGroup(group).build();
+        project.setArchived(true);
+        setProjectId(project, 100L);
+
+        ProjectParticipant creatorParticipant = ProjectParticipantTestBuilder.validParticipant()
+                .withUser(creator).withProject(project).withRole(ProjectParticipantRole.CREATOR).build();
+
+        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L))
+                .thenReturn(Optional.of(creatorParticipant));
+        when(projectParticipantRepository.findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(100L))
+                .thenReturn(List.of(creatorParticipant));
+        when(datasetItemRepository.findByProjectIdOrderByItemIndexAsc(100L)).thenReturn(List.of());
+        when(annotationRepository.findByDatasetItemProjectId(100L)).thenReturn(List.of());
+
+        ProjectDetailDto result = projectService.unarchiveProject("creator@example.com", 100L);
+
+        assertThat(project.isArchived()).isFalse();
+        assertThat(result.archived()).isFalse();
+        verify(projectRepository).save(project);
+    }
+
+    @Test
+    void archiveProject_ShouldThrowAccessDenied_WhenRequesterIsParticipant() {
+        User participantUser = UserTestBuilder.validUser().withEmail("participant@example.com").build();
+        setId(participantUser, 2L);
+
+        when(authApiService.findUserByEmail("participant@example.com"))
+                .thenReturn(new UserInfo(2L, "participant@example.com", "Participant", "User"));
+
+        ResearchGroup group = ResearchGroupTestBuilder.validGroup().build();
+        setGroupId(group, 10L);
+
+        Project project = ProjectTestBuilder.validProject().withResearchGroup(group).build();
+        setProjectId(project, 100L);
+
+        ProjectParticipant participant = ProjectParticipantTestBuilder.validParticipant()
+                .withUser(participantUser).withProject(project).withRole(ProjectParticipantRole.PARTICIPANT).build();
+
+        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 2L))
+                .thenReturn(Optional.of(participant));
+
+        assertThatThrownBy(() -> projectService.archiveProject("participant@example.com", 100L))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Only project creators");
     }
 
     // Helper methods via reflection

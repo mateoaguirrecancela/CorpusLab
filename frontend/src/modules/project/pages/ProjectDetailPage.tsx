@@ -1,5 +1,7 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  Archive,
+  ArchiveRestore,
   CalendarDays,
   Database,
   Download,
@@ -8,6 +10,7 @@ import {
   FileText,
   FolderKanban,
   Layers,
+  MoreVertical,
   PenSquare,
   Tags,
   Users,
@@ -19,6 +22,7 @@ import { BackButton } from '@/components/common/BackButton';
 import { PageContainer } from '@/components/common/PageContainer';
 import { RoleBadge } from '@/components/common/RoleBadge';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Spinner } from '@/components/ui/spinner';
 import {
   Table,
@@ -29,13 +33,19 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { EditProjectDialog } from '@/modules/project/components/EditProjectDialog';
-import { useProjectDetailQuery } from '@/modules/project/hooks/useProjectQueries';
+import {
+  useArchiveProjectMutation,
+  useProjectDetailQuery,
+  useUnarchiveProjectMutation,
+} from '@/modules/project/hooks/useProjectQueries';
 import {
   exportProjectAnnotationResultsCsv,
+  getArchiveProjectErrorMessage,
   getProjectAnnotationExportErrorMessage,
   getProjectDatasetItemContent,
   getProjectDatasetItemContentErrorMessage,
   getProjectDetailLoadErrorMessage,
+  getUnarchiveProjectErrorMessage,
 } from '@/modules/project/services/projectService';
 import { type ProjectParticipantRole, type ProjectType } from '@/modules/project/types/project';
 import {
@@ -152,11 +162,17 @@ export default function ProjectDetailPage() {
   const { t } = useTranslation();
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const [projectActionsOpen, setProjectActionsOpen] = useState(false);
+  const [editProjectOpen, setEditProjectOpen] = useState(false);
 
   const numericProjectId = useMemo(() => Number(projectId), [projectId]);
   const isInvalidProjectId = !Number.isFinite(numericProjectId) || numericProjectId <= 0;
 
   const { data: project, isLoading, isError, error } = useProjectDetailQuery(numericProjectId);
+  const archiveProjectMutation = useArchiveProjectMutation();
+  const unarchiveProjectMutation = useUnarchiveProjectMutation();
+  const isArchiveStateUpdating =
+    archiveProjectMutation.isPending || unarchiveProjectMutation.isPending;
 
   const detailErrorMessage = useMemo(() => {
     if (isInvalidProjectId) {
@@ -291,14 +307,109 @@ export default function ProjectDetailPage() {
     }
   };
 
+  const toggleArchivedState = async () => {
+    if (!project || project.participantRole !== 'CREATOR') {
+      return;
+    }
+
+    try {
+      if (project.archived) {
+        await unarchiveProjectMutation.mutateAsync({ projectId: project.id });
+        toast.success(t('project.detail.unarchiveSuccess'));
+      } else {
+        await archiveProjectMutation.mutateAsync({ projectId: project.id });
+        toast.success(t('project.detail.archiveSuccess'));
+      }
+    } catch (archiveError) {
+      const message = project.archived
+        ? getUnarchiveProjectErrorMessage(archiveError)
+        : getArchiveProjectErrorMessage(archiveError);
+      toast.error(message);
+    }
+  };
+
+  const handleArchiveAction = async () => {
+    await toggleArchivedState();
+    setProjectActionsOpen(false);
+  };
+
+  const handleExportAction = async () => {
+    setProjectActionsOpen(false);
+    await downloadAnnotationResultsCsv();
+  };
+
   return (
     <PageContainer>
       <div className="flex items-center justify-between gap-4">
         <BackButton fallbackTo="/home/projects" />
         {!isLoading && !detailErrorMessage && project && (
           <div className="flex items-center gap-2">
+            <Link
+              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+              to={`/home/projects/${project.id}/annotate`}
+            >
+              <PenSquare className="size-4" />
+              {t('project.detail.openAnnotationWorkspace')}
+            </Link>
+
             {project.participantRole === 'CREATOR' && (
               <>
+                <Popover open={projectActionsOpen} onOpenChange={setProjectActionsOpen}>
+                  <PopoverTrigger
+                    aria-label={t('project.detail.projectActions')}
+                    className="inline-flex size-10 items-center justify-center border rounded-md bg-white text-muted-foreground transition-colors hover:bg-accent hover:text-primary cursor-pointer"
+                    type="button"
+                  >
+                    <MoreVertical className="size-4" />
+                  </PopoverTrigger>
+
+                  <PopoverContent
+                    align="end"
+                    className="w-64 rounded-xl border border-border bg-surface-base p-1.5"
+                  >
+                    <button
+                      className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                      disabled={isArchiveStateUpdating}
+                      onClick={() => void handleArchiveAction()}
+                      type="button"
+                    >
+                      {isArchiveStateUpdating ? (
+                        <Spinner aria-hidden className="size-4" />
+                      ) : project.archived ? (
+                        <ArchiveRestore className="size-4" />
+                      ) : (
+                        <Archive className="size-4" />
+                      )}
+                      {isArchiveStateUpdating
+                        ? t('project.detail.updatingArchiveState')
+                        : project.archived
+                          ? t('project.detail.unarchiveProject')
+                          : t('project.detail.archiveProject')}
+                    </button>
+
+                    <button
+                      className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-accent cursor-pointer"
+                      onClick={() => {
+                        setProjectActionsOpen(false);
+                        setEditProjectOpen(true);
+                      }}
+                      type="button"
+                    >
+                      <FilePenLine className="size-4" />
+                      {t('project.detail.editProject')}
+                    </button>
+
+                    <button
+                      className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-accent cursor-pointer"
+                      onClick={() => void handleExportAction()}
+                      type="button"
+                    >
+                      <Download className="size-4" />
+                      {t('project.detail.exportAnnotationsCsv')}
+                    </button>
+                  </PopoverContent>
+                </Popover>
+
                 <EditProjectDialog
                   groupId={project.researchGroupId}
                   initialDescription={project.description}
@@ -307,37 +418,13 @@ export default function ProjectDetailPage() {
                     .filter((participant) => participant.role === 'PARTICIPANT')
                     .map((participant) => participant.userId)}
                   onDeleted={() => navigate(`/home/research-groups/${project.researchGroupId}`)}
+                  onOpenChange={setEditProjectOpen}
+                  open={editProjectOpen}
                   projectId={project.id}
                   showDeleteButton
-                  trigger={
-                    <Button
-                      className="h-10 shrink-0 gap-2 rounded-lg border border-border bg-transparent px-3 text-sm font-semibold text-foreground transition hover:bg-surface-soft hover:text-primary cursor-pointer"
-                      type="button"
-                    >
-                      <FilePenLine className="size-4" />
-                      {t('project.detail.editProject')}
-                    </Button>
-                  }
                 />
-
-                <Button
-                  className="h-10 shrink-0 gap-2 rounded-lg border border-border bg-transparent px-3 text-sm font-semibold text-foreground transition hover:bg-surface-soft hover:text-primary cursor-pointer"
-                  onClick={() => void downloadAnnotationResultsCsv()}
-                  type="button"
-                >
-                  <Download className="size-4" />
-                  {t('project.detail.exportAnnotationsCsv')}
-                </Button>
               </>
             )}
-
-            <Link
-              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
-              to={`/home/projects/${project.id}/annotate`}
-            >
-              <PenSquare className="size-4" />
-              {t('project.detail.openAnnotationWorkspace')}
-            </Link>
           </div>
         )}
       </div>

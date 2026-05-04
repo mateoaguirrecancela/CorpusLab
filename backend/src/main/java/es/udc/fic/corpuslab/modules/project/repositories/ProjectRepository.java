@@ -11,6 +11,8 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     long countByResearchGroupId(Long researchGroupId);
 
+    long countByResearchGroupIdAndArchivedFalse(Long researchGroupId);
+
     List<Project> findByResearchGroupId(Long researchGroupId);
 
     Optional<Project> findByIdAndResearchGroupId(Long projectId, Long researchGroupId);

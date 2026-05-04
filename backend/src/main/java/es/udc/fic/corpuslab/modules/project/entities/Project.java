@@ -46,6 +46,9 @@ public class Project {
     @Column(name = "setup_completed", nullable = false)
     private boolean setupCompleted;
 
+    @Column(name = "is_archived", nullable = false, columnDefinition = "boolean default false")
+    private boolean archived;
+
     @Column(name = "annotation_target_column", length = 256)
     private String annotationTargetColumn;
 
@@ -108,6 +111,14 @@ public class Project {
 
     public void setSetupCompleted(boolean setupCompleted) {
         this.setupCompleted = setupCompleted;
+    }
+
+    public boolean isArchived() {
+        return archived;
+    }
+
+    public void setArchived(boolean archived) {
+        this.archived = archived;
     }
 
     public String getAnnotationTargetColumn() {

@@ -38,7 +38,7 @@ public class ProjectApiServiceImpl implements ProjectApiService {
     @Override
     @Transactional(readOnly = true)
     public long countProjectsByResearchGroupId(Long researchGroupId) {
-        return projectRepository.countByResearchGroupId(researchGroupId);
+        return projectRepository.countByResearchGroupIdAndArchivedFalse(researchGroupId);
     }
 
     @Override

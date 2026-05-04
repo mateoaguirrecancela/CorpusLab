@@ -1,7 +1,6 @@
 package es.udc.fic.corpuslab.modules.project.controllers;
 
-import java.util.List;
-
+import org.springframework.data.domain.Slice;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -11,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,10 +36,18 @@ public class ProjectController {
 
     @GetMapping("/research-groups/{groupId}/projects/my")
     @ResponseStatus(HttpStatus.OK)
-    public List<ProjectAssignedSummaryDto> findMyAssignedProjectsByGroup(
+    public Slice<ProjectAssignedSummaryDto> findMyAssignedProjectsByGroup(
             Authentication authentication,
-            @PathVariable Long groupId) {
-        return projectService.findAssignedProjectsByResearchGroup(authentication.getName(), groupId);
+            @PathVariable Long groupId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(defaultValue = "false") boolean showArchived) {
+        return projectService.findAssignedProjectsByResearchGroup(
+                authentication.getName(),
+                groupId,
+                page,
+                size,
+                showArchived);
     }
 
     @PostMapping("/research-groups/{groupId}/projects")
@@ -70,6 +78,22 @@ public class ProjectController {
         projectService.deleteProject(authentication.getName(), groupId, projectId);
     }
 
+    @PutMapping("/projects/{projectId}/archive")
+    @ResponseStatus(HttpStatus.OK)
+    public ProjectDetailDto archiveProject(
+            Authentication authentication,
+            @PathVariable Long projectId) {
+        return projectService.archiveProject(authentication.getName(), projectId);
+    }
+
+    @PutMapping("/projects/{projectId}/unarchive")
+    @ResponseStatus(HttpStatus.OK)
+    public ProjectDetailDto unarchiveProject(
+            Authentication authentication,
+            @PathVariable Long projectId) {
+        return projectService.unarchiveProject(authentication.getName(), projectId);
+    }
+
     @PutMapping("/research-groups/{groupId}/projects/{projectId}/setup")
     @ResponseStatus(HttpStatus.OK)
     public ProjectSetupResponseDto configureProjectSetup(
@@ -82,8 +106,12 @@ public class ProjectController {
 
     @GetMapping("/projects/my")
     @ResponseStatus(HttpStatus.OK)
-    public List<ProjectAssignedSummaryDto> findMyAssignedProjects(Authentication authentication) {
-        return projectService.findMyAssignedProjects(authentication.getName());
+    public Slice<ProjectAssignedSummaryDto> findMyAssignedProjects(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(defaultValue = "false") boolean showArchived) {
+        return projectService.findMyAssignedProjects(authentication.getName(), page, size, showArchived);
     }
 
     @GetMapping("/projects/{projectId}")

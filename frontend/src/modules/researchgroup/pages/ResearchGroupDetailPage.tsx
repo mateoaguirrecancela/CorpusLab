@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FilePenLine, FlaskConical, MoreVertical, Plus, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
@@ -27,6 +27,9 @@ import { useResearchGroupDetailQuery } from '@/modules/researchgroup/hooks/useRe
 import { getResearchGroupDetailErrorMessage } from '@/modules/researchgroup/services/researchGroupService';
 import { type ResearchGroupMember } from '@/modules/researchgroup/types/researchGroup';
 
+const TEXT_BUTTON_CLASS =
+  'inline-flex appearance-none items-center gap-2 border-0 bg-transparent p-0 text-sm font-semibold text-muted-foreground shadow-none cursor-pointer hover:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60';
+
 function getMemberInitials(member: ResearchGroupMember): string {
   const firstInitial = member.firstName.trim().charAt(0).toUpperCase();
   const lastInitial = member.lastName.trim().charAt(0).toUpperCase();
@@ -39,6 +42,7 @@ export default function ResearchGroupDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data: profile } = useProfileQuery();
+  const [showArchivedProjects, setShowArchivedProjects] = useState(false);
 
   const numericGroupId = useMemo(() => Number(id), [id]);
   const isInvalidGroupId = !Number.isFinite(numericGroupId) || numericGroupId <= 0;
@@ -65,11 +69,18 @@ export default function ResearchGroupDetailPage() {
   const canManageResearchers = currentMember?.role === 'OWNER';
   const canCreateProjects = currentMember?.role === 'OWNER' || currentMember?.role === 'ADMIN';
   const {
-    data: assignedProjects = [],
+    data: assignedProjectsData,
     isLoading: isLoadingProjects,
     isError: isProjectsError,
     error: projectsError,
-  } = useAssignedProjectsByGroupQuery(numericGroupId);
+    hasNextPage: hasNextProjectsPage,
+    fetchNextPage: fetchNextProjectsPage,
+    isFetchingNextPage: isFetchingNextProjectsPage,
+  } = useAssignedProjectsByGroupQuery(numericGroupId, showArchivedProjects);
+  const assignedProjects = useMemo(
+    () => assignedProjectsData?.pages.flatMap((page) => page.content) ?? [],
+    [assignedProjectsData],
+  );
 
   const projectsErrorMessage = isProjectsError ? getProjectsLoadErrorMessage(projectsError) : '';
 
@@ -156,16 +167,29 @@ export default function ResearchGroupDetailPage() {
                 {t('researchGroup.detail.projects')}
               </h2>
 
-              {canCreateProjects && (
-                <Button
-                  className="h-10 rounded-md bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-strong cursor-pointer"
-                  onClick={() => navigate(`/home/projects/create?groupId=${group.id}`)}
+              <div className="flex items-center gap-4">
+                <button
+                  aria-pressed={showArchivedProjects}
+                  className={TEXT_BUTTON_CLASS}
+                  onClick={() => setShowArchivedProjects((current) => !current)}
                   type="button"
                 >
-                  <Plus className="size-4" />
-                  {t('researchGroup.detail.newProject')}
-                </Button>
-              )}
+                  {showArchivedProjects
+                    ? t('project.list.viewActive')
+                    : t('project.list.viewArchived')}
+                </button>
+
+                {canCreateProjects && (
+                  <Button
+                    className="h-10 rounded-md bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-strong cursor-pointer"
+                    onClick={() => navigate(`/home/projects/create?groupId=${group.id}`)}
+                    type="button"
+                  >
+                    <Plus className="size-4" />
+                    {t('researchGroup.detail.newProject')}
+                  </Button>
+                )}
+              </div>
             </div>
 
             {isLoadingProjects && (
@@ -179,36 +203,50 @@ export default function ResearchGroupDetailPage() {
 
             {!isLoadingProjects && assignedProjects.length === 0 && (
               <p className="rounded-md border border-dashed border-border bg-surface-base px-4 py-5 text-sm text-muted-foreground">
-                {t('project.list.empty')}
+                {showArchivedProjects ? t('project.list.emptyArchived') : t('project.list.empty')}
               </p>
             )}
 
             {!isLoadingProjects && assignedProjects.length > 0 && (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {assignedProjects.map((project) => {
-                  const roleLabel =
-                    project.participantRole === 'CREATOR'
-                      ? t('project.list.roles.creator')
-                      : t('project.list.roles.participant');
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {assignedProjects.map((project) => {
+                    const roleLabel =
+                      project.participantRole === 'CREATOR'
+                        ? t('project.list.roles.creator')
+                        : t('project.list.roles.participant');
 
-                  return (
-                    <EntitySummaryCard
-                      actionLabel={t('project.list.openProject')}
-                      completionPercentage={project.completionPercentage}
-                      description={project.description}
-                      footerMeta={{
-                        kind: 'research-group',
-                        text: project.researchGroupName,
-                      }}
-                      key={project.id}
-                      onAction={() => navigate(`/home/projects/${project.id}`)}
-                      roleLabel={roleLabel}
-                      role={project.participantRole}
-                      title={project.name}
-                    />
-                  );
-                })}
-              </div>
+                    return (
+                      <EntitySummaryCard
+                        actionLabel={t('project.list.openProject')}
+                        completionPercentage={project.completionPercentage}
+                        description={project.description}
+                        key={project.id}
+                        onAction={() => navigate(`/home/projects/${project.id}`)}
+                        roleLabel={roleLabel}
+                        role={project.participantRole}
+                        title={project.name}
+                      />
+                    );
+                  })}
+                </div>
+
+                {hasNextProjectsPage && (
+                  <div className="mt-6 flex justify-center">
+                    <button
+                      className={TEXT_BUTTON_CLASS}
+                      disabled={isFetchingNextProjectsPage}
+                      onClick={() => void fetchNextProjectsPage()}
+                      type="button"
+                    >
+                      {isFetchingNextProjectsPage && <Spinner aria-hidden className="size-4" />}
+                      {isFetchingNextProjectsPage
+                        ? t('project.list.loadingMore')
+                        : t('project.list.loadMore')}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </section>
 
