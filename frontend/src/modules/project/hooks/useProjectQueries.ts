@@ -1,7 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { invalidateQueryKeys } from '@/lib/queryInvalidation';
 import {
   assignProjectParticipants,
+  archiveProject,
   configureProjectSetup,
   createProject,
   deleteProject,
@@ -12,6 +13,7 @@ import {
   getProjectDetail,
   saveProjectAnnotationStep,
   toggleProjectAnnotationWarning,
+  unarchiveProject,
   updateProject,
   uploadProjectDataset,
 } from '@/modules/project/services/projectService';
@@ -94,6 +96,44 @@ export function useDeleteProjectMutation() {
   });
 }
 
+type ArchiveProjectMutationInput = {
+  projectId: number;
+};
+
+export function useArchiveProjectMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ projectId }: ArchiveProjectMutationInput) => archiveProject(projectId),
+    onSuccess: (project) => {
+      invalidateQueryKeys(queryClient, [
+        myAssignedProjectsQueryKey(),
+        assignedProjectsByGroupQueryKey(project.researchGroupId),
+        projectDetailQueryKey(project.id),
+        researchGroupDetailQueryKey(project.researchGroupId),
+        RESEARCH_GROUPS_QUERY_KEY,
+      ]);
+    },
+  });
+}
+
+export function useUnarchiveProjectMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ projectId }: ArchiveProjectMutationInput) => unarchiveProject(projectId),
+    onSuccess: (project) => {
+      invalidateQueryKeys(queryClient, [
+        myAssignedProjectsQueryKey(),
+        assignedProjectsByGroupQueryKey(project.researchGroupId),
+        projectDetailQueryKey(project.id),
+        researchGroupDetailQueryKey(project.researchGroupId),
+        RESEARCH_GROUPS_QUERY_KEY,
+      ]);
+    },
+  });
+}
+
 type UploadDatasetMutationInput = {
   groupId: number;
   projectId: number;
@@ -170,25 +210,52 @@ export function myAssignedProjectsQueryKey() {
   return ['projects', 'my'] as const;
 }
 
+export function myAssignedProjectsListQueryKey(showArchived: boolean) {
+  return [...myAssignedProjectsQueryKey(), showArchived ? 'archived' : 'active'] as const;
+}
+
 export function assignedProjectsByGroupQueryKey(groupId: number) {
   return ['projects', 'group', groupId, 'my'] as const;
+}
+
+export function assignedProjectsByGroupListQueryKey(groupId: number, showArchived: boolean) {
+  return [
+    ...assignedProjectsByGroupQueryKey(groupId),
+    showArchived ? 'archived' : 'active',
+  ] as const;
 }
 
 export function projectDetailQueryKey(projectId: number) {
   return ['projects', 'detail', projectId] as const;
 }
 
-export function useMyAssignedProjectsQuery() {
-  return useQuery({
-    queryKey: myAssignedProjectsQueryKey(),
-    queryFn: getMyAssignedProjects,
+const PROJECTS_PAGE_SIZE = 12;
+
+export function useMyAssignedProjectsQuery(showArchived = false) {
+  return useInfiniteQuery({
+    queryKey: myAssignedProjectsListQueryKey(showArchived),
+    queryFn: ({ pageParam }) =>
+      getMyAssignedProjects({
+        page: pageParam,
+        size: PROJECTS_PAGE_SIZE,
+        showArchived,
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => (lastPage.last ? undefined : lastPage.number + 1),
   });
 }
 
-export function useAssignedProjectsByGroupQuery(groupId: number) {
-  return useQuery({
-    queryKey: assignedProjectsByGroupQueryKey(groupId),
-    queryFn: () => getAssignedProjectsByGroup(groupId),
+export function useAssignedProjectsByGroupQuery(groupId: number, showArchived = false) {
+  return useInfiniteQuery({
+    queryKey: assignedProjectsByGroupListQueryKey(groupId, showArchived),
+    queryFn: ({ pageParam }) =>
+      getAssignedProjectsByGroup(groupId, {
+        page: pageParam,
+        size: 3,
+        showArchived,
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => (lastPage.last ? undefined : lastPage.number + 1),
     enabled: Number.isFinite(groupId) && groupId > 0,
   });
 }

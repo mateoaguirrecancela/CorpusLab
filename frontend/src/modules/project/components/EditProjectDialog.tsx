@@ -30,9 +30,11 @@ type EditProjectDialogProps = {
   initialName: string;
   initialDescription: string | null;
   initialParticipantUserIds: number[];
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
   showDeleteButton?: boolean;
   onDeleted?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 function membersSelectionCardClassName(isSelected: boolean): string {
@@ -56,6 +58,8 @@ export function EditProjectDialog({
   trigger,
   showDeleteButton = false,
   onDeleted,
+  open: controlledOpen,
+  onOpenChange,
 }: Readonly<EditProjectDialogProps>) {
   const { t } = useTranslation();
   const { data: profile } = useProfileQuery();
@@ -64,7 +68,7 @@ export function EditProjectDialog({
   const updateProjectMutation = useUpdateProjectMutation();
   const deleteProjectMutation = useDeleteProjectMutation();
 
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription ?? '');
@@ -73,6 +77,7 @@ export function EditProjectDialog({
   const isUpdating = updateProjectMutation.isPending;
   const isDeleting = deleteProjectMutation.isPending;
   const isBusy = isUpdating || isDeleting;
+  const open = controlledOpen ?? internalOpen;
 
   const profileEmail = profile?.email?.toLowerCase() ?? '';
   const members = useMemo(
@@ -124,13 +129,21 @@ export function EditProjectDialog({
     );
   };
 
+  const setDialogOpen = (nextOpen: boolean) => {
+    onOpenChange?.(nextOpen);
+
+    if (controlledOpen === undefined) {
+      setInternalOpen(nextOpen);
+    }
+  };
+
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       resetForm();
       setConfirmDeleteOpen(false);
     }
 
-    setOpen(nextOpen);
+    setDialogOpen(nextOpen);
   };
 
   const handleUpdateProject = async () => {
@@ -149,7 +162,7 @@ export function EditProjectDialog({
         },
       });
 
-      setOpen(false);
+      setDialogOpen(false);
       resetForm();
       toast.success(t('project.edit.updateSuccess'));
     } catch (error) {
@@ -165,7 +178,7 @@ export function EditProjectDialog({
     try {
       await deleteProjectMutation.mutateAsync({ groupId, projectId });
       setConfirmDeleteOpen(false);
-      setOpen(false);
+      setDialogOpen(false);
       toast.success(t('project.edit.deleteSuccess'));
       onDeleted?.();
     } catch (error) {
@@ -176,7 +189,7 @@ export function EditProjectDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogTrigger render={trigger as React.JSX.Element} />
+        {trigger ? <DialogTrigger render={trigger as React.JSX.Element} /> : undefined}
 
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
@@ -270,7 +283,7 @@ export function EditProjectDialog({
                 className="h-10 min-w-32 rounded-md bg-destructive text-sm font-semibold text-white transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70 cursor-pointer"
                 disabled={isBusy}
                 onClick={() => {
-                  setOpen(false);
+                  setDialogOpen(false);
                   setConfirmDeleteOpen(true);
                 }}
                 type="button"

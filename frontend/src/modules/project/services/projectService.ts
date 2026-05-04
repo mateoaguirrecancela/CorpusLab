@@ -13,6 +13,7 @@ import {
   type ProjectSummary,
   type SaveProjectAnnotationStepPayload,
   type SaveProjectAnnotationStepResponse,
+  type SliceResponse,
   type UpdateProjectPayload,
   type UploadDatasetResponse,
 } from '@/modules/project/types/project';
@@ -55,6 +56,16 @@ export async function deleteProject(groupId: number, projectId: number): Promise
   await api.delete(`/research-groups/${groupId}/projects/${projectId}`);
 }
 
+export async function archiveProject(projectId: number): Promise<ProjectDetail> {
+  const response = await api.put<ProjectDetail>(`/projects/${projectId}/archive`);
+  return response.data;
+}
+
+export async function unarchiveProject(projectId: number): Promise<ProjectDetail> {
+  const response = await api.put<ProjectDetail>(`/projects/${projectId}/unarchive`);
+  return response.data;
+}
+
 export function getCreateProjectErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, i18n.t('project.errors.createFailed'));
 }
@@ -65,6 +76,14 @@ export function getUpdateProjectErrorMessage(error: unknown): string {
 
 export function getDeleteProjectErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, i18n.t('project.errors.deleteFailed'));
+}
+
+export function getArchiveProjectErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, i18n.t('project.errors.archiveFailed'));
+}
+
+export function getUnarchiveProjectErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, i18n.t('project.errors.unarchiveFailed'));
 }
 
 export async function uploadProjectDataset(
@@ -131,17 +150,33 @@ export function getAssignParticipantsErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, i18n.t('project.errors.assignmentFailed'));
 }
 
+type ProjectListParams = {
+  page?: number;
+  size?: number;
+  showArchived?: boolean;
+};
+
 export async function getAssignedProjectsByGroup(
   groupId: number,
-): Promise<ProjectAssignedSummary[]> {
-  const response = await api.get<ProjectAssignedSummary[]>(
+  { page = 0, size = 3, showArchived = false }: ProjectListParams = {},
+): Promise<SliceResponse<ProjectAssignedSummary>> {
+  const response = await api.get<SliceResponse<ProjectAssignedSummary>>(
     `/research-groups/${groupId}/projects/my`,
+    {
+      params: { page, size, showArchived },
+    },
   );
   return response.data;
 }
 
-export async function getMyAssignedProjects(): Promise<ProjectAssignedSummary[]> {
-  const response = await api.get<ProjectAssignedSummary[]>('/projects/my');
+export async function getMyAssignedProjects({
+  page = 0,
+  size = 6,
+  showArchived = false,
+}: ProjectListParams = {}): Promise<SliceResponse<ProjectAssignedSummary>> {
+  const response = await api.get<SliceResponse<ProjectAssignedSummary>>('/projects/my', {
+    params: { page, size, showArchived },
+  });
   return response.data;
 }
 

@@ -7,6 +7,16 @@ export type ProjectSummary = {
   createdAt: string;
 };
 
+export type SliceResponse<T> = {
+  content: T[];
+  first: boolean;
+  last: boolean;
+  number: number;
+  size: number;
+  numberOfElements: number;
+  empty: boolean;
+};
+
 export type ProjectParticipantRole = 'CREATOR' | 'PARTICIPANT';
 
 export type ProjectDetailParticipant = {
@@ -26,6 +36,7 @@ export type ProjectAssignedSummary = {
   description: string | null;
   completionPercentage: number;
   participantRole: ProjectParticipantRole;
+  archived: boolean;
   createdAt: string;
 };
 
@@ -104,6 +115,7 @@ export type ProjectDetail = {
   guidelinePdfBase64: string | null;
   annotationTargetColumn: string | null;
   datasetItemsCount: number;
+  archived: boolean;
   createdAt: string;
 };
 
