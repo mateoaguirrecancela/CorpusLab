@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -164,22 +165,44 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
         Project projectA = createProject(nlpGroup, "A", "Alpha");
         Project projectB = createProject(visionGroup, "B", "Beta");
         Project projectC = createProject(nlpGroup, "C", "Gamma");
+        Project archivedCreatedByAlice = createProject(nlpGroup, "D", "Archived creator");
+        archivedCreatedByAlice.setArchived(true);
+        archivedCreatedByAlice = projectRepository.save(archivedCreatedByAlice);
+        Project archivedParticipantForAlice = createProject(visionGroup, "E", "Archived participant");
+        archivedParticipantForAlice.setArchived(true);
+        archivedParticipantForAlice = projectRepository.save(archivedParticipantForAlice);
 
         assign(projectA, alice, ProjectParticipantRole.CREATOR);
         assign(projectB, alice, ProjectParticipantRole.PARTICIPANT);
         assign(projectC, bob, ProjectParticipantRole.PARTICIPANT);
+        assign(archivedCreatedByAlice, alice, ProjectParticipantRole.CREATOR);
+        assign(archivedParticipantForAlice, bob, ProjectParticipantRole.CREATOR);
+        assign(archivedParticipantForAlice, alice, ProjectParticipantRole.PARTICIPANT);
 
         String session = loginAs("alice.projects@example.com");
 
         mockMvc.perform(get("/api/projects/my").header("Authorization", "Bearer " + session))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[*].id", containsInAnyOrder(
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[*].id", containsInAnyOrder(
                         Math.toIntExact(projectA.getId()),
                         Math.toIntExact(projectB.getId()))))
-                .andExpect(jsonPath("$[0].participantRole").isNotEmpty())
-                .andExpect(jsonPath("$[0].researchGroupName").isNotEmpty())
-                .andExpect(jsonPath("$[0].completionPercentage").isNumber());
+                .andExpect(jsonPath("$.last").value(true))
+                .andExpect(jsonPath("$.content[0].participantRole").isNotEmpty())
+                .andExpect(jsonPath("$.content[0].researchGroupName").isNotEmpty())
+                .andExpect(jsonPath("$.content[0].completionPercentage").isNumber())
+                .andExpect(jsonPath("$.content[0].archived").value(false));
+
+        mockMvc.perform(get("/api/projects/my")
+                .param("showArchived", "true")
+                .header("Authorization", "Bearer " + session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[*].id", containsInAnyOrder(
+                        Math.toIntExact(archivedCreatedByAlice.getId()),
+                        Math.toIntExact(archivedParticipantForAlice.getId()))))
+                .andExpect(jsonPath("$.content[*].participantRole", containsInAnyOrder("CREATOR", "PARTICIPANT")))
+                .andExpect(jsonPath("$.content[0].archived").value(true));
     }
 
     @Test
@@ -209,10 +232,10 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/research-groups/{groupId}/projects/my", groupA.getId())
                 .header("Authorization", "Bearer " + session))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].id").value(groupAProject.getId()))
-                .andExpect(jsonPath("$[0].researchGroupId").value(groupA.getId()))
-                .andExpect(jsonPath("$[0].participantRole").value("CREATOR"));
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].id").value(groupAProject.getId()))
+                .andExpect(jsonPath("$.content[0].researchGroupId").value(groupA.getId()))
+                .andExpect(jsonPath("$.content[0].participantRole").value("CREATOR"));
     }
 
     @Test
@@ -305,7 +328,65 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.guidelineText").value("Annotate named entities."))
                 .andExpect(jsonPath("$.guidelinePdfBase64").isEmpty())
                 .andExpect(jsonPath("$.datasetItemsCount").value(2))
+                .andExpect(jsonPath("$.archived").value(false))
                 .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
+    void shouldArchiveProjectWhenRequesterIsCreator() throws Exception {
+        User owner = createUser("archive.creator@example.com");
+        ResearchGroup group = createGroup("Archive Group");
+        addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+
+        Project project = createProject(group, "Archive Me", "soft hide");
+        assign(project, owner, ProjectParticipantRole.CREATOR);
+
+        String session = loginAs("archive.creator@example.com");
+
+        mockMvc.perform(put("/api/projects/{projectId}/archive", project.getId())
+                .header("Authorization", "Bearer " + session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(project.getId()))
+                .andExpect(jsonPath("$.archived").value(true));
+    }
+
+    @Test
+    void shouldUnarchiveProjectWhenRequesterIsCreator() throws Exception {
+        User owner = createUser("unarchive.creator@example.com");
+        ResearchGroup group = createGroup("Unarchive Group");
+        addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+
+        Project project = createProject(group, "Unarchive Me", "restore");
+        project.setArchived(true);
+        project = projectRepository.save(project);
+        assign(project, owner, ProjectParticipantRole.CREATOR);
+
+        String session = loginAs("unarchive.creator@example.com");
+
+        mockMvc.perform(put("/api/projects/{projectId}/unarchive", project.getId())
+                .header("Authorization", "Bearer " + session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(project.getId()))
+                .andExpect(jsonPath("$.archived").value(false));
+    }
+
+    @Test
+    void shouldReturnForbiddenWhenArchivingAsParticipant() throws Exception {
+        User owner = createUser("archive.owner@example.com");
+        User participant = createUser("archive.participant@example.com");
+        ResearchGroup group = createGroup("Forbidden Archive Group");
+        addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+        addMembership(participant, group, ResearchGroupMemberRole.ANNOTATOR);
+
+        Project project = createProject(group, "Forbidden Archive", "private");
+        assign(project, owner, ProjectParticipantRole.CREATOR);
+        assign(project, participant, ProjectParticipantRole.PARTICIPANT);
+
+        String session = loginAs("archive.participant@example.com");
+
+        mockMvc.perform(put("/api/projects/{projectId}/archive", project.getId())
+                .header("Authorization", "Bearer " + session))
+                .andExpect(status().isForbidden());
     }
 
     @Test

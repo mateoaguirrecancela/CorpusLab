@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +59,9 @@ import jakarta.persistence.EntityManager;
 @Service
 public class ProjectServiceImpl implements ProjectService {
 
+    private static final int DEFAULT_PROJECT_PAGE_SIZE = 12;
+    private static final int MAX_PROJECT_PAGE_SIZE = 50;
+
     private final ProjectRepository projectRepository;
     private final ProjectParticipantRepository projectParticipantRepository;
     private final DatasetItemRepository datasetItemRepository;
@@ -89,30 +95,46 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProjectAssignedSummaryDto> findAssignedProjectsByResearchGroup(String authenticatedEmail,
-            Long researchGroupId) {
+    public Slice<ProjectAssignedSummaryDto> findAssignedProjectsByResearchGroup(String authenticatedEmail,
+            Long researchGroupId, int page, int size, boolean showArchived) {
         UserInfo userInfo = authApiService.findUserByEmail(authenticatedEmail);
 
         researchGroupApiService
                 .findActiveMember(researchGroupId, userInfo.userId())
                 .orElseThrow(() -> new AccessDeniedException(ProjectConstants.NOT_MEMBER_ERROR));
 
-        return projectParticipantRepository
-                .findByProjectResearchGroupIdAndUserIdOrderByProjectCreatedAtDesc(researchGroupId, userInfo.userId())
-                .stream()
-                .map(this::toAssignedSummaryDto)
-                .toList();
+        Pageable pageable = PageRequest.of(sanitizePage(page), sanitizePageSize(size));
+        Slice<ProjectParticipant> participants = showArchived
+                ? projectParticipantRepository
+                        .findByProjectResearchGroupIdAndUserIdAndProjectArchivedTrueOrderByProjectCreatedAtDesc(
+                                researchGroupId,
+                                userInfo.userId(),
+                                pageable)
+                : projectParticipantRepository
+                        .findByProjectResearchGroupIdAndUserIdAndProjectArchivedFalseOrderByProjectCreatedAtDesc(
+                                researchGroupId,
+                                userInfo.userId(),
+                                pageable);
+
+        return participants.map(this::toAssignedSummaryDto);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProjectAssignedSummaryDto> findMyAssignedProjects(String authenticatedEmail) {
+    public Slice<ProjectAssignedSummaryDto> findMyAssignedProjects(String authenticatedEmail, int page, int size,
+            boolean showArchived) {
         UserInfo userInfo = authApiService.findUserByEmail(authenticatedEmail);
+        Pageable pageable = PageRequest.of(sanitizePage(page), sanitizePageSize(size));
 
-        return projectParticipantRepository.findByUserIdOrderByProjectCreatedAtDesc(userInfo.userId())
-                .stream()
-                .map(this::toAssignedSummaryDto)
-                .toList();
+        Slice<ProjectParticipant> participants = showArchived
+                ? projectParticipantRepository.findByUserIdAndProjectArchivedTrueOrderByProjectCreatedAtDesc(
+                        userInfo.userId(),
+                        pageable)
+                : projectParticipantRepository.findByUserIdAndProjectArchivedFalseOrderByProjectCreatedAtDesc(
+                        userInfo.userId(),
+                        pageable);
+
+        return participants.map(this::toAssignedSummaryDto);
     }
 
     @Override
@@ -168,6 +190,7 @@ public class ProjectServiceImpl implements ProjectService {
                 guidelinePdfBase64,
                 project.getAnnotationTargetColumn(),
                 datasetItems.size(),
+                project.isArchived(),
                 project.getCreatedAt());
     }
 
@@ -269,6 +292,18 @@ public class ProjectServiceImpl implements ProjectService {
         datasetItemRepository.deleteByProjectId(projectId);
         projectParticipantRepository.deleteByProjectId(projectId);
         projectRepository.delete(project);
+    }
+
+    @Override
+    @Transactional
+    public ProjectDetailDto archiveProject(String authenticatedEmail, Long projectId) {
+        return updateProjectArchiveState(authenticatedEmail, projectId, true);
+    }
+
+    @Override
+    @Transactional
+    public ProjectDetailDto unarchiveProject(String authenticatedEmail, Long projectId) {
+        return updateProjectArchiveState(authenticatedEmail, projectId, false);
     }
 
     @Override
@@ -519,7 +554,38 @@ public class ProjectServiceImpl implements ProjectService {
                 project.getDescription(),
                 completionPercentage,
                 participant.getRole(),
+                project.isArchived(),
                 project.getCreatedAt());
+    }
+
+    private ProjectDetailDto updateProjectArchiveState(String authenticatedEmail, Long projectId, boolean archived) {
+        UserInfo requesterInfo = authApiService.findUserByEmail(authenticatedEmail);
+
+        ProjectParticipant requesterParticipant = projectParticipantRepository
+                .findByProjectIdAndUserId(projectId, requesterInfo.userId())
+                .orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        if (requesterParticipant.getRole() != ProjectParticipantRole.CREATOR) {
+            throw new AccessDeniedException("Only project creators can archive projects");
+        }
+
+        Project project = requesterParticipant.getProject();
+        project.setArchived(archived);
+        projectRepository.save(project);
+
+        return getAssignedProjectDetail(authenticatedEmail, projectId);
+    }
+
+    private int sanitizePage(int page) {
+        return Math.max(0, page);
+    }
+
+    private int sanitizePageSize(int size) {
+        if (size <= 0) {
+            return DEFAULT_PROJECT_PAGE_SIZE;
+        }
+
+        return Math.min(size, MAX_PROJECT_PAGE_SIZE);
     }
 
     private ProjectDetailParticipantDto toDetailParticipantDto(ProjectParticipant participant,

@@ -8,7 +8,7 @@ package es.udc.fic.corpuslab.modules.project.api;
 public interface ProjectApiService {
 
     /**
-     * Returns the number of projects belonging to a research group.
+     * Returns the number of active projects belonging to a research group.
      */
     long countProjectsByResearchGroupId(Long researchGroupId);
 

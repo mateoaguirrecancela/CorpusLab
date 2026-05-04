@@ -1,6 +1,6 @@
 package es.udc.fic.corpuslab.modules.project.services;
 
-import java.util.List;
+import org.springframework.data.domain.Slice;
 
 import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAssignedSummaryDto;
@@ -12,10 +12,11 @@ import es.udc.fic.corpuslab.modules.project.dtos.UpdateProjectRequestDto;
 
 public interface ProjectService {
 
-    List<ProjectAssignedSummaryDto> findAssignedProjectsByResearchGroup(String authenticatedEmail,
-            Long researchGroupId);
+    Slice<ProjectAssignedSummaryDto> findAssignedProjectsByResearchGroup(String authenticatedEmail,
+            Long researchGroupId, int page, int size, boolean showArchived);
 
-    List<ProjectAssignedSummaryDto> findMyAssignedProjects(String authenticatedEmail);
+    Slice<ProjectAssignedSummaryDto> findMyAssignedProjects(String authenticatedEmail, int page, int size,
+            boolean showArchived);
 
     ProjectDetailDto getAssignedProjectDetail(String authenticatedEmail, Long projectId);
 
@@ -25,6 +26,10 @@ public interface ProjectService {
             UpdateProjectRequestDto request);
 
     void deleteProject(String authenticatedEmail, Long researchGroupId, Long projectId);
+
+    ProjectDetailDto archiveProject(String authenticatedEmail, Long projectId);
+
+    ProjectDetailDto unarchiveProject(String authenticatedEmail, Long projectId);
 
     ProjectSetupResponseDto configureProjectSetup(String authenticatedEmail, Long researchGroupId, Long projectId,
             ProjectSetupRequestDto request);

@@ -12,5 +12,6 @@ public record ProjectAssignedSummaryDto(
                 String description,
                 int completionPercentage,
                 ProjectParticipantRole participantRole,
+                boolean archived,
                 Instant createdAt) {
 }

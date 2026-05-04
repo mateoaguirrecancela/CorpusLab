@@ -22,5 +22,6 @@ public record ProjectDetailDto(
         String guidelinePdfBase64,
         String annotationTargetColumn,
         long datasetItemsCount,
+        boolean archived,
         Instant createdAt) {
 }
