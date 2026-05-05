@@ -55,7 +55,6 @@ import {
 
 const ANNOTATION_PAGE_SIZE = 50;
 
-
 type AnnotationDraft = {
   value: string;
   notes: string;
@@ -569,6 +568,11 @@ type CsvStepPreview = {
   rowColumns: string[];
 };
 
+type CsvLabelColumnValue = {
+  name: string;
+  value: string;
+};
+
 function parseCsvLine(line: string): string[] {
   const values: string[] = [];
   let currentValue = '';
@@ -623,6 +627,37 @@ function parseCsvStepPreview(preview: string): CsvStepPreview | null {
     headerColumns,
     rowColumns,
   };
+}
+
+function findCsvColumnValue(
+  columnName: string,
+  rowValues: Record<string, string> | null,
+  csvStepPreview: CsvStepPreview | null,
+): string | null {
+  const normalizedColumnName = columnName.trim().toLowerCase();
+  if (normalizedColumnName.length === 0) {
+    return null;
+  }
+
+  if (rowValues) {
+    for (const [key, value] of Object.entries(rowValues)) {
+      if (key.trim().toLowerCase() === normalizedColumnName) {
+        return value || '';
+      }
+    }
+  }
+
+  if (csvStepPreview) {
+    const columnIndex = csvStepPreview.headerColumns.findIndex(
+      (header) => header.trim().toLowerCase() === normalizedColumnName,
+    );
+
+    if (columnIndex >= 0) {
+      return csvStepPreview.rowColumns[columnIndex] ?? '';
+    }
+  }
+
+  return null;
 }
 
 function getLabelStyle(label: ProjectSetupLabel, selected: boolean): CSSProperties | undefined {
@@ -1393,26 +1428,41 @@ export default function ProjectAnnotationPage() {
 
     const normalizedTarget = annotationTargetColumn?.trim().toLowerCase() ?? '';
 
-    if (normalizedTarget.length > 0 && currentStep.rowValues) {
-      for (const [key, value] of Object.entries(currentStep.rowValues)) {
-        if (key.trim().toLowerCase() === normalizedTarget) {
-          return value || '';
-        }
-      }
-    }
-
-    if (normalizedTarget.length > 0 && csvStepPreview) {
-      const targetIndex = csvStepPreview.headerColumns.findIndex(
-        (header) => header.trim().toLowerCase() === normalizedTarget,
+    if (normalizedTarget.length > 0) {
+      const targetValue = findCsvColumnValue(
+        normalizedTarget,
+        currentStep.rowValues,
+        csvStepPreview,
       );
 
-      if (targetIndex >= 0) {
-        return csvStepPreview.rowColumns[targetIndex] ?? '';
+      if (targetValue != null) {
+        return targetValue;
       }
     }
 
     return currentStep.preview;
   }, [annotationTargetColumn, csvStepPreview, currentStep]);
+
+  const csvLabelColumnValues = useMemo<CsvLabelColumnValue[]>(() => {
+    if (!currentStep || !isCsvMimeType(currentStep.sourceMimeType)) {
+      return [];
+    }
+
+    const normalizedTarget = annotationTargetColumn?.trim().toLowerCase() ?? '';
+
+    return labels
+      .map((label) => ({
+        name: label.name,
+        value: findCsvColumnValue(label.name, currentStep.rowValues, csvStepPreview),
+      }))
+      .filter((entry): entry is CsvLabelColumnValue => {
+        const normalizedName = entry.name.trim().toLowerCase();
+
+        return (
+          normalizedName.length > 0 && normalizedName !== normalizedTarget && entry.value !== null
+        );
+      });
+  }, [annotationTargetColumn, csvStepPreview, currentStep, labels]);
 
   const selectedLabels = useMemo(() => {
     return parseCommaSeparatedLabels(currentDraft.value);
@@ -1465,6 +1515,26 @@ export default function ProjectAnnotationPage() {
       {currentStep?.preview ?? ''}
     </pre>
   );
+  const csvLabelColumnContent =
+    csvLabelColumnValues.length > 0 ? (
+      <div className="mt-6">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          {t('project.annotationPage.csvLabelOptionsTitle')}
+        </h3>
+        <div className="mt-3 space-y-4">
+          {csvLabelColumnValues.map((columnValue) => (
+            <div key={columnValue.name}>
+              <p className="truncate text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                {columnValue.name}
+              </p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                {columnValue.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null;
 
   if (csvTargetColumnValue != null) {
     const columnHeader = annotationTargetColumn ? (
@@ -1519,7 +1589,9 @@ export default function ProjectAnnotationPage() {
                             event.preventDefault();
                             event.stopPropagation();
                           }}
-                          style={{ transform: index > 0 ? `translateX(${index * 1}rem)` : undefined }}
+                          style={{
+                            transform: index > 0 ? `translateX(${index * 1}rem)` : undefined,
+                          }}
                           type="button"
                         >
                           <X aria-hidden className="size-3" />
@@ -1529,6 +1601,7 @@ export default function ProjectAnnotationPage() {
               );
             })}
           </div>
+          {csvLabelColumnContent}
         </div>
       );
     } else {
@@ -1538,6 +1611,7 @@ export default function ProjectAnnotationPage() {
           <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
             {csvTargetColumnValue}
           </p>
+          {csvLabelColumnContent}
         </div>
       );
     }
@@ -1673,7 +1747,9 @@ export default function ProjectAnnotationPage() {
                             currentStep.warning ? 'text-red-500' : 'text-muted-foreground/40',
                             isReviewMode ? 'cursor-pointer hover:text-red-400' : 'cursor-default',
                           ].join(' ')}
-                          disabled={!isReviewMode || toggleProjectAnnotationWarningMutation.isPending}
+                          disabled={
+                            !isReviewMode || toggleProjectAnnotationWarningMutation.isPending
+                          }
                           onClick={handleToggleWarning}
                           title={t('project.annotationPage.warningTooltip')}
                           type="button"
@@ -1681,6 +1757,9 @@ export default function ProjectAnnotationPage() {
                           <AlertTriangle aria-hidden className="size-5" />
                         </button>
                       )}
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-semibold text-muted-foreground">
+                        {currentGlobalStepIndex}/{totalSteps}
+                      </span>
                       <span
                         className={[
                           'inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold',
@@ -1718,9 +1797,7 @@ export default function ProjectAnnotationPage() {
                     {!isSourceLoading &&
                       sourceLoadError.length === 0 &&
                       isCsvMimeType(currentStep.sourceMimeType) && (
-                        <div className="max-h-130 w-full overflow-y-auto">
-                          {csvSourceContent}
-                        </div>
+                        <div className="max-h-130 w-full overflow-y-auto">{csvSourceContent}</div>
                       )}
 
                     {!isSourceLoading &&
@@ -1805,7 +1882,8 @@ export default function ProjectAnnotationPage() {
                                             event.stopPropagation();
                                           }}
                                           style={{
-                                            transform: index > 0 ? `translateX(${index * 1}rem)` : undefined,
+                                            transform:
+                                              index > 0 ? `translateX(${index * 1}rem)` : undefined,
                                           }}
                                           type="button"
                                         >
@@ -1841,14 +1919,14 @@ export default function ProjectAnnotationPage() {
               <aside className="space-y-4 rounded-xl border border-border bg-surface-base p-5 sm:p-6">
                 <section>
                   {project && (
-                      <h1 className="mb-4 text-md font-bold tracking-wider text-muted-foreground uppercase">
-                        {t(projectTypeI18nKey(project.projectType))}
-                      </h1>
-                    )}
-                    <h3 className="flex items-center gap-2 text-sm font-bold tracking-[0.12em] text-muted-foreground uppercase">
-                      <Tag className="size-4" />
-                      {classificationHeading}
-                    </h3>
+                    <h1 className="mb-4 text-md font-bold tracking-wider text-muted-foreground uppercase">
+                      {t(projectTypeI18nKey(project.projectType))}
+                    </h1>
+                  )}
+                  <h3 className="flex items-center gap-2 text-sm font-bold tracking-[0.12em] text-muted-foreground uppercase">
+                    <Tag className="size-4" />
+                    {classificationHeading}
+                  </h3>
 
                   <div className="mt-4 space-y-3">
                     {annotationProjectType === 'TEXT_CLASSIFICATION_SIMPLE' &&
