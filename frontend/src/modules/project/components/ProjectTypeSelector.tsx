@@ -1,4 +1,10 @@
-import { type LucideIcon, CheckCircle2, ListChecks, Highlighter, TextCursorInput } from 'lucide-react';
+import {
+  type LucideIcon,
+  CheckCircle2,
+  ListChecks,
+  Highlighter,
+  TextCursorInput,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { type ProjectType } from '@/modules/project/types/project';
 
@@ -42,7 +48,11 @@ interface ProjectTypeSelectorProps {
   disabledTypes?: ProjectType[];
 }
 
-export function ProjectTypeSelector({ value, onChange, disabledTypes = [] }: ProjectTypeSelectorProps) {
+export function ProjectTypeSelector({
+  value,
+  onChange,
+  disabledTypes = [],
+}: ProjectTypeSelectorProps) {
   const { t } = useTranslation();
 
   return (
@@ -59,8 +69,8 @@ export function ProjectTypeSelector({ value, onChange, disabledTypes = [] }: Pro
               relative flex items-center gap-4 rounded-xl border-2 p-5 text-left transition-all duration-200 group
               ${
                 isSelected
-                  ? 'border-primary bg-primary/5 shadow-[0_0_0_1px_var(--color-primary)]'
-                  : 'border-border bg-surface-base hover:border-primary/40 hover:bg-primary/[0.02]'
+                  ? 'border-primary bg-background shadow-[0_0_0_1px_var(--color-primary)]'
+                  : 'border-border bg-surface-base hover:border-primary/40 hover:bg-background'
               }
               ${isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
             `}
@@ -78,7 +88,9 @@ export function ProjectTypeSelector({ value, onChange, disabledTypes = [] }: Pro
               }
             `}
             >
-              <Icon className={`size-5 transition-transform duration-200 ${isSelected ? 'scale-110' : 'group-hover:scale-110'}`} />
+              <Icon
+                className={`size-5 transition-transform duration-200 ${isSelected ? 'scale-110' : 'group-hover:scale-110'}`}
+              />
             </div>
 
             <div className="flex flex-col gap-0.5">

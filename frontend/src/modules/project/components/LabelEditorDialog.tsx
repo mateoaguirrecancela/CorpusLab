@@ -16,6 +16,7 @@ type LabelEditorDialogProps = Readonly<{
   inputLabel: string;
   isNerProjectType: boolean;
   isOpen: boolean;
+  labelNameOptions?: { label: string; value: string; disabled?: boolean }[];
   mode: 'create' | 'edit';
   onColorChange: (nextColor: string) => void;
   onNameChange: (nextName: string) => void;
@@ -36,6 +37,7 @@ export function LabelEditorDialog({
   inputLabel,
   isNerProjectType,
   isOpen,
+  labelNameOptions,
   mode,
   onColorChange,
   onNameChange,
@@ -48,6 +50,8 @@ export function LabelEditorDialog({
   titleCreate,
   titleEdit,
 }: LabelEditorDialogProps) {
+  const usesLabelNameOptions = labelNameOptions !== undefined;
+
   return (
     <Dialog onOpenChange={onOpenChange} open={isOpen}>
       <DialogContent className="sm:max-w-xl">
@@ -56,19 +60,39 @@ export function LabelEditorDialog({
         </DialogHeader>
 
         <div className="my-8 space-y-4">
-          <FormFieldControl
-            id="modal-label-name"
-            inputProps={{
-              autoFocus: true,
-              maxLength: 128,
-              placeholder,
-              required: true,
-            }}
-            label={inputLabel}
-            onValueChange={onNameChange}
-            required
-            value={currentName}
-          />
+          {usesLabelNameOptions ? (
+            <FormFieldControl
+              controlType="select"
+              id="modal-label-name"
+              label={inputLabel}
+              onValueChange={onNameChange}
+              options={[
+                {
+                  disabled: true,
+                  label: placeholder,
+                  value: '',
+                },
+                ...labelNameOptions,
+              ]}
+              required
+              selectProps={{ autoFocus: true, required: true }}
+              value={currentName}
+            />
+          ) : (
+            <FormFieldControl
+              id="modal-label-name"
+              inputProps={{
+                autoFocus: true,
+                maxLength: 128,
+                placeholder,
+                required: true,
+              }}
+              label={inputLabel}
+              onValueChange={onNameChange}
+              required
+              value={currentName}
+            />
+          )}
 
           {isNerProjectType && (
             <div className="space-y-3">

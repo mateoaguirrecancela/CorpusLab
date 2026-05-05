@@ -18,7 +18,6 @@ import {
 import { isNerCompatibleDataset } from '@/modules/project/utils/projectUtils';
 import { ProjectTypeSelector } from '@/modules/project/components/ProjectTypeSelector';
 
-
 const MAX_GUIDELINE_SIZE_MB = 10;
 
 function formatFileSize(bytes: number): string {
@@ -196,6 +195,7 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
   const [csvHeaderOptions, setCsvHeaderOptions] = useState<string[]>([]);
   const [isLoadingCsvHeaders, setIsLoadingCsvHeaders] = useState(false);
   const [annotationTargetColumn, setAnnotationTargetColumn] = useState('');
+  const [useCsvColumnsAsLabels, setUseCsvColumnsAsLabels] = useState(false);
 
   const datasetItems = useMemo(
     () =>
@@ -220,6 +220,34 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
   const isLabelNameValid = draftLabelName.trim().length > 0;
   const isLabelColorValid = !isNerProjectType || draftLabelColor.trim().length > 0;
   const isLabelDialogSaveDisabled = !isLabelNameValid || !isLabelColorValid;
+  const canUseCsvColumnsAsLabels =
+    requiresLabels &&
+    requiresAnnotationTargetColumn &&
+    !isLoadingCsvHeaders &&
+    csvHeaderOptions.length > 0;
+  const selectedLabelNames = useMemo(
+    () => new Set(labels.map((label) => label.name.toLowerCase())),
+    [labels],
+  );
+  const editingLabelName =
+    editingLabelIndex !== null ? (labels[editingLabelIndex]?.name.trim().toLowerCase() ?? '') : '';
+  const availableCsvLabelOptions = useMemo(() => {
+    const normalizedTargetColumn = annotationTargetColumn.trim().toLowerCase();
+
+    return csvHeaderOptions
+      .filter((header) => {
+        const normalizedHeader = header.trim().toLowerCase();
+
+        if (normalizedHeader.length === 0 || normalizedHeader === normalizedTargetColumn) {
+          return false;
+        }
+
+        return normalizedHeader === editingLabelName || !selectedLabelNames.has(normalizedHeader);
+      })
+      .map((header) => ({ label: header, value: header }));
+  }, [annotationTargetColumn, csvHeaderOptions, editingLabelName, selectedLabelNames]);
+  const csvLabelNameOptions =
+    useCsvColumnsAsLabels && canUseCsvColumnsAsLabels ? availableCsvLabelOptions : undefined;
 
   const applyProjectType = useCallback((nextType: ProjectType) => {
     setProjectType(nextType);
@@ -251,6 +279,7 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
     if (!requiresAnnotationTargetColumn) {
       setCsvHeaderOptions([]);
       setAnnotationTargetColumn('');
+      setUseCsvColumnsAsLabels(false);
       setIsLoadingCsvHeaders(false);
       return;
     }
@@ -298,12 +327,34 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
     };
   }, [csvDatasetFiles, requiresAnnotationTargetColumn, t]);
 
+  useEffect(() => {
+    if (!canUseCsvColumnsAsLabels) {
+      setUseCsvColumnsAsLabels(false);
+    }
+  }, [canUseCsvColumnsAsLabels]);
+
+  useEffect(() => {
+    if (!useCsvColumnsAsLabels) {
+      return;
+    }
+
+    const normalizedTargetColumn = annotationTargetColumn.trim().toLowerCase();
+    if (normalizedTargetColumn.length === 0) {
+      return;
+    }
+
+    setLabels((prev) =>
+      prev.filter((label) => label.name.trim().toLowerCase() !== normalizedTargetColumn),
+    );
+  }, [annotationTargetColumn, useCsvColumnsAsLabels]);
+
   const hasValidGuideline =
     guidelineMode === 'TEXT' ? guidelineText.trim().length > 0 : guidelinePdfFile !== null;
   const hasValidAnnotationTargetColumn =
     !requiresAnnotationTargetColumn || annotationTargetColumn.trim().length > 0;
   const isClassificationProject =
-    projectType === 'TEXT_CLASSIFICATION_SIMPLE' || projectType === 'TEXT_CLASSIFICATION_MULTILABEL';
+    projectType === 'TEXT_CLASSIFICATION_SIMPLE' ||
+    projectType === 'TEXT_CLASSIFICATION_MULTILABEL';
   const hasMinLabels = isClassificationProject ? labels.length >= 2 : labels.length > 0;
 
   const canSaveSetup =
@@ -320,7 +371,9 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
 
     const file = files[0];
     if (file.size > MAX_GUIDELINE_SIZE_MB * 1024 * 1024) {
-      toast.error(t('project.create.fileSizeError', { fileName: file.name, limit: MAX_GUIDELINE_SIZE_MB }));
+      toast.error(
+        t('project.create.fileSizeError', { fileName: file.name, limit: MAX_GUIDELINE_SIZE_MB }),
+      );
       return;
     }
 
@@ -340,6 +393,14 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
     setDraftLabelName('');
     setDraftLabelColor(LABEL_COLOR_PALETTE[0]);
     setIsLabelEditorOpen(true);
+  };
+
+  const handleUseCsvColumnsAsLabelsChange = (checked: boolean) => {
+    setUseCsvColumnsAsLabels(checked);
+    setDraftLabelName('');
+    setEditingLabelIndex(null);
+    setIsLabelEditorOpen(false);
+    setLabels([]);
   };
 
   const openEditLabelDialog = (index: number) => {
@@ -365,6 +426,14 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
       return;
     }
 
+    if (
+      useCsvColumnsAsLabels &&
+      canUseCsvColumnsAsLabels &&
+      !availableCsvLabelOptions.some((option) => option.value === normalizedName)
+    ) {
+      return;
+    }
+
     const duplicated = hasDuplicateLabelName(
       labels,
       normalizedName,
@@ -381,6 +450,7 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
 
     if (labelDialogMode === 'create') {
       setLabels((prev) => [...prev, candidate]);
+      setDraftLabelName('');
     } else if (editingLabelIndex !== null) {
       setLabels((prev) =>
         prev.map((label, index) => (index === editingLabelIndex ? candidate : label)),
@@ -439,7 +509,6 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
         />
       </section>
 
-
       {requiresAnnotationTargetColumn && isLoadingCsvHeaders && (
         <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner aria-hidden className="size-4" />
@@ -452,9 +521,15 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
           controlType="select"
           id="create-project-annotation-target-column"
           label={t('project.create.annotationTargetColumnLabel')}
-          onValueChange={setAnnotationTargetColumn}
+          onValueChange={(nextColumn) => {
+            setAnnotationTargetColumn(nextColumn);
+            setDraftLabelName((currentValue) =>
+              currentValue.trim().toLowerCase() === nextColumn.trim().toLowerCase()
+                ? ''
+                : currentValue,
+            );
+          }}
           options={[
-
             ...csvHeaderOptions.map((header) => ({
               label: header,
               value: header,
@@ -483,19 +558,41 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
 
       {requiresLabels && (
         <section>
-          <div className="flex items-end justify-between gap-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              {t('project.create.labelsSectionTitle')} *
-            </p>
+          <div className="space-y-3">
+            <div className="flex items-end justify-between gap-3">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                {t('project.create.labelsSectionTitle')} *
+              </p>
 
-            <Button
-              className="h-10 rounded-md bg-primary px-3 text-sm font-semibold text-white hover:bg-primary-strong cursor-pointer"
-              onClick={openCreateLabelDialog}
-              type="button"
-            >
-              <Plus className="mr-1 size-4" />
-              {t('project.create.addLabel')}
-            </Button>
+              <Button
+                className="h-10 rounded-md bg-primary px-3 text-sm font-semibold text-white hover:bg-primary-strong cursor-pointer"
+                onClick={openCreateLabelDialog}
+                type="button"
+              >
+                <Plus className="mr-1 size-4" />
+                {t('project.create.addLabel')}
+              </Button>
+            </div>
+
+            {canUseCsvColumnsAsLabels && (
+              <label
+                className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-white px-4 py-5 text-sm text-primary "
+                htmlFor="create-project-use-csv-columns-as-labels"
+              >
+                <input
+                  checked={useCsvColumnsAsLabels}
+                  className="mt-0.5 size-4 rounded border-border accent-primary"
+                  id="create-project-use-csv-columns-as-labels"
+                  onChange={(event) =>
+                    handleUseCsvColumnsAsLabelsChange(event.currentTarget.checked)
+                  }
+                  type="checkbox"
+                />
+                <span className="block font-semibold">
+                  {t('project.create.useCsvColumnsAsLabels')}
+                </span>
+              </label>
+            )}
           </div>
 
           <div className="mt-4">
@@ -652,7 +749,12 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
         onOpenChange={setIsLabelEditorOpen}
         onSave={saveLabelFromDialog}
         isSaveDisabled={isLabelDialogSaveDisabled}
-        placeholder={t('project.create.labelNamePlaceholder')}
+        placeholder={
+          useCsvColumnsAsLabels && canUseCsvColumnsAsLabels
+            ? t('project.create.csvLabelNamePlaceholder')
+            : t('project.create.labelNamePlaceholder')
+        }
+        labelNameOptions={csvLabelNameOptions}
         saveCreateText={t('project.create.addLabel')}
         saveEditText={t('project.create.saveLabel')}
         titleCreate={t('project.create.createLabelTitle')}
