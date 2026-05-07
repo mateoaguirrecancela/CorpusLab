@@ -1,12 +1,17 @@
-import { type DragEvent, useRef, useState } from 'react';
+import { useCallback } from 'react';
 import { FileUp } from 'lucide-react';
+import { useDropzone, type Accept, type FileRejection } from 'react-dropzone';
 import { cn } from '@/lib/utils';
 
+export type UploadDropzoneAccept = Accept;
+export type UploadDropzoneFileRejection = FileRejection;
+
 type UploadDropzoneProps = Readonly<{
-  accept: string;
+  accept: Accept;
   description: string;
   multiple?: boolean;
-  onFilesChange: (files: FileList | null) => void;
+  onFilesChange: (files: File[]) => void;
+  onFilesRejected?: (fileRejections: FileRejection[]) => void;
   title: string;
 }>;
 
@@ -15,71 +20,50 @@ export function UploadDropzone({
   description,
   multiple = false,
   onFilesChange,
+  onFilesRejected,
   title,
 }: UploadDropzoneProps) {
-  const [isDragActive, setIsDragActive] = useState(false);
-  const dragDepth = useRef(0);
+  const handleDrop = useCallback(
+    (acceptedFiles: File[], fileRejections: FileRejection[]) => {
+      if (acceptedFiles.length > 0) {
+        onFilesChange(acceptedFiles);
+      }
 
-  const handleDragEnter = (event: DragEvent<HTMLLabelElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
+      if (fileRejections.length > 0) {
+        onFilesRejected?.(fileRejections);
+      }
+    },
+    [onFilesChange, onFilesRejected],
+  );
+  const { getInputProps, getRootProps, isDragAccept, isDragActive, isDragReject, isFocused } =
+    useDropzone({
+      accept,
+      multiple,
+      onDrop: handleDrop,
+    });
 
-    dragDepth.current += 1;
-    setIsDragActive(true);
-  };
-
-  const handleDragOver = (event: DragEvent<HTMLLabelElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    event.dataTransfer.dropEffect = 'copy';
-  };
-
-  const handleDragLeave = (event: DragEvent<HTMLLabelElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    dragDepth.current = Math.max(0, dragDepth.current - 1);
-    if (dragDepth.current === 0) {
-      setIsDragActive(false);
-    }
-  };
-
-  const handleDrop = (event: DragEvent<HTMLLabelElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    dragDepth.current = 0;
-    setIsDragActive(false);
-
-    const droppedFiles = event.dataTransfer.files;
-    onFilesChange(droppedFiles.length > 0 ? droppedFiles : null);
-  };
+  const rootProps = getRootProps({
+    'aria-label': title,
+    className: cn(
+      'block cursor-pointer rounded-md border border-dashed border-border bg-background p-6 text-center transition-colors',
+      isDragAccept ? 'border-primary bg-accent/40' : 'hover:bg-accent/30',
+      isDragReject ? 'border-destructive bg-destructive/10' : '',
+      isDragActive && !isDragAccept && !isDragReject ? 'border-primary bg-accent/40' : '',
+      isFocused ? 'outline-none ring-2 ring-ring/50' : '',
+    ),
+    role: 'button',
+  });
+  const inputProps = getInputProps({
+    className: 'hidden',
+    multiple,
+  });
 
   return (
-    <label
-      className={cn(
-        'block cursor-pointer rounded-md border border-dashed border-border bg-background p-6 text-center transition-colors',
-        isDragActive ? 'border-primary bg-accent/40' : 'hover:bg-accent/30',
-      )}
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-    >
+    <div {...rootProps}>
       <FileUp className="mx-auto size-8 text-primary" />
       <p className="mt-3 text-sm font-semibold text-primary">{title}</p>
       <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-      <input
-        accept={accept}
-        className="hidden"
-        multiple={multiple}
-        onChange={(event) =>
-          onFilesChange(
-            event.target.files && event.target.files.length > 0 ? event.target.files : null,
-          )
-        }
-        type="file"
-      />
-    </label>
+      <input {...inputProps} />
+    </div>
   );
 }

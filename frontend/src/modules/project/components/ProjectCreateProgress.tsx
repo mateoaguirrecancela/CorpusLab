@@ -1,9 +1,9 @@
-type CreateProjectProgressProps = Readonly<{
+type ProjectCreateProgressProps = Readonly<{
   currentStep: number;
   totalSteps?: number;
 }>;
 
-export function CreateProjectProgress({ currentStep, totalSteps = 4 }: CreateProjectProgressProps) {
+export function ProjectCreateProgress({ currentStep, totalSteps = 4 }: ProjectCreateProgressProps) {
   const progressPercentage = ((currentStep - 1) / (totalSteps - 1)) * 100;
 
   return (
