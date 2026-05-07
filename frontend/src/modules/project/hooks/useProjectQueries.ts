@@ -32,7 +32,7 @@ type CreateProjectMutationInput = {
   payload: CreateProjectPayload;
 };
 
-export function useCreateProjectMutation() {
+export function useProjectCreateMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({

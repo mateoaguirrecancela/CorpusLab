@@ -9,7 +9,7 @@ import SignUpPage from '@/modules/auth/pages/SignUpPage';
 import HomeLayout from '@/modules/home/layouts/HomeLayout';
 import HomePage from '@/modules/home/pages/HomePage';
 import ProfilePage from '@/modules/home/pages/ProfilePage';
-import CreateProjectPage from '@/modules/project/pages/CreateProjectPage';
+import ProjectCreatePage from '@/modules/project/pages/ProjectCreatePage';
 import ResearchGroupDetailPage from '@/modules/researchgroup/pages/ResearchGroupDetailPage';
 import ResearchGroupsPage from '@/modules/researchgroup/pages/ResearchGroupsPage';
 import { PublicOnly, RequireSession } from '@/routes/guards';
@@ -82,7 +82,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'projects/create',
-            element: <CreateProjectPage />,
+            element: <ProjectCreatePage />,
           },
           {
             path: 'projects/:projectId',

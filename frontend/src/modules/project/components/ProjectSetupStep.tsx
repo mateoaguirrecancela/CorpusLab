@@ -8,26 +8,28 @@ import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { LabelEditorDialog } from '@/modules/project/components/LabelEditorDialog';
 import { LabelRow } from '@/modules/project/components/LabelRow';
-import { UploadDropzone } from '@/modules/project/components/UploadDropzone';
+import {
+  UploadDropzone,
+  type UploadDropzoneAccept,
+  type UploadDropzoneFileRejection,
+} from '@/modules/project/components/UploadDropzone';
 import { LABEL_COLOR_PALETTE } from '@/modules/project/constants/labelColorPalette';
 import {
   type ConfigureProjectSetupPayload,
   type ProjectSetupLabel,
   type ProjectType,
 } from '@/modules/project/types/project';
+import { formatFileSize } from '@/modules/project/utils/projectDisplayUtils';
 import { isNerCompatibleDataset } from '@/modules/project/utils/projectUtils';
 import { ProjectTypeSelector } from '@/modules/project/components/ProjectTypeSelector';
 
 const MAX_GUIDELINE_SIZE_MB = 10;
+const GUIDELINE_PDF_ACCEPT: UploadDropzoneAccept = {
+  'application/pdf': ['.pdf'],
+};
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+function getFileDuplicateKey(file: File): string {
+  return `${file.name.trim().toLowerCase()}::${file.size}`;
 }
 
 function normalizeLabelsForProjectType(
@@ -364,12 +366,17 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
     !isPreparingSetup &&
     !isLoadingCsvHeaders;
 
-  const handleGuidelinePdfSelected = (files: FileList | null) => {
-    if (!files || files.length === 0) {
+  const handleGuidelinePdfSelected = (files: File[]) => {
+    if (files.length === 0) {
       return;
     }
 
     const file = files[0];
+    if (guidelinePdfFile && getFileDuplicateKey(file) === getFileDuplicateKey(guidelinePdfFile)) {
+      toast.error(t('project.create.duplicateFileError', { fileName: file.name }));
+      return;
+    }
+
     if (file.size > MAX_GUIDELINE_SIZE_MB * 1024 * 1024) {
       toast.error(
         t('project.create.fileSizeError', { fileName: file.name, limit: MAX_GUIDELINE_SIZE_MB }),
@@ -385,6 +392,23 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
 
     setGuidelinePdfFile(file);
     setGuidelineText('');
+  };
+
+  const handleGuidelinePdfRejected = (fileRejections: UploadDropzoneFileRejection[]) => {
+    const firstRejection = fileRejections[0];
+    if (!firstRejection) {
+      return;
+    }
+
+    if (firstRejection.errors.some((error) => error.code === 'too-many-files')) {
+      toast.error(t('project.create.singleFileError'));
+      return;
+    }
+
+    const extension = firstRejection.file.name.split('.').pop()?.toLowerCase();
+    if (extension) {
+      toast.error(t('project.create.forbiddenExtensionError', { extension }));
+    }
   };
 
   const openCreateLabelDialog = () => {
@@ -678,25 +702,32 @@ export function ProjectSetupStep({ datasetFiles, onBack, onCompleted }: ProjectS
             ) : (
               <>
                 <UploadDropzone
-                  accept=".pdf,application/pdf"
+                  accept={GUIDELINE_PDF_ACCEPT}
                   description={t('project.create.guidelinePdfHint')}
                   onFilesChange={handleGuidelinePdfSelected}
+                  onFilesRejected={handleGuidelinePdfRejected}
                   title={t('project.create.guidelineUploadTitle')}
                 />
 
                 {guidelinePdfFile && (
-                  <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-primary">
-                        {guidelinePdfFile.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatFileSize(guidelinePdfFile.size)}
-                      </p>
+                  <div className="mt-4 flex items-center justify-between gap-4 rounded-lg border border-border bg-surface-base p-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-danger-soft text-danger-border">
+                        <FileText className="size-5 text-red-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {guidelinePdfFile.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {guidelinePdfFile.type || 'application/pdf'} -{' '}
+                          {formatFileSize(guidelinePdfFile.size)}
+                        </p>
+                      </div>
                     </div>
                     <button
                       aria-label={t('project.create.removeFile')}
-                      className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                      className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-soft hover:text-primary cursor-pointer"
                       onClick={() => setGuidelinePdfFile(null)}
                       type="button"
                     >

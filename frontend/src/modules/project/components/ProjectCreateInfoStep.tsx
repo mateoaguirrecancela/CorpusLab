@@ -7,7 +7,7 @@ type GroupOption = Readonly<{
   name: string;
 }>;
 
-type CreateProjectInfoStepProps = Readonly<{
+type ProjectCreateInfoStepProps = Readonly<{
   groups: GroupOption[];
   isGroupLocked: boolean;
   selectedGroupId: string;
@@ -20,7 +20,7 @@ type CreateProjectInfoStepProps = Readonly<{
   onContinue: () => void;
 }>;
 
-export function CreateProjectInfoStep({
+export function ProjectCreateInfoStep({
   groups,
   isGroupLocked,
   selectedGroupId,
@@ -31,7 +31,7 @@ export function CreateProjectInfoStep({
   onNameChange,
   onDescriptionChange,
   onContinue,
-}: CreateProjectInfoStepProps) {
+}: ProjectCreateInfoStepProps) {
   const { t } = useTranslation();
 
   return (

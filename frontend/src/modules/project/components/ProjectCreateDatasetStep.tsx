@@ -1,36 +1,40 @@
-import { X } from 'lucide-react';
+import { FileText, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { UploadDropzone } from '@/modules/project/components/UploadDropzone';
+import {
+  UploadDropzone,
+  type UploadDropzoneAccept,
+  type UploadDropzoneFileRejection,
+} from '@/modules/project/components/UploadDropzone';
+import { formatFileSize } from '@/modules/project/utils/projectDisplayUtils';
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
+const DATASET_ACCEPT: UploadDropzoneAccept = {
+  'application/json': ['.json'],
+  'application/pdf': ['.pdf'],
+  'image/*': [],
+  'text/csv': ['.csv'],
+  'text/plain': ['.txt'],
+};
 
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-type CreateProjectDatasetStepProps = Readonly<{
+type ProjectCreateDatasetStepProps = Readonly<{
   selectedFiles: File[];
   canContinue: boolean;
   onBack: () => void;
   onContinue: () => void;
-  onFilesSelected: (files: FileList | null) => void;
+  onFilesRejected: (fileRejections: UploadDropzoneFileRejection[]) => void;
+  onFilesSelected: (files: File[]) => void;
   onRemoveFile: (fileName: string, index: number) => void;
 }>;
 
-export function CreateProjectDatasetStep({
+export function ProjectCreateDatasetStep({
   selectedFiles,
   canContinue,
   onBack,
   onContinue,
+  onFilesRejected,
   onFilesSelected,
   onRemoveFile,
-}: CreateProjectDatasetStepProps) {
+}: ProjectCreateDatasetStepProps) {
   const { t } = useTranslation();
 
   return (
@@ -40,24 +44,35 @@ export function CreateProjectDatasetStep({
       </p>
 
       <UploadDropzone
-        accept=".pdf,.txt,.json,.csv,image/*"
+        accept={DATASET_ACCEPT}
         description={t('project.create.selectFilesHint')}
         multiple
         onFilesChange={onFilesSelected}
+        onFilesRejected={onFilesRejected}
         title={t('project.create.selectFiles')}
       />
 
       {selectedFiles.length > 0 && (
-        <div className="space-y-2 rounded-md border border-border bg-background p-3">
+        <div className="space-y-3">
           {selectedFiles.map((file, index) => (
-            <div className="flex items-center justify-between gap-3" key={`${file.name}-${index}`}>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-primary">{file.name}</p>
-                <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+            <div
+              className="flex items-center justify-between gap-4 rounded-lg border border-border bg-surface-base p-4"
+              key={`${file.name}-${file.size}-${index}`}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-danger-soft text-danger-border">
+                  <FileText className="size-5 text-red-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {file.type || 'application/octet-stream'} - {formatFileSize(file.size)}
+                  </p>
+                </div>
               </div>
               <button
                 aria-label={t('project.create.removeFile')}
-                className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-soft hover:text-primary cursor-pointer"
                 onClick={() => onRemoveFile(file.name, index)}
                 type="button"
               >

@@ -1,33 +1,17 @@
-import { useEffect } from 'react';
 import { Mail, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
-import { toast } from 'sonner';
-import { EntitySummaryCard } from '@/components/common/EntitySummaryCard';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
-import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { CreateResearchGroupDialog } from '@/modules/researchgroup/components/CreateResearchGroupDialog';
+import { ResearchGroupsListContent } from '@/modules/researchgroup/components/ResearchGroupsListContent';
 import { ResearchGroupInvitationsDialog } from '@/modules/researchgroup/components/ResearchGroupInvitationsDialog';
-import { getResearchGroupsErrorMessage } from '@/modules/researchgroup/services/researchGroupService';
-import {
-  useResearchGroupInvitationsQuery,
-  useResearchGroupsQuery,
-} from '@/modules/researchgroup/hooks/useResearchGroupQueries';
+import { useResearchGroupsPage } from '@/modules/researchgroup/hooks/useResearchGroupsPage';
 
 export default function ResearchGroupsPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { data: groups = [], isLoading, isError, error } = useResearchGroupsQuery();
-  const { data: invitations = [] } = useResearchGroupInvitationsQuery();
-  const errorMessage = isError ? getResearchGroupsErrorMessage(error) : '';
-
-  useEffect(() => {
-    if (errorMessage.length > 0) {
-      toast.error(errorMessage, { id: 'research-groups-load-error' });
-    }
-  }, [errorMessage]);
+  const { errorMessage, groups, invitations, isLoading, openResearchGroup } =
+    useResearchGroupsPage();
 
   const actions = (
     <>
@@ -66,44 +50,12 @@ export default function ResearchGroupsPage() {
     <PageContainer>
       <PageHeader actions={actions} title={t('researchGroup.title')} />
 
-      <div className="mt-6">
-        {isLoading && (
-          <div className="text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-2">
-              <Spinner aria-hidden className="size-4" />
-              {t('researchGroup.loading')}
-            </span>
-          </div>
-        )}
-
-        {!isLoading && errorMessage.length === 0 && groups.length === 0 && (
-          <div className="text-sm text-muted-foreground">{t('researchGroup.noGroups')}</div>
-        )}
-
-        {!isLoading && groups.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {groups.map((group) => {
-              const roleLabel = t(`researchGroup.roles.${group.role}`);
-
-              return (
-                <EntitySummaryCard
-                  actionLabel={t('researchGroup.enter')}
-                  description={group.description}
-                  footerMeta={{
-                    kind: 'members',
-                    text: t('researchGroup.memberCount', { count: group.memberCount }),
-                  }}
-                  key={group.id}
-                  onAction={() => navigate(`/home/research-groups/${group.id}`)}
-                  roleLabel={roleLabel}
-                  role={group.role}
-                  title={group.name}
-                />
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <ResearchGroupsListContent
+        errorMessage={errorMessage}
+        groups={groups}
+        isLoading={isLoading}
+        onOpenResearchGroup={openResearchGroup}
+      />
     </PageContainer>
   );
 }

@@ -1,19 +1,12 @@
-import { type ReactNode, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { type FileRejection } from 'react-dropzone';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
-import { BackButton } from '@/components/common/BackButton';
-import { PageContainer } from '@/components/common/PageContainer';
-import { Spinner } from '@/components/ui/spinner';
-import { CreateProjectDatasetStep } from '@/modules/project/components/CreateProjectDatasetStep';
-import { CreateProjectInfoStep } from '@/modules/project/components/CreateProjectInfoStep';
-import { CreateProjectProgress } from '@/modules/project/components/CreateProjectProgress';
-import { ProjectAssignmentStep } from '@/modules/project/components/ProjectAssignmentStep';
-import { ProjectSetupStep } from '@/modules/project/components/ProjectSetupStep';
 import {
   useAssignProjectParticipantsMutation,
   useConfigureProjectSetupMutation,
-  useCreateProjectMutation,
+  useProjectCreateMutation,
   useUploadProjectDatasetMutation,
 } from '@/modules/project/hooks/useProjectQueries';
 import {
@@ -24,37 +17,48 @@ import {
   getUploadDatasetErrorMessage,
 } from '@/modules/project/services/projectService';
 import { type ConfigureProjectSetupPayload } from '@/modules/project/types/project';
+import { validateProjectFiles } from '@/modules/project/utils/projectCreateValidation';
 import { useResearchGroupsQuery } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
+import { type ResearchGroupSummary } from '@/modules/researchgroup/types/researchGroup';
 
-type WizardStep = 1 | 2 | 3 | 4;
-const MAX_FILE_SIZE_MB = 10;
-const MAX_TOTAL_SIZE_MB = 50;
+export type WizardStep = 1 | 2 | 3 | 4;
 
-const BANNED_EXTENSIONS = [
-  'exe',
-  'bat',
-  'cmd',
-  'sh',
-  'php',
-  'jsp',
-  'asp',
-  'aspx',
-  'js',
-  'vbs',
-  'jar',
-  'war',
-  'ear',
-  'bin',
-];
+type ProjectCreatePageState = Readonly<{
+  backFallbackPath: string;
+  canCreateProject: boolean;
+  canUploadDataset: boolean;
+  currentStep: WizardStep;
+  description: string;
+  isFinalizingProject: boolean;
+  isGroupLocked: boolean;
+  isLoadingGroups: boolean;
+  manageableGroups: ResearchGroupSummary[];
+  name: string;
+  numericGroupId: number;
+  projectSetupPayload: ConfigureProjectSetupPayload | null;
+  selectedFiles: File[];
+  selectedGroupId: string;
+  finalizeProject: (participantUserIds: number[]) => Promise<void>;
+  goToDatasetStep: () => void;
+  goToInfoStep: () => void;
+  goToSetupStep: () => void;
+  rejectFiles: (fileRejections: FileRejection[]) => void;
+  removeFile: (fileName: string, index: number) => void;
+  selectFiles: (files: File[]) => void;
+  setCurrentStep: (step: WizardStep) => void;
+  setDescription: (description: string) => void;
+  setName: (name: string) => void;
+  setSelectedGroupId: (groupId: string) => void;
+  setupCompleted: (payload: ConfigureProjectSetupPayload) => Promise<void>;
+}>;
 
-// eslint-disable-next-line sonarjs/cognitive-complexity
-export default function CreateProjectPage() {
+export function useProjectCreatePage(): ProjectCreatePageState {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const { data: groups = [], isLoading: isLoadingGroups } = useResearchGroupsQuery();
-  const createProjectMutation = useCreateProjectMutation();
+  const projectCreateMutation = useProjectCreateMutation();
   const uploadDatasetMutation = useUploadProjectDatasetMutation();
   const configureProjectSetupMutation = useConfigureProjectSetupMutation();
   const assignProjectParticipantsMutation = useAssignProjectParticipantsMutation();
@@ -103,7 +107,7 @@ export default function CreateProjectPage() {
 
   const numericGroupId = Number(selectedGroupId);
   const isFinalizingProject =
-    createProjectMutation.isPending ||
+    projectCreateMutation.isPending ||
     uploadDatasetMutation.isPending ||
     configureProjectSetupMutation.isPending ||
     assignProjectParticipantsMutation.isPending;
@@ -114,55 +118,38 @@ export default function CreateProjectPage() {
   const canUploadDataset =
     Number.isFinite(numericGroupId) && numericGroupId > 0 && selectedFiles.length > 0;
 
-  const handleFilesSelected = (files: FileList | null) => {
-    if (!files) {
+  const selectFiles = (files: File[]) => {
+    if (files.length === 0) {
       return;
     }
 
-    const incomingFiles = Array.from(files);
+    const validatedFiles = validateProjectFiles({
+      currentFiles: selectedFiles,
+      incomingFiles: files,
+      t,
+    });
 
-    for (const file of incomingFiles) {
-      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-        toast.error(
-          t('project.create.fileSizeError', { fileName: file.name, limit: MAX_FILE_SIZE_MB }),
-        );
-        return;
-      }
-
-      const extension = file.name.split('.').pop()?.toLowerCase();
-      if (extension && BANNED_EXTENSIONS.includes(extension)) {
-        toast.error(t('project.create.forbiddenExtensionError', { extension }));
-        return;
-      }
+    if (validatedFiles) {
+      setSelectedFiles(validatedFiles);
     }
-
-    const candidateFiles = [...selectedFiles, ...incomingFiles];
-    const totalSize = candidateFiles.reduce((sum, file) => sum + file.size, 0);
-
-    if (totalSize > MAX_TOTAL_SIZE_MB * 1024 * 1024) {
-      toast.error(t('project.create.totalSizeError', { limit: MAX_TOTAL_SIZE_MB }));
-      return;
-    }
-
-    const containsCsv = candidateFiles.some(
-      (file) => file.name.toLowerCase().endsWith('.csv') || file.type.toLowerCase().includes('csv'),
-    );
-
-    if (containsCsv && candidateFiles.length > 1) {
-      toast.error(t('project.create.csvSingleFileError'));
-      return;
-    }
-
-    setSelectedFiles(candidateFiles);
   };
 
-  const handleRemoveFile = (fileName: string, index: number) => {
+  const rejectFiles = (fileRejections: FileRejection[]) => {
+    const firstRejectedFile = fileRejections[0]?.file;
+    const extension = firstRejectedFile?.name.split('.').pop()?.toLowerCase();
+
+    if (extension) {
+      toast.error(t('project.create.forbiddenExtensionError', { extension }));
+    }
+  };
+
+  const removeFile = (fileName: string, index: number) => {
     setSelectedFiles((prev) =>
       prev.filter((file, fileIndex) => !(file.name === fileName && fileIndex === index)),
     );
   };
 
-  const handleCreateProject = () => {
+  const goToDatasetStep = () => {
     if (!canCreateProject) {
       return;
     }
@@ -171,7 +158,7 @@ export default function CreateProjectPage() {
     setCurrentStep(2);
   };
 
-  const handleUploadDataset = () => {
+  const goToSetupStep = () => {
     if (!canUploadDataset) {
       return;
     }
@@ -181,7 +168,7 @@ export default function CreateProjectPage() {
     setCurrentStep(3);
   };
 
-  const handleSetupCompleted = async (payload: ConfigureProjectSetupPayload) => {
+  const setupCompleted = async (payload: ConfigureProjectSetupPayload) => {
     setProjectSetupPayload(payload);
     setCurrentStep(4);
   };
@@ -192,7 +179,7 @@ export default function CreateProjectPage() {
     }
 
     try {
-      const createdProject = await createProjectMutation.mutateAsync({
+      const createdProject = await projectCreateMutation.mutateAsync({
         groupId: numericGroupId,
         payload: {
           name: name.trim(),
@@ -257,7 +244,7 @@ export default function CreateProjectPage() {
     }
   };
 
-  const handleFinalizeProject = async (participantUserIds: number[]) => {
+  const finalizeProject = async (participantUserIds: number[]) => {
     if (
       !canCreateProject ||
       !canUploadDataset ||
@@ -299,8 +286,6 @@ export default function CreateProjectPage() {
 
       navigate(`/home/projects/${projectId}`);
     } catch (error) {
-      // If any step fails after project creation, we delete the project to avoid "ghost" projects
-      // We don't use the mutation onSuccess here because we want it to be silent or handled specifically
       const errorMessage = (error as Error).message;
       if (
         errorMessage === 'dataset_upload_failed' ||
@@ -308,8 +293,6 @@ export default function CreateProjectPage() {
         errorMessage === 'participant_assignment_failed'
       ) {
         try {
-          // Reset project ID so if they try again it creates a new one (or we could try to reuse it,
-          // but deleting it is safer to ensure a clean state)
           setFinalizationProjectId(null);
           await deleteProject(numericGroupId, projectId);
         } catch (deleteError) {
@@ -319,106 +302,32 @@ export default function CreateProjectPage() {
     }
   };
 
-  const renderMainStepContent = (): ReactNode => {
-    if (isLoadingGroups) {
-      return (
-        <div className="mt-8 rounded-md border border-border bg-background px-4 py-6 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-2">
-            <Spinner aria-hidden className="size-4" />
-            {t('project.create.loadingGroups')}
-          </span>
-        </div>
-      );
-    }
-
-    if (manageableGroups.length === 0) {
-      return (
-        <p className="mt-8 rounded-md border border-dashed border-border bg-background px-4 py-5 text-sm text-muted-foreground">
-          {t('project.create.noGroups')}
-        </p>
-      );
-    }
-
-    if (currentStep === 1) {
-      return (
-        <CreateProjectInfoStep
-          canContinue={canCreateProject}
-          description={description}
-          groups={manageableGroups}
-          isGroupLocked={isGroupLocked}
-          name={name}
-          onContinue={handleCreateProject}
-          onDescriptionChange={setDescription}
-          onGroupChange={setCustomSelectedGroupId}
-          onNameChange={setName}
-          selectedGroupId={selectedGroupId}
-        />
-      );
-    }
-
-    if (currentStep === 2) {
-      return (
-        <CreateProjectDatasetStep
-          canContinue={canUploadDataset}
-          onBack={() => setCurrentStep(1)}
-          onContinue={handleUploadDataset}
-          onFilesSelected={handleFilesSelected}
-          onRemoveFile={handleRemoveFile}
-          selectedFiles={selectedFiles}
-        />
-      );
-    }
-
-    if (currentStep === 3 && Number.isFinite(numericGroupId) && numericGroupId > 0) {
-      return (
-        <ProjectSetupStep
-          datasetFiles={selectedFiles}
-          onBack={() => setCurrentStep(2)}
-          onCompleted={handleSetupCompleted}
-        />
-      );
-    }
-
-    if (
-      currentStep === 4 &&
-      Number.isFinite(numericGroupId) &&
-      numericGroupId > 0 &&
-      projectSetupPayload !== null
-    ) {
-      return (
-        <ProjectAssignmentStep
-          groupId={numericGroupId}
-          isSubmitting={isFinalizingProject}
-          onBack={() => setCurrentStep(3)}
-          onCompleted={handleFinalizeProject}
-        />
-      );
-    }
-
-    return null;
+  return {
+    backFallbackPath,
+    canCreateProject,
+    canUploadDataset,
+    currentStep,
+    description,
+    finalizeProject,
+    goToDatasetStep,
+    goToInfoStep: () => setCurrentStep(1),
+    goToSetupStep,
+    isFinalizingProject,
+    isGroupLocked,
+    isLoadingGroups,
+    manageableGroups,
+    name,
+    numericGroupId,
+    projectSetupPayload,
+    rejectFiles,
+    removeFile,
+    selectFiles,
+    selectedFiles,
+    selectedGroupId,
+    setCurrentStep,
+    setDescription,
+    setName,
+    setSelectedGroupId: setCustomSelectedGroupId,
+    setupCompleted,
   };
-
-  const mainStepContent = renderMainStepContent();
-
-  return (
-    <PageContainer>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <BackButton fallbackTo={backFallbackPath} />
-        </div>
-
-        <section className="rounded-md border border-border bg-surface-base p-6 sm:p-7">
-          <h1 className="text-3xl font-black tracking-tight text-primary sm:text-4xl">
-            {t('project.create.pageTitle')}
-          </h1>
-
-          <div className="mt-8">
-            <CreateProjectProgress currentStep={currentStep} />
-
-            {mainStepContent}
-          </div>
-        </section>
-      </div>
-    </PageContainer>
-  );
 }

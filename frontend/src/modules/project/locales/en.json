@@ -202,9 +202,11 @@
       "nerDatasetIncompatibleHint": "NER is only available if all dataset files are text, JSON, or CSV.",
       "nerDatasetIncompatibleError": "You cannot select NER with the current dataset. Use only text, JSON, or CSV files.",
       "csvSingleFileError": "Only a single file is allowed when the dataset contains a CSV file.",
+      "duplicateFileError": "The file {{fileName}} is already selected.",
       "fileSizeError": "The file {{fileName}} exceeds the {{limit}}MB limit.",
       "totalSizeError": "The total size of the files exceeds the {{limit}}MB limit.",
       "forbiddenExtensionError": "The file type .{{extension}} is not allowed for security reasons.",
+      "singleFileError": "Select a single file.",
       "projectTypes": {
         "textClassificationSimple": "Simple Classification",
         "textClassificationMultiLabel": "Multi-label Classification",
