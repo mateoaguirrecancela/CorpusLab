@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
+import { cn } from '@/lib/utils';
 import { useProfileQuery } from '@/modules/auth/hooks/useProfileQuery';
 import {
   useDeleteProjectMutation,
@@ -22,6 +23,10 @@ import {
   getDeleteProjectErrorMessage,
   getUpdateProjectErrorMessage,
 } from '@/modules/project/services/projectService';
+import {
+  type ProjectParticipantAssignment,
+  type ProjectParticipantAssignmentGroup,
+} from '@/modules/project/types/project';
 import { useResearchGroupDetailQuery } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
 
 type EditProjectDialogProps = {
@@ -29,7 +34,7 @@ type EditProjectDialogProps = {
   projectId: number;
   initialName: string;
   initialDescription: string | null;
-  initialParticipantUserIds: number[];
+  initialParticipantAssignments: ProjectParticipantAssignment[];
   trigger?: React.ReactNode;
   showDeleteButton?: boolean;
   onDeleted?: () => void;
@@ -37,10 +42,46 @@ type EditProjectDialogProps = {
   onOpenChange?: (open: boolean) => void;
 };
 
-function membersSelectionCardClassName(isSelected: boolean): string {
-  return isSelected
-    ? 'border-primary bg-primary/5 shadow-sm shadow-primary/10 ring-2 ring-primary/20'
-    : 'border-border bg-background hover:border-primary/40 hover:bg-accent/30';
+const GROUP_SEQUENCE: ReadonlyArray<ProjectParticipantAssignmentGroup | null> = [
+  'GROUP_A',
+  'GROUP_B',
+  null,
+];
+
+function assignmentsByUserId(
+  assignments: ProjectParticipantAssignment[],
+): Record<number, ProjectParticipantAssignmentGroup> {
+  return assignments.reduce<Record<number, ProjectParticipantAssignmentGroup>>(
+    (accumulator, assignment) => {
+      accumulator[assignment.userId] = assignment.iaaGroup;
+      return accumulator;
+    },
+    {},
+  );
+}
+
+function normalizeAssignments(assignments: ProjectParticipantAssignment[]): string[] {
+  return assignments
+    .map((assignment) => `${assignment.userId}:${assignment.iaaGroup}`)
+    .sort((left, right) => left.localeCompare(right));
+}
+
+function membersSelectionCardClassName(
+  group: ProjectParticipantAssignmentGroup | undefined,
+): string {
+  if (group === 'GROUP_A') {
+    return 'border-primary bg-primary/5 shadow-sm shadow-primary/10 ring-2 ring-primary/20';
+  }
+
+  if (group === 'GROUP_B') {
+    return 'border-sky-500/70 bg-sky-50 shadow-sm shadow-sky-500/10 ring-2 ring-sky-500/20';
+  }
+
+  return 'border-border bg-background hover:border-primary/40 hover:bg-accent/30';
+}
+
+function groupBadgeClassName(group: ProjectParticipantAssignmentGroup): string {
+  return group === 'GROUP_A' ? 'bg-primary/10 text-primary' : 'bg-sky-100 text-sky-700';
 }
 
 function initials(firstName: string, lastName: string): string {
@@ -54,7 +95,7 @@ export function EditProjectDialog({
   projectId,
   initialName,
   initialDescription,
-  initialParticipantUserIds,
+  initialParticipantAssignments,
   trigger,
   showDeleteButton = false,
   onDeleted,
@@ -72,37 +113,71 @@ export function EditProjectDialog({
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription ?? '');
-  const [selectedUserIds, setSelectedUserIds] = useState<number[]>(initialParticipantUserIds);
+  const [assignmentByUserId, setAssignmentByUserId] = useState<
+    Record<number, ProjectParticipantAssignmentGroup>
+  >(assignmentsByUserId(initialParticipantAssignments));
 
   const isUpdating = updateProjectMutation.isPending;
   const isDeleting = deleteProjectMutation.isPending;
   const isBusy = isUpdating || isDeleting;
   const open = controlledOpen ?? internalOpen;
 
-  const profileEmail = profile?.email?.toLowerCase() ?? '';
-  const members = useMemo(
-    () => (group?.members ?? []).filter((member) => member.email.toLowerCase() !== profileEmail),
-    [group?.members, profileEmail],
+  const profileEmail = profile?.email?.toLowerCase() ?? null;
+  const members = group?.members ?? [];
+  const creatorMember = useMemo(
+    () =>
+      profileEmail === null
+        ? null
+        : members.find((member) => member.email.toLowerCase() === profileEmail) ?? null,
+    [members, profileEmail],
+  );
+  const creatorUserId = creatorMember?.userId ?? null;
+  const orderedMembers = useMemo(() => {
+    if (creatorUserId === null) {
+      return members;
+    }
+
+    const creatorFirst: typeof members = [];
+    const rest: typeof members = [];
+    for (const member of members) {
+      if (member.userId === creatorUserId) {
+        creatorFirst.push(member);
+      } else {
+        rest.push(member);
+      }
+    }
+
+    return [...creatorFirst, ...rest];
+  }, [creatorUserId, members]);
+
+  const participantAssignments = useMemo(
+    () =>
+      Object.entries(assignmentByUserId).map<ProjectParticipantAssignment>(
+        ([userId, iaaGroup]) => ({
+          userId: Number(userId),
+          iaaGroup,
+        }),
+      ),
+    [assignmentByUserId],
   );
 
-  const selectedSet = useMemo(() => new Set(selectedUserIds), [selectedUserIds]);
-
-  const normalizedInitialParticipantIds = useMemo(
-    () => [...new Set(initialParticipantUserIds)].sort((a, b) => a - b),
-    [initialParticipantUserIds],
+  const normalizedInitialAssignments = useMemo(
+    () => normalizeAssignments(initialParticipantAssignments),
+    [initialParticipantAssignments],
   );
 
   const participantsChanged = useMemo(() => {
-    const normalizedSelectedParticipantIds = [...new Set(selectedUserIds)].sort((a, b) => a - b);
+    const normalizedSelectedAssignments = normalizeAssignments(participantAssignments);
 
-    if (normalizedSelectedParticipantIds.length !== normalizedInitialParticipantIds.length) {
+    if (normalizedSelectedAssignments.length !== normalizedInitialAssignments.length) {
       return true;
     }
 
-    return normalizedSelectedParticipantIds.some(
-      (participantId, index) => participantId !== normalizedInitialParticipantIds[index],
+    return normalizedSelectedAssignments.some(
+      (participantAssignment, index) =>
+        participantAssignment !== normalizedInitialAssignments[index],
     );
-  }, [normalizedInitialParticipantIds, selectedUserIds]);
+  }, [normalizedInitialAssignments, participantAssignments]);
 
   const hasChanges =
     name.trim() !== initialName.trim() ||
@@ -114,19 +189,54 @@ export function EditProjectDialog({
   const resetForm = () => {
     setName(initialName);
     setDescription(initialDescription ?? '');
-    setSelectedUserIds(initialParticipantUserIds);
+    setAssignmentByUserId(assignmentsByUserId(initialParticipantAssignments));
   };
 
   useEffect(() => {
     if (!open) {
       resetForm();
     }
-  }, [initialName, initialDescription, initialParticipantUserIds, open]);
+  }, [initialName, initialDescription, initialParticipantAssignments, open]);
+
+  useEffect(() => {
+    if (creatorUserId === null) {
+      return;
+    }
+
+    setAssignmentByUserId((prev) => {
+      if (prev[creatorUserId]) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [creatorUserId]: 'GROUP_A',
+      };
+    });
+  }, [creatorUserId]);
 
   const toggleSelection = (userId: number) => {
-    setSelectedUserIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
-    );
+    setAssignmentByUserId((prev) => {
+      if (creatorUserId !== null && userId === creatorUserId) {
+        const currentGroup = prev[userId] ?? 'GROUP_A';
+        const nextAssignments = { ...prev };
+        nextAssignments[userId] = currentGroup === 'GROUP_A' ? 'GROUP_B' : 'GROUP_A';
+        return nextAssignments;
+      }
+
+      const currentGroup = prev[userId];
+      const currentIndex = GROUP_SEQUENCE.indexOf(currentGroup ?? null);
+      const nextGroup = GROUP_SEQUENCE[(currentIndex + 1) % GROUP_SEQUENCE.length];
+      const nextAssignments = { ...prev };
+
+      if (nextGroup === null) {
+        delete nextAssignments[userId];
+      } else {
+        nextAssignments[userId] = nextGroup;
+      }
+
+      return nextAssignments;
+    });
   };
 
   const setDialogOpen = (nextOpen: boolean) => {
@@ -158,7 +268,7 @@ export function EditProjectDialog({
         payload: {
           name: name.trim(),
           description: description.trim() || undefined,
-          participantUserIds: selectedUserIds,
+          participantAssignments,
         },
       });
 
@@ -237,23 +347,32 @@ export function EditProjectDialog({
                 </div>
               )}
 
-              {!isLoadingMembers && members.length === 0 && (
+              {!isLoadingMembers && orderedMembers.length === 0 && (
                 <p className="rounded-md border border-dashed border-border bg-background px-4 py-5 text-sm text-muted-foreground">
                   {t('project.create.noAssignableMembers')}
                 </p>
               )}
 
-              {!isLoadingMembers && members.length > 0 && (
+              {!isLoadingMembers && orderedMembers.length > 0 && (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {members.map((member) => {
-                    const isSelected = selectedSet.has(member.userId);
+                  {orderedMembers.map((member) => {
+                    const group =
+                      assignmentByUserId[member.userId] ??
+                      (member.userId === creatorUserId ? 'GROUP_A' : undefined);
+                    const memberName = `${member.firstName} ${member.lastName}`;
 
                     return (
                       <button
-                        className={[
-                          'rounded-xl border p-4 text-left transition-all cursor-pointer',
-                          membersSelectionCardClassName(isSelected),
-                        ].join(' ')}
+                        aria-label={t('project.create.assignmentCycleLabel', {
+                          name: memberName,
+                          state: group
+                            ? t(`project.create.assignmentGroups.${group}`)
+                            : t('project.create.assignmentGroups.unassigned'),
+                        })}
+                        className={cn(
+                          'rounded-md border p-4 text-left transition-all cursor-pointer',
+                          membersSelectionCardClassName(group),
+                        )}
                         key={member.userId}
                         onClick={() => toggleSelection(member.userId)}
                         type="button"
@@ -262,12 +381,22 @@ export function EditProjectDialog({
                           <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                             {initials(member.firstName, member.lastName)}
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-semibold text-primary">
-                              {member.firstName} {member.lastName}
+                              {memberName}
                             </p>
                             <p className="truncate text-xs text-muted-foreground">{member.email}</p>
                           </div>
+                          {group ? (
+                            <span
+                              className={cn(
+                                'shrink-0 rounded-full px-2.5 py-1 text-xs font-bold',
+                                groupBadgeClassName(group),
+                              )}
+                            >
+                              {t(`project.create.assignmentGroups.${group}`)}
+                            </span>
+                          ) : null}
                         </div>
                       </button>
                     );

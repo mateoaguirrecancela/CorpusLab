@@ -9,6 +9,8 @@ import {
   type ProjectAnnotationWorkspace,
   type ProjectDatasetItemContent,
   type ProjectDetail,
+  type ProjectMetric,
+  type ProjectMetricsResponse,
   type ProjectSetupResponse,
   type ProjectSummary,
   type SaveProjectAnnotationStepPayload,
@@ -43,6 +45,7 @@ export async function updateProject(
     name: payload.name.trim(),
     description: payload.description?.trim() || undefined,
     participantUserIds: payload.participantUserIds,
+    participantAssignments: payload.participantAssignments,
   };
 
   const response = await api.put<ProjectDetail>(
@@ -183,6 +186,14 @@ export async function getMyAssignedProjects({
 export async function getProjectDetail(projectId: number): Promise<ProjectDetail> {
   const response = await api.get<ProjectDetail>(`/projects/${projectId}`);
   return response.data;
+}
+
+export async function getProjectMetrics(projectId: number): Promise<ProjectMetric[]> {
+  const response = await api.get<ProjectMetricsResponse | ProjectMetric[]>(
+    `/projects/${projectId}/metrics`,
+  );
+
+  return Array.isArray(response.data) ? response.data : response.data.metrics;
 }
 
 export async function getProjectAnnotationWorkspace(
@@ -330,6 +341,10 @@ export function getProjectsLoadErrorMessage(error: unknown): string {
 
 export function getProjectDetailLoadErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, i18n.t('project.errors.detailLoadFailed'));
+}
+
+export function getProjectMetricsLoadErrorMessage(error: unknown): string {
+  return extractApiErrorMessage(error, i18n.t('project.errors.metricsLoadFailed'));
 }
 
 export function getProjectAnnotationLoadErrorMessage(error: unknown): string {

@@ -8,5 +8,13 @@ import jakarta.validation.constraints.Size;
 public record UpdateProjectRequestDto(
         @NotBlank @Size(max = 256) String name,
         @Size(max = 2048) String description,
-        List<Long> participantUserIds) {
+        List<Long> participantUserIds,
+        List<ProjectParticipantAssignmentDto> participantAssignments) {
+
+    public UpdateProjectRequestDto(
+            @NotBlank @Size(max = 256) String name,
+            @Size(max = 2048) String description,
+            List<Long> participantUserIds) {
+        this(name, description, participantUserIds, List.of());
+    }
 }

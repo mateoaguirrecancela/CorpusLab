@@ -73,7 +73,7 @@ export function EntitySummaryCard({
           completionBadgeClassName(normalizedCompletion),
         )}
       >
-        {t('project.list.completionBadge', { value: normalizedCompletion })}
+        {normalizedCompletion} %
       </span>
     ) : null;
 

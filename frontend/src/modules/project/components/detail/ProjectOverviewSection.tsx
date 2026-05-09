@@ -1,5 +1,7 @@
 import { CalendarDays, FolderKanban, Layers } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { ProjectMetricsSection } from '@/modules/project/components/detail/ProjectMetricsSection';
+import { useProjectMetricsQuery } from '@/modules/project/hooks/useProjectQueries';
 import { type ProjectDetail } from '@/modules/project/types/project';
 import { projectTypeI18nKey } from '@/modules/project/utils/projectDisplayUtils';
 import { formatDate } from '@/modules/project/utils/projectUtils';
@@ -19,6 +21,12 @@ export function ProjectOverviewSection({
   project,
 }: ProjectOverviewSectionProps) {
   const { t } = useTranslation();
+  const metricsEnabled = completionPercentage > 0 && project.projectType !== 'SEQ2SEQ';
+  const {
+    data: metrics,
+    isError: metricsError,
+    isLoading: metricsLoading,
+  } = useProjectMetricsQuery(project.id, { enabled: metricsEnabled });
 
   return (
     <section className="rounded-xl border border-border bg-surface-base p-6 sm:p-8">
@@ -79,6 +87,13 @@ export function ProjectOverviewSection({
           />
         </div>
       </div>
+      <ProjectMetricsSection
+        completionPercentage={completionPercentage}
+        isError={metricsError}
+        isLoading={metricsLoading}
+        metrics={metrics}
+        projectType={project.projectType}
+      />
     </section>
   );
 }

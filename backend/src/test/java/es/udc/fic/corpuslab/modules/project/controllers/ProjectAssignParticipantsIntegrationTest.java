@@ -29,8 +29,10 @@ import es.udc.fic.corpuslab.modules.notification.entities.Notification;
 import es.udc.fic.corpuslab.modules.notification.enums.NotificationType;
 import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
 import es.udc.fic.corpuslab.modules.project.dtos.AssignProjectParticipantsRequestDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectParticipantAssignmentDto;
 import es.udc.fic.corpuslab.modules.project.entities.Project;
 import es.udc.fic.corpuslab.modules.project.entities.ProjectParticipant;
+import es.udc.fic.corpuslab.modules.project.enums.ProjectParticipantIaaGroup;
 import es.udc.fic.corpuslab.modules.project.enums.ProjectParticipantRole;
 import es.udc.fic.corpuslab.modules.project.repositories.DatasetItemRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.ProjectParticipantRepository;
@@ -136,6 +138,55 @@ class ProjectAssignParticipantsIntegrationTest extends AbstractIntegrationTest {
                 participant.setUser(user);
                 participant.setRole(role);
                 projectParticipantRepository.save(participant);
+        }
+
+        @Test
+        void shouldPersistIaaGroupsWhenAssigningGroupedParticipants() throws Exception {
+                User owner = createUser("owner.grouped@example.com");
+                User participantA = createUser("grouped.a@example.com");
+                User participantB = createUser("grouped.b@example.com");
+
+                ResearchGroup group = createGroup("Grouped Assignment");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(participantA, group, ResearchGroupMemberRole.ANNOTATOR);
+                addMembership(participantB, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Grouped Project");
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+
+                String session = loginAs("owner.grouped@example.com");
+
+                AssignProjectParticipantsRequestDto request = new AssignProjectParticipantsRequestDto(
+                                null,
+                                List.of(
+                                                new ProjectParticipantAssignmentDto(
+                                                                participantA.getId(),
+                                                                ProjectParticipantIaaGroup.GROUP_A),
+                                                new ProjectParticipantAssignmentDto(
+                                                                participantB.getId(),
+                                                                ProjectParticipantIaaGroup.GROUP_B)));
+
+                mockMvc.perform(post("/api/research-groups/{groupId}/projects/{projectId}/participants", group.getId(),
+                                project.getId())
+                                .header("Authorization", "Bearer " + session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isNoContent());
+
+                List<ProjectParticipant> projectParticipants = projectParticipantRepository.findAll().stream()
+                                .filter(pp -> pp.getProject().getId().equals(project.getId()))
+                                .toList();
+
+                assertThat(projectParticipants)
+                                .filteredOn(pp -> pp.getUser().getId().equals(participantA.getId()))
+                                .singleElement()
+                                .extracting(ProjectParticipant::getIaaGroup)
+                                .isEqualTo(ProjectParticipantIaaGroup.GROUP_A);
+                assertThat(projectParticipants)
+                                .filteredOn(pp -> pp.getUser().getId().equals(participantB.getId()))
+                                .singleElement()
+                                .extracting(ProjectParticipant::getIaaGroup)
+                                .isEqualTo(ProjectParticipantIaaGroup.GROUP_B);
         }
 
         @Test

@@ -27,7 +27,6 @@
         "creator": "Creador",
         "participant": "Participante"
       },
-      "completionBadge": "{{value}}% completado",
       "status": {
         "ready": "Listo",
         "pendingSetup": "Pendiente"
@@ -45,11 +44,81 @@
         "datasetItems": "Items de dataset",
         "createdAt": "Creado"
       },
+      "metrics": {
+        "title": "Métricas IAA",
+        "loading": "Calculando",
+        "empty": "Todavia no hay metricas disponibles.",
+        "emptyNoProgress": "Las metricas apareceran cuando haya anotaciones completadas.",
+        "unsupported": "Este tipo de proyecto no tiene metricas configuradas.",
+        "unavailable": "No se pudieron cargar las metricas.",
+        "notAvailable": "N/D",
+        "sample": "{{items}} items - {{annotators}} anotadores",
+        "provisional": "Provisional",
+        "counts": {
+          "activeAnnotator": {
+            "one": "{{count}} activo",
+            "other": "{{count}} activos"
+          },
+          "missingAnnotation": {
+            "one": "Falta {{count}} anotacion.",
+            "other": "Faltan {{count}} anotaciones."
+          },
+          "missingAnnotator": {
+            "one": "Falta {{count}} anotador.",
+            "other": "Faltan {{count}} anotadores."
+          },
+          "missingGroup": {
+            "one": "Falta {{count}} grupo.",
+            "other": "Faltan {{count}} grupos."
+          },
+          "missingItem": {
+            "one": "Falta {{count}} item.",
+            "other": "Faltan {{count}} items."
+          }
+        },
+        "labels": {
+          "COHENS_KAPPA": "Cohen's kappa",
+          "KRIPPENDORFFS_ALPHA": "Krippendorff's alpha",
+          "FLEISS_KAPPA": "Fleiss' kappa",
+          "XRR": "XRR",
+          "SPAN_OVERLAP_F1": "Span overlap F1"
+        },
+        "status": {
+          "calculable": "Calculable",
+          "noAnnotations": "Sin anotaciones",
+          "insufficientAnnotators": "Faltan anotadores",
+          "insufficientItems": "Faltan items",
+          "noSharedItems": "Sin items compartidos",
+          "noValidPairs": "Sin pares validos",
+          "undefined": "Indefinido"
+        },
+        "reasons": {
+          "generic": {
+            "NO_ANNOTATIONS": "Faltan anotaciones.",
+            "INSUFFICIENT_ANNOTATORS": "Faltan anotadores.",
+            "INSUFFICIENT_ITEMS": "Faltan items completos.",
+            "NO_SHARED_ITEMS": "Faltan items compartidos.",
+            "NO_VALID_PAIRS": "Falta solapamiento.",
+            "UNDEFINED": "Resultado indefinido."
+          },
+          "FLEISS_KAPPA": {
+            "INSUFFICIENT_ITEMS": "Faltan anotaciones completas.",
+            "UNDEFINED": "Acuerdo esperado total."
+          },
+          "XRR": {
+            "INSUFFICIENT_ANNOTATORS": "Falta segundo grupo.",
+            "INSUFFICIENT_ITEMS": "Faltan items completos.",
+            "IRR_NOT_POSITIVE": "IRR grupo {{group}} <= 0",
+            "UNDEFINED": "Normalizacion no posible."
+          }
+        }
+      },
       "participantsTitle": "Participantes",
       "participantInfo": "Tu participacion en este proyecto:",
       "myRole": "Mi Rol",
       "participantsName": "Participante",
       "participantsRole": "Rol",
+      "participantsGroup": "Grupo",
       "participantsCompletion": "Completado",
       "participantsActions": "Acciones",
       "viewParticipantAnnotations": "Ver anotaciones",
@@ -253,6 +322,12 @@
       "savingSetup": "Guardando configuración...",
       "assignmentTitle": "Asignar investigadores",
       "assignmentDescription": "Selecciona qué investigadores del equipo participarán en el proyecto. El creador se añade automáticamente.",
+      "assignmentCycleLabel": "{{name}}: {{state}}",
+      "assignmentGroups": {
+        "GROUP_A": "Grupo A",
+        "GROUP_B": "Grupo B",
+        "unassigned": "Sin grupo"
+      },
       "loadingMembers": "Cargando investigadores del equipo...",
       "noAssignableMembers": "No hay investigadores adicionales disponibles para asignar."
     },
@@ -285,6 +360,7 @@
       "annotationLoadFailed": "No se pudieron cargar los pasos de anotacion. Inténtalo de nuevo.",
       "annotationSaveFailed": "No se pudo guardar la anotacion. Inténtalo de nuevo.",
       "annotationExportFailed": "No se pudo exportar el CSV de anotaciones. Inténtalo de nuevo.",
+      "metricsLoadFailed": "No se pudieron cargar las metricas del proyecto. Intentalo de nuevo.",
       "sourceContentLoadFailed": "No se pudo cargar el contenido del documento. Inténtalo de nuevo."
     }
   }

@@ -19,12 +19,20 @@ export type SliceResponse<T> = {
 
 export type ProjectParticipantRole = 'CREATOR' | 'PARTICIPANT';
 
+export type ProjectParticipantAssignmentGroup = 'GROUP_A' | 'GROUP_B';
+
+export type ProjectParticipantAssignment = {
+  userId: number;
+  iaaGroup: ProjectParticipantAssignmentGroup;
+};
+
 export type ProjectDetailParticipant = {
   userId: number;
   firstName: string;
   lastName: string;
   email: string;
   role: ProjectParticipantRole;
+  iaaGroup: ProjectParticipantAssignmentGroup | null;
   completionPercentage: number;
 };
 
@@ -48,7 +56,8 @@ export type CreateProjectPayload = {
 export type UpdateProjectPayload = {
   name: string;
   description?: string;
-  participantUserIds: number[];
+  participantUserIds?: number[];
+  participantAssignments?: ProjectParticipantAssignment[];
 };
 
 export type DatasetItem = {
@@ -71,6 +80,40 @@ export type ProjectType =
   | 'TEXT_CLASSIFICATION_MULTILABEL'
   | 'NER'
   | 'SEQ2SEQ';
+
+export type ProjectMetricType =
+  | 'COHENS_KAPPA'
+  | 'KRIPPENDORFFS_ALPHA'
+  | 'FLEISS_KAPPA'
+  | 'XRR'
+  | 'SPAN_OVERLAP_F1';
+
+export type ProjectMetricStatus =
+  | 'CALCULABLE'
+  | 'NO_ANNOTATIONS'
+  | 'INSUFFICIENT_ANNOTATORS'
+  | 'INSUFFICIENT_ITEMS'
+  | 'NO_SHARED_ITEMS'
+  | 'NO_VALID_PAIRS'
+  | 'UNDEFINED';
+
+export type ProjectMetric = {
+  metricType: ProjectMetricType;
+  projectType: ProjectType;
+  value: number | null;
+  calculable: boolean;
+  status: ProjectMetricStatus;
+  message: string | null;
+  annotatorCount: number;
+  itemCount: number;
+  pairCount: number;
+  details: Record<string, unknown>;
+};
+
+export type ProjectMetricsResponse = {
+  projectId: number;
+  metrics: ProjectMetric[];
+};
 
 export type ProjectSetupLabel = {
   name: string;
@@ -96,7 +139,8 @@ export type ProjectSetupResponse = {
 };
 
 export type AssignProjectParticipantsPayload = {
-  participantUserIds: number[];
+  participantUserIds?: number[];
+  participantAssignments?: ProjectParticipantAssignment[];
 };
 
 export type ProjectDetail = {

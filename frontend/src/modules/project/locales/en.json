@@ -27,7 +27,6 @@
         "creator": "Creator",
         "participant": "Participant"
       },
-      "completionBadge": "{{value}}% completed",
       "status": {
         "ready": "Ready",
         "pendingSetup": "Pending"
@@ -45,11 +44,81 @@
         "datasetItems": "Dataset items",
         "createdAt": "Created"
       },
+      "metrics": {
+        "title": "IAA Metrics",
+        "loading": "Calculating",
+        "empty": "No metrics are available yet.",
+        "emptyNoProgress": "Metrics will appear after the first annotations are completed.",
+        "unsupported": "This project type does not have metrics configured.",
+        "unavailable": "Metrics could not be loaded.",
+        "notAvailable": "N/A",
+        "sample": "{{items}} items - {{annotators}} annotators",
+        "provisional": "Provisional",
+        "counts": {
+          "activeAnnotator": {
+            "one": "{{count}} active",
+            "other": "{{count}} active"
+          },
+          "missingAnnotation": {
+            "one": "Missing {{count}} annotation.",
+            "other": "Missing {{count}} annotations."
+          },
+          "missingAnnotator": {
+            "one": "Missing {{count}} annotator.",
+            "other": "Missing {{count}} annotators."
+          },
+          "missingGroup": {
+            "one": "Missing {{count}} group.",
+            "other": "Missing {{count}} groups."
+          },
+          "missingItem": {
+            "one": "Missing {{count}} item.",
+            "other": "Missing {{count}} items."
+          }
+        },
+        "labels": {
+          "COHENS_KAPPA": "Cohen's kappa",
+          "KRIPPENDORFFS_ALPHA": "Krippendorff's alpha",
+          "FLEISS_KAPPA": "Fleiss' kappa",
+          "XRR": "XRR",
+          "SPAN_OVERLAP_F1": "Span overlap F1"
+        },
+        "status": {
+          "calculable": "Calculable",
+          "noAnnotations": "No annotations",
+          "insufficientAnnotators": "Not enough annotators",
+          "insufficientItems": "Not enough items",
+          "noSharedItems": "No shared items",
+          "noValidPairs": "No valid pairs",
+          "undefined": "Undefined"
+        },
+        "reasons": {
+          "generic": {
+            "NO_ANNOTATIONS": "Missing annotations.",
+            "INSUFFICIENT_ANNOTATORS": "Missing annotators.",
+            "INSUFFICIENT_ITEMS": "Missing complete items.",
+            "NO_SHARED_ITEMS": "Missing shared items.",
+            "NO_VALID_PAIRS": "Missing overlap.",
+            "UNDEFINED": "Undefined result."
+          },
+          "FLEISS_KAPPA": {
+            "INSUFFICIENT_ITEMS": "Missing complete annotations.",
+            "UNDEFINED": "Expected agreement is total."
+          },
+          "XRR": {
+            "INSUFFICIENT_ANNOTATORS": "Missing second group.",
+            "INSUFFICIENT_ITEMS": "Missing complete items.",
+            "IRR_NOT_POSITIVE": "Group {{group}} IRR <= 0",
+            "UNDEFINED": "Normalization unavailable."
+          }
+        }
+      },
       "participantsTitle": "Participants",
       "participantInfo": "Your participation in this project:",
       "myRole": "My Role",
       "participantsName": "Participant",
       "participantsRole": "Role",
+      "participantsGroup": "Group",
       "participantsCompletion": "Completed",
       "participantsActions": "Actions",
       "viewParticipantAnnotations": "View annotations",
@@ -253,6 +322,12 @@
       "savingSetup": "Saving setup...",
       "assignmentTitle": "Assign investigators",
       "assignmentDescription": "Select which research team members will participate in this project. The creator is included automatically.",
+      "assignmentCycleLabel": "{{name}}: {{state}}",
+      "assignmentGroups": {
+        "GROUP_A": "Group A",
+        "GROUP_B": "Group B",
+        "unassigned": "No group"
+      },
       "loadingMembers": "Loading team investigators...",
       "noAssignableMembers": "There are no additional investigators available to assign."
     },
@@ -285,6 +360,7 @@
       "annotationLoadFailed": "Could not load annotation steps. Please try again.",
       "annotationSaveFailed": "Could not save the annotation. Please try again.",
       "annotationExportFailed": "Could not export annotation CSV. Please try again.",
+      "metricsLoadFailed": "Could not load project metrics. Please try again.",
       "sourceContentLoadFailed": "Could not load the document content. Please try again."
     }
   }
