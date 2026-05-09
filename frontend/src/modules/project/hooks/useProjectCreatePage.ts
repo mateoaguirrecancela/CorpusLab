@@ -16,7 +16,10 @@ import {
   getProjectSetupErrorMessage,
   getUploadDatasetErrorMessage,
 } from '@/modules/project/services/projectService';
-import { type ConfigureProjectSetupPayload } from '@/modules/project/types/project';
+import {
+  type ConfigureProjectSetupPayload,
+  type ProjectParticipantAssignment,
+} from '@/modules/project/types/project';
 import { validateProjectFiles } from '@/modules/project/utils/projectCreateValidation';
 import { useResearchGroupsQuery } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
 import { type ResearchGroupSummary } from '@/modules/researchgroup/types/researchGroup';
@@ -38,7 +41,7 @@ type ProjectCreatePageState = Readonly<{
   projectSetupPayload: ConfigureProjectSetupPayload | null;
   selectedFiles: File[];
   selectedGroupId: string;
-  finalizeProject: (participantUserIds: number[]) => Promise<void>;
+  finalizeProject: (participantAssignments: ProjectParticipantAssignment[]) => Promise<void>;
   goToDatasetStep: () => void;
   goToInfoStep: () => void;
   goToSetupStep: () => void;
@@ -229,13 +232,13 @@ export function useProjectCreatePage(): ProjectCreatePageState {
 
   const assignParticipantsForProject = async (
     projectId: number,
-    participantUserIds: number[],
+    participantAssignments: ProjectParticipantAssignment[],
   ): Promise<boolean> => {
     try {
       await assignProjectParticipantsMutation.mutateAsync({
         groupId: numericGroupId,
         projectId,
-        participantUserIds,
+        payload: { participantAssignments },
       });
       return true;
     } catch (error) {
@@ -244,7 +247,7 @@ export function useProjectCreatePage(): ProjectCreatePageState {
     }
   };
 
-  const finalizeProject = async (participantUserIds: number[]) => {
+  const finalizeProject = async (participantAssignments: ProjectParticipantAssignment[]) => {
     if (
       !canCreateProject ||
       !canUploadDataset ||
@@ -273,7 +276,7 @@ export function useProjectCreatePage(): ProjectCreatePageState {
 
       const assignedParticipants = await assignParticipantsForProject(
         projectId,
-        participantUserIds,
+        participantAssignments,
       );
       if (!assignedParticipants) {
         throw new Error('participant_assignment_failed');

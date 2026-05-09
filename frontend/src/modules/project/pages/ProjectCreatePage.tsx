@@ -112,7 +112,7 @@ export default function ProjectCreatePage() {
           groupId={numericGroupId}
           isSubmitting={isFinalizingProject}
           onBack={() => setCurrentStep(3)}
-          onCompleted={(participantUserIds) => void finalizeProject(participantUserIds)}
+          onCompleted={(participantAssignments) => void finalizeProject(participantAssignments)}
         />
       );
     }

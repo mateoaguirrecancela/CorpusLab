@@ -44,6 +44,9 @@ export function ProjectParticipantsSection({ project }: ProjectParticipantsSecti
                 <TableHead className="px-4 py-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                   {t('project.detail.participantsRole')}
                 </TableHead>
+                <TableHead className="px-4 py-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                  {t('project.detail.participantsGroup')}
+                </TableHead>
                 <TableHead className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                   {t('project.detail.participantsCompletion')}
                 </TableHead>
@@ -82,6 +85,16 @@ export function ProjectParticipantsSection({ project }: ProjectParticipantsSecti
                         label={t(participantRoleI18nKey(participant.role))}
                         role={participant.role}
                       />
+                    </TableCell>
+
+                    <TableCell className="px-4 py-3">
+                      {participant.iaaGroup ? (
+                        <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-primary/10 px-2.5 text-xs font-bold text-primary">
+                          {participant.iaaGroup === 'GROUP_A' ? 'A' : 'B'}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
                     </TableCell>
 
                     <TableCell className="px-4 py-3 text-right text-sm font-semibold text-muted-foreground tabular-nums">

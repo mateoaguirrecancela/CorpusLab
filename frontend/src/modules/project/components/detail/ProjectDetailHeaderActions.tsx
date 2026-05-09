@@ -116,9 +116,12 @@ export function ProjectDetailHeaderActions({
                 groupId={project.researchGroupId}
                 initialDescription={project.description}
                 initialName={project.name}
-                initialParticipantUserIds={project.participants
+                initialParticipantAssignments={project.participants
                   .filter((participant) => participant.role === 'PARTICIPANT')
-                  .map((participant) => participant.userId)}
+                  .map((participant) => ({
+                    userId: participant.userId,
+                    iaaGroup: participant.iaaGroup ?? 'GROUP_A',
+                  }))}
                 onDeleted={() => navigate(`/home/research-groups/${project.researchGroupId}`)}
                 onOpenChange={onEditProjectOpenChange}
                 open={editProjectOpen}

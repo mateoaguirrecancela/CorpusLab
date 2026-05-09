@@ -11,6 +11,7 @@ import {
   getProjectAnnotationWorkspace,
   getMyAssignedProjects,
   getProjectDetail,
+  getProjectMetrics,
   saveProjectAnnotationStep,
   toggleProjectAnnotationWarning,
   unarchiveProject,
@@ -18,6 +19,7 @@ import {
   uploadProjectDataset,
 } from '@/modules/project/services/projectService';
 import {
+  type AssignProjectParticipantsPayload,
   type ConfigureProjectSetupPayload,
   type CreateProjectPayload,
   type UpdateProjectPayload,
@@ -185,15 +187,15 @@ export function useConfigureProjectSetupMutation() {
 type AssignParticipantsMutationInput = {
   groupId: number;
   projectId: number;
-  participantUserIds: number[];
+  payload: AssignProjectParticipantsPayload;
 };
 
 export function useAssignProjectParticipantsMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ groupId, projectId, participantUserIds }: AssignParticipantsMutationInput) =>
-      assignProjectParticipants(groupId, projectId, { participantUserIds }),
+    mutationFn: ({ groupId, projectId, payload }: AssignParticipantsMutationInput) =>
+      assignProjectParticipants(groupId, projectId, payload),
     onSuccess: (_, variables) => {
       invalidateQueryKeys(queryClient, [
         myAssignedProjectsQueryKey(),
@@ -227,6 +229,10 @@ export function assignedProjectsByGroupListQueryKey(groupId: number, showArchive
 
 export function projectDetailQueryKey(projectId: number) {
   return ['projects', 'detail', projectId] as const;
+}
+
+export function projectMetricsQueryKey(projectId: number) {
+  return ['projects', 'metrics', projectId] as const;
 }
 
 const PROJECTS_PAGE_SIZE = 12;
@@ -265,6 +271,18 @@ export function useProjectDetailQuery(projectId: number) {
     queryKey: projectDetailQueryKey(projectId),
     queryFn: () => getProjectDetail(projectId),
     enabled: Number.isFinite(projectId) && projectId > 0,
+  });
+}
+
+type ProjectMetricsQueryOptions = {
+  enabled?: boolean;
+};
+
+export function useProjectMetricsQuery(projectId: number, options?: ProjectMetricsQueryOptions) {
+  return useQuery({
+    queryKey: projectMetricsQueryKey(projectId),
+    queryFn: () => getProjectMetrics(projectId),
+    enabled: (options?.enabled ?? true) && Number.isFinite(projectId) && projectId > 0,
   });
 }
 
