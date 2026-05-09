@@ -3,6 +3,7 @@ package es.udc.fic.corpuslab.modules.project.entities;
 import java.time.Instant;
 
 import es.udc.fic.corpuslab.modules.auth.entities.User;
+import es.udc.fic.corpuslab.modules.project.enums.ProjectParticipantIaaGroup;
 import es.udc.fic.corpuslab.modules.project.enums.ProjectParticipantRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -39,6 +40,10 @@ public class ProjectParticipant {
     @Column(nullable = false, length = 32)
     private ProjectParticipantRole role;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "iaa_group", length = 32)
+    private ProjectParticipantIaaGroup iaaGroup;
+
     @Column(name = "assigned_at", nullable = false, updatable = false)
     private Instant assignedAt;
 
@@ -73,5 +78,13 @@ public class ProjectParticipant {
 
     public void setRole(ProjectParticipantRole role) {
         this.role = role;
+    }
+
+    public ProjectParticipantIaaGroup getIaaGroup() {
+        return iaaGroup;
+    }
+
+    public void setIaaGroup(ProjectParticipantIaaGroup iaaGroup) {
+        this.iaaGroup = iaaGroup;
     }
 }

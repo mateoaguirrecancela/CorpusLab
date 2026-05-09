@@ -1,0 +1,150 @@
+package es.udc.fic.corpuslab.modules.project.iaa.calculators.classification;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.junit.jupiter.api.Test;
+
+import es.udc.fic.corpuslab.modules.project.enums.MetricType;
+import es.udc.fic.corpuslab.modules.project.enums.IaaResultStatus;
+import es.udc.fic.corpuslab.modules.project.enums.ProjectType;
+import es.udc.fic.corpuslab.modules.project.iaa.calculators.pairwise.AnnotatorAnnotationVector;
+import es.udc.fic.corpuslab.modules.project.iaa.context.AnnotationCalculationContext;
+import es.udc.fic.corpuslab.modules.project.iaa.dtos.IaaResult;
+import es.udc.fic.corpuslab.modules.project.iaa.model.AnnotationUnitKey;
+import es.udc.fic.corpuslab.modules.project.iaa.transformers.AnnotationDataTransformer;
+import es.udc.fic.corpuslab.modules.project.iaa.transformers.classification.NominalAnnotationData;
+
+class ClassificationCalculatorTest {
+
+    private static final AnnotationCalculationContext SIMPLE_CONTEXT = new AnnotationCalculationContext(
+            1L,
+            ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+            List.of(),
+            List.of(),
+            List.of(),
+            Map.of());
+
+    @Test
+    void cohensKappaShouldCalculatePairwiseNominalKappa() {
+        NominalAnnotationData data = data(
+                vector(1L, Map.of(unit(1), "A", unit(2), "A", unit(3), "B")),
+                vector(2L, Map.of(unit(1), "A", unit(2), "B", unit(3), "B")));
+
+        IaaResult result = new CohensKappaCalculator(new StubTransformer(data)).calculate(SIMPLE_CONTEXT);
+
+        assertThat(result.calculable()).isTrue();
+        assertThat(result.value()).isCloseTo(0.4, org.assertj.core.data.Offset.offset(1.0e-12));
+        assertThat(result.pairCount()).isEqualTo(1);
+    }
+
+    @Test
+    void krippendorffsAlphaShouldBeOneForPerfectAgreementWithCategoryVariation() {
+        NominalAnnotationData data = data(
+                vector(1L, Map.of(unit(1), "A", unit(2), "B")),
+                vector(2L, Map.of(unit(1), "A", unit(2), "B")),
+                vector(3L, Map.of(unit(1), "A", unit(2), "B")));
+
+        IaaResult result = new KrippendorffsAlphaCalculator(new StubTransformer(data)).calculate(SIMPLE_CONTEXT);
+
+        assertThat(result.calculable()).isTrue();
+        assertThat(result.value()).isCloseTo(1.0, org.assertj.core.data.Offset.offset(1.0e-12));
+        assertThat(result.pairCount()).isEqualTo(2);
+    }
+
+    @Test
+    void fleissKappaShouldCalculateNominalMultiRaterKappa() {
+        NominalAnnotationData data = data(
+                vector(1L, Map.of(unit(1), "A", unit(2), "A", unit(3), "B")),
+                vector(2L, Map.of(unit(1), "A", unit(2), "B", unit(3), "B")),
+                vector(3L, Map.of(unit(1), "A", unit(2), "B", unit(3), "B")));
+
+        IaaResult result = new FleissKappaCalculator(new StubTransformer(data)).calculate(SIMPLE_CONTEXT);
+
+        assertThat(result.calculable()).isTrue();
+        assertThat(result.value()).isCloseTo(0.55, org.assertj.core.data.Offset.offset(1.0e-12));
+        assertThat(result.pairCount()).isEqualTo(3);
+    }
+
+    @Test
+    void fleissKappaShouldIgnoreAnnotatorsWithoutAnnotations() {
+        NominalAnnotationData data = data(
+                vector(1L, Map.of(unit(1), "A", unit(2), "A")),
+                vector(2L, Map.of(unit(1), "A", unit(2), "B")),
+                vector(3L, Map.of()));
+
+        IaaResult result = new FleissKappaCalculator(new StubTransformer(data)).calculate(SIMPLE_CONTEXT);
+
+        assertThat(result.calculable()).isTrue();
+        assertThat(result.annotatorCount()).isEqualTo(2);
+        assertThat(result.details())
+                .containsEntry("inactiveAnnotators", 1)
+                .containsEntry("provisional", true);
+    }
+
+    @Test
+    void fleissKappaShouldReportMissingRatingsWhenActiveAnnotatorsHaveNoCompleteItems() {
+        NominalAnnotationData data = data(
+                vector(1L, Map.of(unit(1), "A")),
+                vector(2L, Map.of(unit(2), "B")));
+
+        IaaResult result = new FleissKappaCalculator(new StubTransformer(data)).calculate(SIMPLE_CONTEXT);
+
+        assertThat(result.calculable()).isFalse();
+        assertThat(result.status()).isEqualTo(IaaResultStatus.INSUFFICIENT_ITEMS);
+        assertThat(result.details()).containsEntry("missingRatings", 2);
+    }
+
+    @SafeVarargs
+    private static NominalAnnotationData data(AnnotatorAnnotationVector<AnnotationUnitKey, String>... vectors) {
+        Map<AnnotationUnitKey, List<String>> ratingsByUnit = new LinkedHashMap<>();
+        Set<String> categories = new LinkedHashSet<>();
+        for (AnnotatorAnnotationVector<AnnotationUnitKey, String> vector : vectors) {
+            vector.annotationsByUnit().forEach((unitKey, rating) -> {
+                ratingsByUnit.computeIfAbsent(unitKey, ignored -> new ArrayList<>()).add(rating);
+                categories.add(rating);
+            });
+        }
+
+        return new NominalAnnotationData(
+                ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+                List.of(vectors),
+                ratingsByUnit,
+                categories);
+    }
+
+    private static AnnotatorAnnotationVector<AnnotationUnitKey, String> vector(
+            Long annotatorId,
+            Map<AnnotationUnitKey, String> ratings) {
+        return new AnnotatorAnnotationVector<>(annotatorId, ratings);
+    }
+
+    private static AnnotationUnitKey unit(int stepIndex) {
+        return new AnnotationUnitKey(1L, stepIndex);
+    }
+
+    private record StubTransformer(NominalAnnotationData data)
+            implements AnnotationDataTransformer<NominalAnnotationData> {
+
+        @Override
+        public Set<ProjectType> supportedProjectTypes() {
+            return Set.of(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+        }
+
+        @Override
+        public Set<MetricType> supportedMetricTypes() {
+            return Set.of(MetricType.COHENS_KAPPA, MetricType.KRIPPENDORFFS_ALPHA, MetricType.FLEISS_KAPPA);
+        }
+
+        @Override
+        public NominalAnnotationData transform(AnnotationCalculationContext context) {
+            return data;
+        }
+    }
+}

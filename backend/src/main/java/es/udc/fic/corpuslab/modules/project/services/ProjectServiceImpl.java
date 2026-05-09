@@ -34,6 +34,7 @@ import es.udc.fic.corpuslab.modules.project.entities.Guideline;
 import es.udc.fic.corpuslab.modules.project.entities.Label;
 import es.udc.fic.corpuslab.modules.project.entities.Project;
 import es.udc.fic.corpuslab.modules.project.entities.ProjectParticipant;
+import es.udc.fic.corpuslab.modules.project.enums.ProjectParticipantIaaGroup;
 import es.udc.fic.corpuslab.modules.project.enums.ProjectParticipantRole;
 import es.udc.fic.corpuslab.modules.project.enums.ProjectType;
 import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectDatasetException;
@@ -228,6 +229,7 @@ public class ProjectServiceImpl implements ProjectService {
         creatorParticipant.setUser(entityManager.getReference(
                 es.udc.fic.corpuslab.modules.auth.entities.User.class, userInfo.userId()));
         creatorParticipant.setRole(ProjectParticipantRole.CREATOR);
+        creatorParticipant.setIaaGroup(ProjectParticipantIaaGroup.GROUP_A);
         projectParticipantRepository.save(creatorParticipant);
 
         return new ProjectSummaryDto(
@@ -262,8 +264,13 @@ public class ProjectServiceImpl implements ProjectService {
                         : null);
         projectRepository.save(project);
 
-        projectParticipantService.replaceProjectParticipants(
-                projectId, requesterInfo.userId(), researchGroupId, request.participantUserIds());
+        if (request.participantAssignments() != null && !request.participantAssignments().isEmpty()) {
+            projectParticipantService.replaceProjectParticipantAssignments(
+                    projectId, requesterInfo.userId(), researchGroupId, request.participantAssignments());
+        } else {
+            projectParticipantService.replaceProjectParticipants(
+                    projectId, requesterInfo.userId(), researchGroupId, request.participantUserIds());
+        }
 
         return getAssignedProjectDetail(authenticatedEmail, projectId);
     }
@@ -598,6 +605,7 @@ public class ProjectServiceImpl implements ProjectService {
                 participantUser.getLastName(),
                 participantUser.getEmail(),
                 participant.getRole(),
+                participant.getIaaGroup(),
                 completionPercentage);
     }
 

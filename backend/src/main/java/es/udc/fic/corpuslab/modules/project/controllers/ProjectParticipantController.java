@@ -34,6 +34,6 @@ public class ProjectParticipantController {
                 authentication.getName(),
                 groupId,
                 projectId,
-                request.participantUserIds());
+                request);
     }
 }

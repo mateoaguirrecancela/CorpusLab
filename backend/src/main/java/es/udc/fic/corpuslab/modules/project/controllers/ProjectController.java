@@ -17,10 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAssignedSummaryDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectDetailDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectMetricsDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupResponseDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSummaryDto;
 import es.udc.fic.corpuslab.modules.project.dtos.UpdateProjectRequestDto;
+import es.udc.fic.corpuslab.modules.project.services.ProjectMetricsService;
 import es.udc.fic.corpuslab.modules.project.services.ProjectService;
 import jakarta.validation.Valid;
 
@@ -29,9 +31,11 @@ import jakarta.validation.Valid;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final ProjectMetricsService projectMetricsService;
 
-    public ProjectController(ProjectService projectService) {
+    public ProjectController(ProjectService projectService, ProjectMetricsService projectMetricsService) {
         this.projectService = projectService;
+        this.projectMetricsService = projectMetricsService;
     }
 
     @GetMapping("/research-groups/{groupId}/projects/my")
@@ -120,5 +124,13 @@ public class ProjectController {
             Authentication authentication,
             @PathVariable Long projectId) {
         return projectService.getAssignedProjectDetail(authentication.getName(), projectId);
+    }
+
+    @GetMapping("/projects/{projectId}/metrics")
+    @ResponseStatus(HttpStatus.OK)
+    public ProjectMetricsDto getProjectMetrics(
+            Authentication authentication,
+            @PathVariable Long projectId) {
+        return projectMetricsService.getProjectMetrics(authentication.getName(), projectId);
     }
 }

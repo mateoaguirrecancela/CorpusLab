@@ -15,9 +15,11 @@ import es.udc.fic.corpuslab.modules.auth.fixtures.UserLoginRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectParticipantAssignmentDto;
 import es.udc.fic.corpuslab.modules.project.dtos.UpdateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.entities.Project;
 import es.udc.fic.corpuslab.modules.project.entities.ProjectParticipant;
+import es.udc.fic.corpuslab.modules.project.enums.ProjectParticipantIaaGroup;
 import es.udc.fic.corpuslab.modules.project.enums.ProjectParticipantRole;
 import es.udc.fic.corpuslab.modules.project.repositories.DatasetItemRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.ProjectParticipantRepository;
@@ -140,6 +142,80 @@ class ProjectUpdateDeleteIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("New Name"))
                 .andExpect(jsonPath("$.description").value("New Description"));
+    }
+
+    @Test
+    void shouldUpdateProjectParticipantGroupsWhenRequesterIsCreator() throws Exception {
+        User creator = UserTestBuilder.validUser()
+                .withEmail("creator.groups@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        creator = userRepository.save(creator);
+        User participantA = UserTestBuilder.validUser().withEmail("participant.a@example.com").build();
+        participantA = userRepository.save(participantA);
+        User participantB = UserTestBuilder.validUser().withEmail("participant.b@example.com").build();
+        participantB = userRepository.save(participantB);
+
+        ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(creator)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.OWNER)
+                .build());
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(participantA)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.ANNOTATOR)
+                .build());
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(participantB)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.ANNOTATOR)
+                .build());
+
+        Project project = new Project();
+        project.setName("Grouped Project");
+        project.setResearchGroup(group);
+        project = projectRepository.save(project);
+
+        ProjectParticipant creatorParticipant = new ProjectParticipant();
+        creatorParticipant.setProject(project);
+        creatorParticipant.setUser(creator);
+        creatorParticipant.setRole(ProjectParticipantRole.CREATOR);
+        projectParticipantRepository.save(creatorParticipant);
+
+        Long participantAId = participantA.getId();
+        Long participantBId = participantB.getId();
+        Long projectId = project.getId();
+        String session = loginAs("creator.groups@example.com");
+        UpdateProjectRequestDto request = new UpdateProjectRequestDto(
+                "Grouped Project",
+                null,
+                null,
+                List.of(
+                        new ProjectParticipantAssignmentDto(participantAId, ProjectParticipantIaaGroup.GROUP_A),
+                        new ProjectParticipantAssignmentDto(participantBId, ProjectParticipantIaaGroup.GROUP_B)));
+
+        mockMvc.perform(put("/api/research-groups/{groupId}/projects/{projectId}", group.getId(), projectId)
+                .header("Authorization", "Bearer " + session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        List<ProjectParticipant> participants = projectParticipantRepository.findAll().stream()
+                .filter(projectParticipant -> projectParticipant.getProject().getId().equals(projectId))
+                .toList();
+
+        assertThat(participants)
+                .filteredOn(projectParticipant -> projectParticipant.getUser().getId().equals(participantAId))
+                .singleElement()
+                .extracting(ProjectParticipant::getIaaGroup)
+                .isEqualTo(ProjectParticipantIaaGroup.GROUP_A);
+        assertThat(participants)
+                .filteredOn(projectParticipant -> projectParticipant.getUser().getId().equals(participantBId))
+                .singleElement()
+                .extracting(ProjectParticipant::getIaaGroup)
+                .isEqualTo(ProjectParticipantIaaGroup.GROUP_B);
     }
 
     @Test

@@ -1,7 +1,9 @@
 package es.udc.fic.corpuslab.modules.project.services;
 
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -16,8 +18,11 @@ import es.udc.fic.corpuslab.modules.auth.api.dtos.UserInfo;
 import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
+import es.udc.fic.corpuslab.modules.project.dtos.AssignProjectParticipantsRequestDto;
+import es.udc.fic.corpuslab.modules.project.dtos.ProjectParticipantAssignmentDto;
 import es.udc.fic.corpuslab.modules.project.entities.Project;
 import es.udc.fic.corpuslab.modules.project.entities.ProjectParticipant;
+import es.udc.fic.corpuslab.modules.project.enums.ProjectParticipantIaaGroup;
 import es.udc.fic.corpuslab.modules.project.enums.ProjectParticipantRole;
 import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectParticipantsException;
 import es.udc.fic.corpuslab.modules.project.exceptions.ProjectNotFoundException;
@@ -67,6 +72,17 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
     @Transactional
     public void assignParticipants(String authenticatedEmail, Long researchGroupId, Long projectId,
             List<Long> participantUserIds) {
+        assignParticipants(
+                authenticatedEmail,
+                researchGroupId,
+                projectId,
+                new AssignProjectParticipantsRequestDto(participantUserIds));
+    }
+
+    @Override
+    @Transactional
+    public void assignParticipants(String authenticatedEmail, Long researchGroupId, Long projectId,
+            AssignProjectParticipantsRequestDto request) {
         UserInfo requesterInfo = authApiService.findUserByEmail(authenticatedEmail);
 
         projectRepository.findByIdAndResearchGroupId(projectId, researchGroupId)
@@ -80,7 +96,15 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
             throw new AccessDeniedException("Only owners or admins can assign investigators");
         }
 
-        replaceProjectParticipants(projectId, requesterInfo.userId(), researchGroupId, participantUserIds);
+        boolean usesGroupedAssignments = request != null
+                && request.participantAssignments() != null
+                && !request.participantAssignments().isEmpty();
+        List<NormalizedParticipantAssignment> assignments = usesGroupedAssignments
+                ? normalizeGroupedAssignments(request.participantAssignments())
+                : normalizeFlatAssignments(request == null ? null : request.participantUserIds());
+
+        replaceProjectParticipants(projectId, requesterInfo.userId(), researchGroupId, assignments,
+                usesGroupedAssignments);
     }
 
     @Override
@@ -90,15 +114,43 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
             Long requesterUserId,
             Long researchGroupId,
             List<Long> participantUserIds) {
+        replaceProjectParticipants(
+                projectId,
+                requesterUserId,
+                researchGroupId,
+                normalizeFlatAssignments(participantUserIds),
+                false);
+    }
+
+    @Override
+    @Transactional
+    public void replaceProjectParticipantAssignments(
+            Long projectId,
+            Long requesterUserId,
+            Long researchGroupId,
+            List<ProjectParticipantAssignmentDto> participantAssignments) {
+        replaceProjectParticipants(
+                projectId,
+                requesterUserId,
+                researchGroupId,
+                normalizeGroupedAssignments(participantAssignments),
+                true);
+    }
+
+    private void replaceProjectParticipants(
+            Long projectId,
+            Long requesterUserId,
+            Long researchGroupId,
+            List<NormalizedParticipantAssignment> requestedAssignments,
+            boolean overwriteIaaGroups) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ProjectNotFoundException(projectId));
 
-        List<Long> requestedIds = participantUserIds == null
-                ? List.of()
-                : participantUserIds.stream()
-                        .filter(id -> id != null && id > 0)
-                        .distinct()
-                        .toList();
+        Map<Long, ProjectParticipantIaaGroup> requestedGroupsByUserId = new LinkedHashMap<>();
+        for (NormalizedParticipantAssignment assignment : requestedAssignments) {
+            requestedGroupsByUserId.putIfAbsent(assignment.userId(), assignment.iaaGroup());
+        }
+        List<Long> requestedIds = List.copyOf(requestedGroupsByUserId.keySet());
 
         Set<Long> activeMemberIds = new HashSet<>(
                 researchGroupApiService.findActiveMemberUserIds(researchGroupId));
@@ -109,17 +161,43 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
                     "All selected investigators must be active members of the research group");
         }
 
-        List<Long> filteredIds = requestedIds.stream()
-                .filter(id -> !id.equals(requesterUserId))
-                .toList();
-
         List<ProjectParticipant> allExistingParticipants = projectParticipantRepository
                 .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId);
+        ProjectParticipant creatorParticipant = allExistingParticipants.stream()
+                .filter(projectParticipant -> projectParticipant.getRole() == ProjectParticipantRole.CREATOR)
+                .findFirst()
+                .orElse(null);
+        Long creatorUserId = creatorParticipant != null ? creatorParticipant.getUser().getId() : requesterUserId;
+
+        if (overwriteIaaGroups && creatorParticipant != null) {
+            ProjectParticipantIaaGroup requestedCreatorGroup = requestedGroupsByUserId.get(creatorUserId);
+            ProjectParticipantIaaGroup nextCreatorGroup = requestedCreatorGroup != null
+                    ? requestedCreatorGroup
+                    : ProjectParticipantIaaGroup.GROUP_A;
+            creatorParticipant.setIaaGroup(nextCreatorGroup);
+            projectParticipantRepository.save(creatorParticipant);
+        }
+
+        List<Long> filteredIds = requestedIds.stream()
+                .filter(id -> !id.equals(creatorUserId))
+                .toList();
+        Map<Long, ProjectParticipantIaaGroup> filteredGroupsByUserId = new LinkedHashMap<>();
+        for (Long id : filteredIds) {
+            filteredGroupsByUserId.put(id, requestedGroupsByUserId.get(id));
+        }
 
         Set<Long> existingParticipantIds = allExistingParticipants.stream()
                 .filter(projectParticipant -> projectParticipant.getRole() == ProjectParticipantRole.PARTICIPANT)
                 .map(projectParticipant -> projectParticipant.getUser().getId())
                 .collect(Collectors.toSet());
+
+        Map<Long, ProjectParticipant> existingParticipantsByUserId = allExistingParticipants.stream()
+                .filter(projectParticipant -> projectParticipant.getRole() == ProjectParticipantRole.PARTICIPANT)
+                .collect(Collectors.toMap(
+                        projectParticipant -> projectParticipant.getUser().getId(),
+                        projectParticipant -> projectParticipant,
+                        (first, ignored) -> first,
+                        LinkedHashMap::new));
 
         Set<Long> filteredParticipantIds = new HashSet<>(filteredIds);
         Set<Long> removedParticipantIds = existingParticipantIds.stream()
@@ -135,6 +213,19 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
 
         if (!participantsToRemove.isEmpty()) {
             projectParticipantRepository.deleteAll(participantsToRemove);
+        }
+
+        if (overwriteIaaGroups) {
+            List<ProjectParticipant> participantsToUpdate = filteredIds.stream()
+                    .map(existingParticipantsByUserId::get)
+                    .filter(participant -> participant != null)
+                    .peek(participant -> participant.setIaaGroup(
+                            filteredGroupsByUserId.get(participant.getUser().getId())))
+                    .toList();
+
+            if (!participantsToUpdate.isEmpty()) {
+                projectParticipantRepository.saveAll(participantsToUpdate);
+            }
         }
 
         Set<Long> newParticipantIds = filteredIds.stream()
@@ -155,6 +246,7 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
             participant.setProject(project);
             participant.setUser(getUserReference(userInfo.userId()));
             participant.setRole(ProjectParticipantRole.PARTICIPANT);
+            participant.setIaaGroup(filteredGroupsByUserId.get(userInfo.userId()));
             return participant;
         }).toList();
 
@@ -181,6 +273,37 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
                     assignerFullName,
                     projectUrl);
         }
+    }
+
+    private List<NormalizedParticipantAssignment> normalizeFlatAssignments(List<Long> participantUserIds) {
+        if (participantUserIds == null || participantUserIds.isEmpty()) {
+            return List.of();
+        }
+
+        return participantUserIds.stream()
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .map(id -> new NormalizedParticipantAssignment(id, null))
+                .toList();
+    }
+
+    private List<NormalizedParticipantAssignment> normalizeGroupedAssignments(
+            List<ProjectParticipantAssignmentDto> assignments) {
+        if (assignments == null || assignments.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, ProjectParticipantIaaGroup> groupsByUserId = new LinkedHashMap<>();
+        for (ProjectParticipantAssignmentDto assignment : assignments) {
+            if (assignment == null || assignment.userId() == null || assignment.userId() <= 0) {
+                continue;
+            }
+            groupsByUserId.putIfAbsent(assignment.userId(), assignment.iaaGroup());
+        }
+
+        return groupsByUserId.entrySet().stream()
+                .map(entry -> new NormalizedParticipantAssignment(entry.getKey(), entry.getValue()))
+                .toList();
     }
 
     private void removeStoredAnnotationsForUsers(Long projectId, Set<Long> removedUserIds) {
@@ -215,5 +338,10 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
      */
     private User getUserReference(Long userId) {
         return entityManager.getReference(User.class, userId);
+    }
+
+    private record NormalizedParticipantAssignment(
+            Long userId,
+            ProjectParticipantIaaGroup iaaGroup) {
     }
 }
