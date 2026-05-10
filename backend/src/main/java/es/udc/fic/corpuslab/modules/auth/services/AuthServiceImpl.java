@@ -3,7 +3,6 @@ package es.udc.fic.corpuslab.modules.auth.services;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Locale;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,6 +26,7 @@ import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetTokenNotFoundEx
 import es.udc.fic.corpuslab.modules.auth.repositories.PasswordResetTokenRepository;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
+import es.udc.fic.corpuslab.modules.auth.utils.SecureTokenUtils;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 import es.udc.fic.corpuslab.common.utils.StringUtils;
 
@@ -38,6 +38,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailService emailService;
     private final es.udc.fic.corpuslab.common.security.JwtTokenService jwtTokenService;
+    private final OAuthLoginCodeService oAuthLoginCodeService;
     private final String frontendBaseUrl;
 
     public AuthServiceImpl(
@@ -46,12 +47,14 @@ public class AuthServiceImpl implements AuthService {
             PasswordResetTokenRepository passwordResetTokenRepository,
             EmailService emailService,
             es.udc.fic.corpuslab.common.security.JwtTokenService jwtTokenService,
+            OAuthLoginCodeService oAuthLoginCodeService,
             @Value("${app.frontend.base-url:http://localhost:5173}") String frontendBaseUrl) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.emailService = emailService;
         this.jwtTokenService = jwtTokenService;
+        this.oAuthLoginCodeService = oAuthLoginCodeService;
         this.frontendBaseUrl = frontendBaseUrl;
     }
 
@@ -153,6 +156,20 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
+    public UserLoginResponseDto exchangeOAuthCode(String code) {
+        User user = oAuthLoginCodeService.consumeCode(code);
+        String token = jwtTokenService.generateToken(user.getEmail());
+
+        return new UserLoginResponseDto(
+                user.getId(),
+                user.getEmail(),
+                user.getFirstName(),
+                user.getLastName(),
+                token);
+    }
+
+    @Override
+    @Transactional
     public void requestPasswordReset(String email) {
         if (email == null) {
             return;
@@ -160,7 +177,11 @@ public class AuthServiceImpl implements AuthService {
 
         String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(email);
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
-                .orElseThrow(() -> new EmailNotFoundException(normalizedEmail));
+                .orElse(null);
+
+        if (user == null) {
+            return;
+        }
 
         PasswordResetToken token = passwordResetTokenRepository.findByUserId(user.getId())
                 .orElseGet(() -> {
@@ -169,8 +190,8 @@ public class AuthServiceImpl implements AuthService {
                     return created;
                 });
 
-        String rawToken = UUID.randomUUID().toString();
-        token.setToken(rawToken);
+        String rawToken = SecureTokenUtils.randomUrlSafeToken(32);
+        token.setToken(SecureTokenUtils.sha256(rawToken));
         token.setExpiryDate(LocalDateTime.now().plus(15, ChronoUnit.MINUTES));
         passwordResetTokenRepository.save(token);
 
@@ -189,7 +210,8 @@ public class AuthServiceImpl implements AuthService {
             return;
         }
 
-        PasswordResetToken passwordResetToken = passwordResetTokenRepository.findByToken(token.trim())
+        PasswordResetToken passwordResetToken = passwordResetTokenRepository.findByToken(
+                SecureTokenUtils.sha256(token.trim()))
                 .filter(currentToken -> currentToken.getExpiryDate().isAfter(LocalDateTime.now()))
                 .orElseThrow(PasswordResetTokenNotFoundException::new);
 

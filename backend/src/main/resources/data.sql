@@ -530,9 +530,9 @@ INSERT INTO dataset_items (id, project_id, item_index, content, created_at) VALU
 -- Password reset tokens
 -- -----------------------------------------------------------------------------
 INSERT INTO password_reset_tokens (id, token, user_id, expiry_date) VALUES
-    (1, 'reset-token-user4-active',  4,  now() + interval '2 days'),
-    (2, 'reset-token-user7-expired', 7,  now() - interval '1 day'),
-    (3, 'reset-token-user12-active', 12, now() + interval '5 days');
+    (1, '3e1fd4ed78f57427baf016c3c6ec1740421ad372e3f8061a3685f0688917d7cb',  4,  now() + interval '2 days'),
+    (2, '7e47814e6e01f34a2367a7b6fc3e26d4003e8576d610515a3a014a1cda5fca74', 7,  now() - interval '1 day'),
+    (3, '5135140c116f69e4dcd0b81cd4d415041e7e8d2f557bdf55ff71351d6eab9466', 12, now() + interval '5 days');
 
 -- -----------------------------------------------------------------------------
 -- Notifications

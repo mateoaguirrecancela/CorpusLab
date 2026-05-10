@@ -349,10 +349,10 @@ class ResearchGroupUpdateIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
-        void shouldReturnForbiddenWhenNotAuthenticated() throws Exception {
+        void shouldReturnUnauthorizedWhenNotAuthenticated() throws Exception {
                 mockMvc.perform(put("/api/research-groups/1")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"name\":\"Updated Name\",\"description\":\"Updated Description\"}"))
-                                .andExpect(status().isForbidden());
+                                .andExpect(status().isUnauthorized());
         }
 }

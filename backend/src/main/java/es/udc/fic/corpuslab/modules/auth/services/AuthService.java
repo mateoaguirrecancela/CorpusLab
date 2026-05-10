@@ -21,6 +21,8 @@ public interface AuthService {
 
     UserLogoutResponseDto logout();
 
+    UserLoginResponseDto exchangeOAuthCode(String code);
+
     void requestPasswordReset(String email);
 
     void resetPassword(String token, String newPassword);

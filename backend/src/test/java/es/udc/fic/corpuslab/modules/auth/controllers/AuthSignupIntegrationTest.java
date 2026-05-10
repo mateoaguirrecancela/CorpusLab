@@ -100,10 +100,6 @@ class AuthSignupIntegrationTest extends AbstractIntegrationTest {
                 .withEmail("existing@example.com")
                 .withFirstName("Another")
                 .withLastName("Person")
-                .withBirth(null)
-                .withGender(null)
-                .withCountryCode(null)
-                .withCity(null)
                 .withPassword("another-password")
                 .build();
 
@@ -138,5 +134,20 @@ class AuthSignupIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.details.birth").exists())
                 .andExpect(jsonPath("$.details.countryCode").exists())
                 .andExpect(jsonPath("$.details.password").exists());
+    }
+
+    @Test
+    void signupReturnsBadRequestWhenBirthDateIsUnderMinimumAge() throws Exception {
+        UserRegisterRequestDto request = UserRegisterRequestTestBuilder.validRequest()
+                .withBirth(LocalDate.now().minusYears(16).plusDays(1))
+                .build();
+
+        mockMvc.perform(post("/api/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.details.birth").exists());
     }
 }

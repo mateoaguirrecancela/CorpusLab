@@ -22,6 +22,7 @@ import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLogoutResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.ForgotPasswordRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.ForgotPasswordResponseDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.OAuthExchangeRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.ResetPasswordRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.ResetPasswordResponseDto;
 import es.udc.fic.corpuslab.modules.auth.services.AuthService;
@@ -64,6 +65,11 @@ public class AuthController {
     @PostMapping("/logout")
     public UserLogoutResponseDto logout() {
         return authService.logout();
+    }
+
+    @PostMapping("/oauth/exchange")
+    public UserLoginResponseDto exchangeOAuthCode(@Valid @RequestBody OAuthExchangeRequestDto request) {
+        return authService.exchangeOAuthCode(request.code());
     }
 
     @PostMapping("/forgot-password")

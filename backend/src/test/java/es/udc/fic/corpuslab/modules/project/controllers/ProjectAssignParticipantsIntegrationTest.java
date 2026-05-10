@@ -325,7 +325,7 @@ class ProjectAssignParticipantsIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
-        void shouldReturnForbiddenWhenRequesterIsNotAuthenticated() throws Exception {
+        void shouldReturnUnauthorizedWhenRequesterIsNotAuthenticated() throws Exception {
                 User owner = createUser("owner.noauth@example.com");
                 ResearchGroup group = createGroup("No Auth Group");
                 addMembership(owner, group, ResearchGroupMemberRole.OWNER);
@@ -340,7 +340,7 @@ class ProjectAssignParticipantsIntegrationTest extends AbstractIntegrationTest {
                                 project.getId())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
-                                .andExpect(status().isForbidden());
+                                .andExpect(status().isUnauthorized());
         }
 
         @Test

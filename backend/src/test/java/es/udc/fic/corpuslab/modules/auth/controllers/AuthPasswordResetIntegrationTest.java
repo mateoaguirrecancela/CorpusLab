@@ -18,6 +18,7 @@ import es.udc.fic.corpuslab.modules.auth.fixtures.ResetPasswordRequestTestBuilde
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.PasswordResetTokenRepository;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
+import es.udc.fic.corpuslab.modules.auth.utils.SecureTokenUtils;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupInvitationRepository;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 import org.junit.jupiter.api.BeforeEach;
@@ -74,10 +75,11 @@ class AuthPasswordResetIntegrationTest extends AbstractIntegrationTest {
                 mockMvc.perform(post("/api/auth/forgot-password")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
-                                .andExpect(status().isNotFound())
-                                .andExpect(jsonPath("$.status").value(404))
+                                .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.message")
-                                                .value("No account found for email: missing.user@example.com"));
+                                                .value("If the account exists, a reset link has been sent"));
+
+                assertThat(passwordResetTokenRepository.findAll()).isEmpty();
         }
 
         @Test
@@ -102,6 +104,7 @@ class AuthPasswordResetIntegrationTest extends AbstractIntegrationTest {
                 PasswordResetToken token = passwordResetTokenRepository.findAll().stream().findFirst().orElseThrow();
                 assertThat(token.getUser().getId()).isNotNull();
                 assertThat(token.getToken()).isNotBlank();
+                assertThat(token.getToken()).hasSize(64);
                 assertThat(token.getExpiryDate()).isAfter(LocalDateTime.now());
         }
 
@@ -155,7 +158,7 @@ class AuthPasswordResetIntegrationTest extends AbstractIntegrationTest {
                 userRepository.save(user);
 
                 PasswordResetToken passwordResetToken = new PasswordResetToken();
-                passwordResetToken.setToken(rawToken);
+                passwordResetToken.setToken(SecureTokenUtils.sha256(rawToken));
                 passwordResetToken.setUser(user);
                 passwordResetToken.setExpiryDate(LocalDateTime.now().plusMinutes(15));
                 passwordResetTokenRepository.save(passwordResetToken);
@@ -174,7 +177,7 @@ class AuthPasswordResetIntegrationTest extends AbstractIntegrationTest {
 
                 User persisted = userRepository.findByEmailIgnoreCase("recover.user@example.com").orElseThrow();
                 assertThat(passwordEncoder.matches("new-strong-password", persisted.getPasswordHash())).isTrue();
-                assertThat(passwordResetTokenRepository.findByToken(rawToken)).isEmpty();
+                assertThat(passwordResetTokenRepository.findByToken(SecureTokenUtils.sha256(rawToken))).isEmpty();
         }
 
         @Test
@@ -188,7 +191,7 @@ class AuthPasswordResetIntegrationTest extends AbstractIntegrationTest {
                 userRepository.save(user);
 
                 PasswordResetToken passwordResetToken = new PasswordResetToken();
-                passwordResetToken.setToken(rawToken);
+                passwordResetToken.setToken(SecureTokenUtils.sha256(rawToken));
                 passwordResetToken.setUser(user);
                 passwordResetToken.setExpiryDate(LocalDateTime.now().minusMinutes(1));
                 passwordResetTokenRepository.save(passwordResetToken);
@@ -207,7 +210,7 @@ class AuthPasswordResetIntegrationTest extends AbstractIntegrationTest {
 
                 User persisted = userRepository.findByEmailIgnoreCase("recover.user@example.com").orElseThrow();
                 assertThat(passwordEncoder.matches("strong-password", persisted.getPasswordHash())).isTrue();
-                assertThat(passwordResetTokenRepository.findByToken(rawToken)).isPresent();
+                assertThat(passwordResetTokenRepository.findByToken(SecureTokenUtils.sha256(rawToken))).isPresent();
         }
 
         @Test

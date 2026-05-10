@@ -208,14 +208,14 @@ class ResearchGroupCreateIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
-        void shouldReturnForbiddenWhenNotAuthenticated() throws Exception {
+        void shouldReturnUnauthorizedWhenNotAuthenticated() throws Exception {
                 CreateResearchGroupRequestDto request = new CreateResearchGroupRequestDto(
                                 "Unauthorized Group", null);
 
                 mockMvc.perform(post("/api/research-groups")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
-                                .andExpect(status().isForbidden());
+                                .andExpect(status().isUnauthorized());
         }
 
         @Test

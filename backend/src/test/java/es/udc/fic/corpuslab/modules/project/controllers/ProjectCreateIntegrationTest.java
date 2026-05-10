@@ -199,7 +199,7 @@ class ProjectCreateIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
-        void shouldReturnForbiddenWhenNotAuthenticated() throws Exception {
+        void shouldReturnUnauthorizedWhenNotAuthenticated() throws Exception {
                 ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
 
                 CreateProjectRequestDto request = new CreateProjectRequestDto("Unauthorized", null);
@@ -207,7 +207,7 @@ class ProjectCreateIntegrationTest extends AbstractIntegrationTest {
                 mockMvc.perform(post("/api/research-groups/{groupId}/projects", group.getId())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
-                                .andExpect(status().isForbidden());
+                        .andExpect(status().isUnauthorized());
         }
 
         @Test

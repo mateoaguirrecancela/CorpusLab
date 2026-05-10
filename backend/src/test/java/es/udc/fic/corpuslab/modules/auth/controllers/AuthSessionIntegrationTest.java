@@ -210,7 +210,7 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                                 .withFirstName("  Alice  ")
                                 .withLastName("  Smith  ")
                                 .withCountryCode("pt")
-                                .withCity("  ")
+                                .withCity("  Porto  ")
                                 .build();
 
                 mockMvc.perform(put("/api/auth/profile")
@@ -226,7 +226,7 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                                 .andExpect(jsonPath("$.birth").value("1999-06-15"))
                                 .andExpect(jsonPath("$.gender").value("FEMALE"))
                                 .andExpect(jsonPath("$.countryCode").value("PT"))
-                                .andExpect(jsonPath("$.city").isEmpty());
+                                .andExpect(jsonPath("$.city").value("Porto"));
 
                 mockMvc.perform(get("/api/auth/profile")
                                 .header("Authorization", "Bearer "
@@ -236,17 +236,17 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
                                 .andExpect(jsonPath("$.firstName").value("Alice"))
                                 .andExpect(jsonPath("$.lastName").value("Smith"))
                                 .andExpect(jsonPath("$.countryCode").value("PT"))
-                                .andExpect(jsonPath("$.city").isEmpty());
+                                .andExpect(jsonPath("$.city").value("Porto"));
         }
 
         @Test
-        void updateProfileShouldReturnForbiddenWhenSessionDoesNotExist() throws Exception {
+        void updateProfileShouldReturnUnauthorizedWhenSessionDoesNotExist() throws Exception {
                 UserUpdateProfileRequestDto updateRequest = UserUpdateProfileRequestTestBuilder.validRequest().build();
 
                 mockMvc.perform(put("/api/auth/profile")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(updateRequest)))
-                                .andExpect(status().isForbidden());
+                                .andExpect(status().isUnauthorized());
         }
 
         @Test
@@ -320,6 +320,40 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
+        void updateProfileShouldReturnBadRequestWhenBirthDateIsUnderMinimumAge() throws Exception {
+                User user = UserTestBuilder.validUser()
+                                .withEmail("underage.birth.profile.user@example.com")
+                                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                                .build();
+                userRepository.save(user);
+
+                UserLoginRequestDto loginRequest = UserLoginRequestTestBuilder.validRequest()
+                                .withEmail("underage.birth.profile.user@example.com")
+                                .build();
+
+                MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(loginRequest)))
+                                .andExpect(status().isOk())
+                                .andReturn();
+
+                UserUpdateProfileRequestDto invalidRequest = UserUpdateProfileRequestTestBuilder.validRequest()
+                                .withBirth(LocalDate.now().minusYears(16).plusDays(1))
+                                .build();
+
+                mockMvc.perform(put("/api/auth/profile")
+                                .header("Authorization", "Bearer "
+                                                + objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                                                                .get("token").asText())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(invalidRequest)))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.status").value(400))
+                                .andExpect(jsonPath("$.message").value("Validation failed"))
+                                .andExpect(jsonPath("$.details.birth").exists());
+        }
+
+        @Test
         void updateProfileShouldReturnBadRequestWhenLastNameIsBlank() throws Exception {
                 User user = UserTestBuilder.validUser()
                                 .withEmail("blank.lastname.profile.user@example.com")
@@ -354,9 +388,9 @@ class AuthSessionIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
-        void profileShouldReturnForbiddenWhenSessionDoesNotExist() throws Exception {
+        void profileShouldReturnUnauthorizedWhenSessionDoesNotExist() throws Exception {
                 mockMvc.perform(get("/api/auth/profile"))
-                                .andExpect(status().isForbidden());
+                                .andExpect(status().isUnauthorized());
         }
 
         @Test

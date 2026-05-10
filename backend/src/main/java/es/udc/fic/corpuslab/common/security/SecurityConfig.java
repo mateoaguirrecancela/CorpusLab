@@ -76,12 +76,13 @@ public class SecurityConfig {
                                     "/api/auth/signup",
                                     "/api/auth/login",
                                     "/api/auth/logout",
+                                    "/api/auth/oauth/exchange",
                                     "/api/auth/forgot-password",
                                     "/api/auth/reset-password")
                             .permitAll()
                             .anyRequest().authenticated())
                     .exceptionHandling(
-                            ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.FORBIDDEN)))
+                            ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                     .httpBasic(AbstractHttpConfigurer::disable)
                     .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {
                     }))
@@ -99,15 +100,23 @@ public class SecurityConfig {
 
     @Bean
     JwtEncoder jwtEncoder(@Value("${app.jwt.secret}") String jwtSecret) {
+        validateJwtSecret(jwtSecret);
         SecretKey secretKey = new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
         return new NimbusJwtEncoder(new ImmutableSecret<>(secretKey));
     }
 
     @Bean
     JwtDecoder jwtDecoder(@Value("${app.jwt.secret}") String jwtSecret) {
+        validateJwtSecret(jwtSecret);
         SecretKey secretKey = new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
         return NimbusJwtDecoder.withSecretKey(secretKey)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
+    }
+
+    private void validateJwtSecret(String jwtSecret) {
+        if (jwtSecret == null || jwtSecret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("app.jwt.secret must be at least 32 bytes for HS256");
+        }
     }
 }

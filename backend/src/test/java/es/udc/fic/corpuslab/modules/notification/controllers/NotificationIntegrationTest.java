@@ -195,9 +195,9 @@ class NotificationIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void shouldReturnForbiddenWithoutSession() throws Exception {
+    void shouldReturnUnauthorizedWithoutSession() throws Exception {
         mockMvc.perform(get("/api/notifications"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     private String loginAs(String email) throws Exception {

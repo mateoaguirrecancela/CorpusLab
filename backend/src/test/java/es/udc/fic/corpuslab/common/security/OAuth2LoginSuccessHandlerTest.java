@@ -2,6 +2,7 @@ package es.udc.fic.corpuslab.common.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,7 +30,10 @@ import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import es.udc.fic.corpuslab.modules.auth.entities.User;
+import es.udc.fic.corpuslab.modules.auth.entities.OAuthAccount;
+import es.udc.fic.corpuslab.modules.auth.repositories.OAuthAccountRepository;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
+import es.udc.fic.corpuslab.modules.auth.services.OAuthLoginCodeService;
 
 @ExtendWith(MockitoExtension.class)
 class OAuth2LoginSuccessHandlerTest {
@@ -38,10 +42,13 @@ class OAuth2LoginSuccessHandlerTest {
         private UserRepository userRepository;
 
         @Mock
+        private OAuthAccountRepository oAuthAccountRepository;
+
+        @Mock
         private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
         @Mock
-        private JwtTokenService jwtTokenService;
+        private OAuthLoginCodeService oAuthLoginCodeService;
 
         @Mock
         private ObjectProvider<OAuth2AuthorizedClientService> authorizedClientServiceProvider;
@@ -53,8 +60,9 @@ class OAuth2LoginSuccessHandlerTest {
                 when(authorizedClientServiceProvider.getIfAvailable()).thenReturn(null);
                 handler = new OAuth2LoginSuccessHandler(
                                 userRepository,
+                                oAuthAccountRepository,
                                 passwordEncoder,
-                                jwtTokenService,
+                                oAuthLoginCodeService,
                                 authorizedClientServiceProvider,
                                 "http://localhost:5173/oauth2/redirect",
                                 "http://localhost:5173/auth/login");
@@ -65,6 +73,7 @@ class OAuth2LoginSuccessHandlerTest {
                 Map<String, Object> attributes = new LinkedHashMap<>();
                 attributes.put("sub", "google-subject");
                 attributes.put("email", "Existing.User@Example.com");
+                attributes.put("email_verified", true);
                 attributes.put("given_name", "Existing");
                 attributes.put("family_name", "User");
 
@@ -76,9 +85,15 @@ class OAuth2LoginSuccessHandlerTest {
                 existingUser.setLastName("User");
                 existingUser.setPasswordHash("persisted-hash");
 
-                when(userRepository.findByEmailIgnoreCase("existing.user@example.com"))
-                                .thenReturn(Optional.of(existingUser));
-                when(jwtTokenService.generateToken("existing.user@example.com")).thenReturn("jwt-token-value");
+                OAuthAccount linkedAccount = new OAuthAccount();
+                linkedAccount.setProvider("google");
+                linkedAccount.setProviderUserId("google-subject");
+                linkedAccount.setEmail("existing.user@example.com");
+                linkedAccount.setUser(existingUser);
+
+                when(oAuthAccountRepository.findByProviderAndProviderUserId("google", "google-subject"))
+                                .thenReturn(Optional.of(linkedAccount));
+                when(oAuthLoginCodeService.createCode(existingUser, "google")).thenReturn("one-time-code");
 
                 MockHttpServletRequest request = new MockHttpServletRequest();
                 MockHttpServletResponse response = new MockHttpServletResponse();
@@ -86,7 +101,7 @@ class OAuth2LoginSuccessHandlerTest {
                 handler.onAuthenticationSuccess(request, response, authentication);
 
                 assertThat(response.getRedirectedUrl())
-                                .isEqualTo("http://localhost:5173/oauth2/redirect?token=jwt-token-value");
+                                .isEqualTo("http://localhost:5173/oauth2/redirect?code=one-time-code&provider=google");
                 assertThat(request.getSession(false)).isNull();
 
                 verify(userRepository, never()).save(any(User.class));
@@ -98,15 +113,19 @@ class OAuth2LoginSuccessHandlerTest {
                 Map<String, Object> attributes = new LinkedHashMap<>();
                 attributes.put("sub", "google-subject");
                 attributes.put("email", "new.oauth.user@example.com");
+                attributes.put("email_verified", true);
                 attributes.put("given_name", "New");
                 attributes.put("family_name", "User");
 
                 Authentication authentication = oauthAuthentication("google", attributes);
 
+                when(oAuthAccountRepository.findByProviderAndProviderUserId("google", "google-subject"))
+                                .thenReturn(Optional.empty());
                 when(userRepository.findByEmailIgnoreCase("new.oauth.user@example.com")).thenReturn(Optional.empty());
                 when(passwordEncoder.encode(any())).thenReturn("encoded-random-password");
                 when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-                when(jwtTokenService.generateToken("new.oauth.user@example.com")).thenReturn("fresh-jwt-token");
+                when(oAuthLoginCodeService.createCode(any(User.class), eq("google"))).thenReturn("fresh-login-code");
+                when(oAuthAccountRepository.save(any(OAuthAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
                 MockHttpServletRequest request = new MockHttpServletRequest();
                 MockHttpServletResponse response = new MockHttpServletResponse();
@@ -127,7 +146,50 @@ class OAuth2LoginSuccessHandlerTest {
                 assertThat(created.getPasswordHash()).isEqualTo("encoded-random-password");
 
                 assertThat(response.getRedirectedUrl())
-                                .isEqualTo("http://localhost:5173/oauth2/redirect?token=fresh-jwt-token");
+                                .isEqualTo("http://localhost:5173/oauth2/redirect?code=fresh-login-code&provider=google");
+        }
+
+        @Test
+        void onAuthenticationSuccessShouldLinkProviderToExistingUserWhenEmailAlreadyExists() throws Exception {
+                Map<String, Object> attributes = new LinkedHashMap<>();
+                attributes.put("sub", "second-provider-subject");
+                attributes.put("email", "Same.User@gmail.com");
+                attributes.put("email_verified", true);
+                attributes.put("given_name", "Same");
+                attributes.put("family_name", "User");
+
+                Authentication authentication = oauthAuthentication("google", attributes);
+
+                User existingUser = new User();
+                existingUser.setEmail("sameuser@gmail.com");
+                existingUser.setFirstName("Existing");
+                existingUser.setLastName("User");
+                existingUser.setPasswordHash("persisted-hash");
+
+                when(oAuthAccountRepository.findByProviderAndProviderUserId("google", "second-provider-subject"))
+                                .thenReturn(Optional.empty());
+                when(userRepository.findByEmailIgnoreCase("sameuser@gmail.com"))
+                                .thenReturn(Optional.of(existingUser));
+                when(oAuthAccountRepository.save(any(OAuthAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                when(oAuthLoginCodeService.createCode(existingUser, "google")).thenReturn("linked-login-code");
+
+                MockHttpServletRequest request = new MockHttpServletRequest();
+                MockHttpServletResponse response = new MockHttpServletResponse();
+
+                handler.onAuthenticationSuccess(request, response, authentication);
+
+                ArgumentCaptor<OAuthAccount> accountCaptor = ArgumentCaptor.forClass(OAuthAccount.class);
+                verify(oAuthAccountRepository).save(accountCaptor.capture());
+                OAuthAccount linkedAccount = accountCaptor.getValue();
+
+                assertThat(linkedAccount.getProvider()).isEqualTo("google");
+                assertThat(linkedAccount.getProviderUserId()).isEqualTo("second-provider-subject");
+                assertThat(linkedAccount.getEmail()).isEqualTo("sameuser@gmail.com");
+                assertThat(linkedAccount.getUser()).isSameAs(existingUser);
+                verify(userRepository, never()).save(any(User.class));
+                verify(passwordEncoder, never()).encode(any());
+                assertThat(response.getRedirectedUrl())
+                                .isEqualTo("http://localhost:5173/oauth2/redirect?code=linked-login-code&provider=google");
         }
 
         @Test
@@ -143,7 +205,7 @@ class OAuth2LoginSuccessHandlerTest {
                 assertThat(response.getRedirectedUrl())
                                 .isEqualTo("http://localhost:5173/auth/login?oauthError=missing_email");
                 verify(userRepository, never()).save(any(User.class));
-                verify(jwtTokenService, never()).generateToken(any());
+                verify(oAuthLoginCodeService, never()).createCode(any(), any());
         }
 
         @Test
@@ -161,7 +223,7 @@ class OAuth2LoginSuccessHandlerTest {
                 assertThat(response.getRedirectedUrl())
                                 .isEqualTo("http://localhost:5173/auth/login?oauthError=invalid_principal");
                 verify(userRepository, never()).findByEmailIgnoreCase(any());
-                verify(jwtTokenService, never()).generateToken(any());
+                verify(oAuthLoginCodeService, never()).createCode(any(), any());
         }
 
         @Test
@@ -175,8 +237,9 @@ class OAuth2LoginSuccessHandlerTest {
 
                 OAuth2LoginSuccessHandler githubHandler = new OAuth2LoginSuccessHandler(
                                 userRepository,
+                                oAuthAccountRepository,
                                 passwordEncoder,
-                                jwtTokenService,
+                                oAuthLoginCodeService,
                                 provider,
                                 "http://localhost:5173/oauth2/redirect",
                                 "http://localhost:5173/auth/login");
@@ -201,7 +264,27 @@ class OAuth2LoginSuccessHandlerTest {
                 assertThat(response.getRedirectedUrl())
                                 .isEqualTo("http://localhost:5173/auth/login?oauthError=missing_email");
                 verify(userRepository, never()).save(any(User.class));
-                verify(jwtTokenService, never()).generateToken(any());
+                verify(oAuthLoginCodeService, never()).createCode(any(), any());
+        }
+
+        @Test
+        void onAuthenticationSuccessShouldRejectUnverifiedProviderEmail() throws Exception {
+                Map<String, Object> attributes = new LinkedHashMap<>();
+                attributes.put("sub", "google-subject");
+                attributes.put("email", "unverified.user@example.com");
+                attributes.put("email_verified", false);
+
+                Authentication authentication = oauthAuthentication("google", attributes);
+
+                MockHttpServletRequest request = new MockHttpServletRequest();
+                MockHttpServletResponse response = new MockHttpServletResponse();
+
+                handler.onAuthenticationSuccess(request, response, authentication);
+
+                assertThat(response.getRedirectedUrl())
+                                .isEqualTo("http://localhost:5173/auth/login?oauthError=unverified_email");
+                verify(userRepository, never()).save(any(User.class));
+                verify(oAuthLoginCodeService, never()).createCode(any(), any());
         }
 
         private Authentication oauthAuthentication(String registrationId, Map<String, Object> attributes) {

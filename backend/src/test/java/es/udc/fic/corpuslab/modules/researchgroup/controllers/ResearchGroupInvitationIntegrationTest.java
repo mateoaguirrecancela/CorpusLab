@@ -919,28 +919,28 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
-        void shouldReturnForbiddenWhenNotAuthenticatedOnInvitationEndpoints() throws Exception {
+        void shouldReturnUnauthorizedWhenNotAuthenticatedOnInvitationEndpoints() throws Exception {
                 mockMvc.perform(post("/api/research-groups/1/invitations")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                                 "{\"email\":\"user@example.com\",\"role\":\"ANNOTATOR\",\"expiresAt\":\"2099-01-01T00:00:00Z\"}"))
-                                .andExpect(status().isForbidden());
+                                .andExpect(status().isUnauthorized());
 
                 mockMvc.perform(get("/api/research-groups/my-invitations"))
-                                .andExpect(status().isForbidden());
+                                .andExpect(status().isUnauthorized());
 
                 mockMvc.perform(post("/api/research-groups/join-by-code")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"code\":\"SOMECODE123\"}"))
-                                .andExpect(status().isForbidden());
+                                .andExpect(status().isUnauthorized());
 
                 mockMvc.perform(post("/api/research-groups/1/members/2/role")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"role\":\"ADMIN\"}"))
-                                .andExpect(status().isForbidden());
+                                .andExpect(status().isUnauthorized());
 
                 mockMvc.perform(post("/api/research-groups/1/members/2/remove")
                                 .contentType(MediaType.APPLICATION_JSON))
-                                .andExpect(status().isForbidden());
+                                .andExpect(status().isUnauthorized());
         }
 }

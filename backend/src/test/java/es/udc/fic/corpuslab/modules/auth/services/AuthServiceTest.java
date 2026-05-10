@@ -41,6 +41,7 @@ import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserUpdateProfileRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.PasswordResetTokenRepository;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
+import es.udc.fic.corpuslab.modules.auth.utils.SecureTokenUtils;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 import es.udc.fic.corpuslab.common.security.JwtTokenService;
 
@@ -64,6 +65,9 @@ class AuthServiceTest {
     @Mock
     private JwtTokenService jwtTokenService;
 
+    @Mock
+    private OAuthLoginCodeService oAuthLoginCodeService;
+
     private AuthService authService;
 
     @BeforeEach
@@ -74,6 +78,7 @@ class AuthServiceTest {
                 passwordResetTokenRepository,
                 emailService,
                 jwtTokenService,
+                oAuthLoginCodeService,
                 "http://frontend.test");
     }
 
@@ -322,6 +327,7 @@ class AuthServiceTest {
 
         assertThat(savedToken.getUser()).isEqualTo(user);
         assertThat(savedToken.getToken()).isNotBlank();
+        assertThat(savedToken.getToken()).hasSize(64);
         assertThat(savedToken.getExpiryDate()).isAfter(LocalDateTime.now());
         verify(emailService).sendPasswordResetEmail(eq("new.user@example.com"), any(String.class));
     }
@@ -350,9 +356,7 @@ class AuthServiceTest {
     void requestPasswordResetShouldThrowWhenUserDoesNotExist() {
         when(userRepository.findByEmailIgnoreCase("missing.user@example.com")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.requestPasswordReset("missing.user@example.com"))
-                .isInstanceOf(EmailNotFoundException.class)
-                .hasMessage("No account found for email: missing.user@example.com");
+        authService.requestPasswordReset("missing.user@example.com");
 
         verify(passwordResetTokenRepository, never()).save(any(PasswordResetToken.class));
         verify(emailService, never()).sendPasswordResetEmail(any(), any());
@@ -384,7 +388,8 @@ class AuthServiceTest {
         token.setUser(user);
         token.setExpiryDate(LocalDateTime.now().plusMinutes(10));
 
-        when(passwordResetTokenRepository.findByToken("valid-token-example")).thenReturn(Optional.of(token));
+        when(passwordResetTokenRepository.findByToken(SecureTokenUtils.sha256("valid-token-example")))
+                .thenReturn(Optional.of(token));
         when(passwordEncoder.encode("my-new-password")).thenReturn("encoded-new-password");
 
         authService.resetPassword("valid-token-example", "my-new-password");
@@ -396,7 +401,7 @@ class AuthServiceTest {
 
     @Test
     void resetPasswordShouldThrowWhenTokenIsInvalid() {
-        when(passwordResetTokenRepository.findByToken("invalid-token")).thenReturn(Optional.empty());
+        when(passwordResetTokenRepository.findByToken(SecureTokenUtils.sha256("invalid-token"))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.resetPassword("invalid-token", "new-password"))
                 .isInstanceOf(PasswordResetTokenNotFoundException.class)
@@ -414,7 +419,8 @@ class AuthServiceTest {
         token.setUser(user);
         token.setExpiryDate(LocalDateTime.now().minusMinutes(1));
 
-        when(passwordResetTokenRepository.findByToken("expired-token-example")).thenReturn(Optional.of(token));
+        when(passwordResetTokenRepository.findByToken(SecureTokenUtils.sha256("expired-token-example")))
+                .thenReturn(Optional.of(token));
 
         assertThatThrownBy(() -> authService.resetPassword("expired-token-example", "new-password"))
                 .isInstanceOf(PasswordResetTokenNotFoundException.class)

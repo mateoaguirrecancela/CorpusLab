@@ -145,9 +145,9 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void shouldReturnForbiddenWhenListingMyProjectsWithoutAuthentication() throws Exception {
+    void shouldReturnUnauthorizedWhenListingMyProjectsWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/api/projects/my"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -206,9 +206,9 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void shouldReturnForbiddenWhenListingProjectsByGroupWithoutAuthentication() throws Exception {
+    void shouldReturnUnauthorizedWhenListingProjectsByGroupWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/api/research-groups/{groupId}/projects/my", 999L))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -251,9 +251,9 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void shouldReturnForbiddenWhenReadingProjectDetailWithoutAuthentication() throws Exception {
+    void shouldReturnUnauthorizedWhenReadingProjectDetailWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/api/projects/{projectId}", 999L))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

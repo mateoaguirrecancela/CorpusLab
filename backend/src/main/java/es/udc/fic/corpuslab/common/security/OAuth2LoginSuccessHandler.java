@@ -1,9 +1,8 @@
 package es.udc.fic.corpuslab.common.security;
 
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -14,7 +13,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
@@ -24,8 +22,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.transaction.annotation.Transactional;
 
+import es.udc.fic.corpuslab.modules.auth.entities.OAuthAccount;
 import es.udc.fic.corpuslab.modules.auth.entities.User;
+import es.udc.fic.corpuslab.modules.auth.repositories.OAuthAccountRepository;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
+import es.udc.fic.corpuslab.modules.auth.services.OAuthLoginCodeService;
 import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
 
 @Component
@@ -34,8 +35,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private static final String EMAIL_ATTRIBUTE = "email";
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtTokenService jwtTokenService;
+    private final OAuthAccountRepository oAuthAccountRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private final OAuthLoginCodeService oAuthLoginCodeService;
     private final OAuth2AuthorizedClientService authorizedClientService;
     private final RestClient restClient;
     private final String successRedirectUrl;
@@ -43,14 +45,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     public OAuth2LoginSuccessHandler(
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder,
-            JwtTokenService jwtTokenService,
+            OAuthAccountRepository oAuthAccountRepository,
+            org.springframework.security.crypto.password.PasswordEncoder passwordEncoder,
+            OAuthLoginCodeService oAuthLoginCodeService,
             ObjectProvider<OAuth2AuthorizedClientService> authorizedClientServiceProvider,
             @Value("${app.oauth2.success-redirect-url:http://localhost:5173/oauth2/redirect}") String successRedirectUrl,
             @Value("${app.oauth2.failure-redirect-url:http://localhost:5173/auth/login}") String failureRedirectUrl) {
         this.userRepository = userRepository;
+        this.oAuthAccountRepository = oAuthAccountRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtTokenService = jwtTokenService;
+        this.oAuthLoginCodeService = oAuthLoginCodeService;
         this.authorizedClientService = authorizedClientServiceProvider.getIfAvailable();
         this.restClient = RestClient.builder().build();
         this.successRedirectUrl = successRedirectUrl;
@@ -69,6 +73,11 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         }
 
         String registrationId = resolveRegistrationId(authentication);
+        String providerUserId = resolveProviderUserId(oAuth2User.getAttributes());
+        if (providerUserId == null || providerUserId.isBlank()) {
+            response.sendRedirect(failureRedirectUrl + "?oauthError=invalid_principal");
+            return;
+        }
 
         String email = extractEmail(authentication, registrationId, oAuth2User.getAttributes());
         if (email == null || email.isBlank()) {
@@ -76,18 +85,51 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             return;
         }
 
-        String normalizedEmail = EmailNormalizer.normalize(email);
-        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
-                .orElseGet(() -> createUserFromOAuthAttributes(normalizedEmail, oAuth2User.getAttributes()));
+        if (!isEmailVerified(registrationId, oAuth2User.getAttributes())) {
+            response.sendRedirect(failureRedirectUrl + "?oauthError=unverified_email");
+            return;
+        }
 
-        String token = jwtTokenService.generateToken(user.getEmail());
-        String encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
-        response.sendRedirect(successRedirectUrl + "?token=" + encodedToken);
+        String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(email);
+        User user = oAuthAccountRepository.findByProviderAndProviderUserId(registrationId, providerUserId)
+                .map(oAuthAccount -> updateOAuthAccountEmail(oAuthAccount, normalizedEmail).getUser())
+                .orElseGet(() -> linkOrCreateUser(
+                        registrationId,
+                        providerUserId,
+                        normalizedEmail,
+                        oAuth2User.getAttributes()));
+
+        String code = oAuthLoginCodeService.createCode(user, registrationId);
+        response.sendRedirect(successRedirectUrl + "?code=" + encode(code) + "&provider=" + encode(registrationId));
     }
 
-    private User createUserFromOAuthAttributes(
+    private User linkOrCreateUser(
+            String provider,
+            String providerUserId,
             String email,
             Map<String, Object> attributes) {
+        User user = userRepository.findByEmailIgnoreCase(email)
+                .orElseGet(() -> createUserFromOAuthAttributes(email, attributes));
+
+        OAuthAccount oAuthAccount = new OAuthAccount();
+        oAuthAccount.setProvider(provider);
+        oAuthAccount.setProviderUserId(providerUserId);
+        oAuthAccount.setEmail(email);
+        oAuthAccount.setUser(user);
+        oAuthAccountRepository.save(oAuthAccount);
+
+        return user;
+    }
+
+    private OAuthAccount updateOAuthAccountEmail(OAuthAccount oAuthAccount, String email) {
+        if (!email.equalsIgnoreCase(oAuthAccount.getEmail())) {
+            oAuthAccount.setEmail(email);
+            return oAuthAccountRepository.save(oAuthAccount);
+        }
+        return oAuthAccount;
+    }
+
+    private User createUserFromOAuthAttributes(String email, Map<String, Object> attributes) {
         User user = new User();
         user.setEmail(email);
         user.setFirstName(resolveFirstName(attributes));
@@ -108,16 +150,13 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     }
 
     private String extractEmail(Authentication authentication, String registrationId, Map<String, Object> attributes) {
+        if ("github".equalsIgnoreCase(registrationId)) {
+            return fetchGithubPrimaryVerifiedEmail(authentication, registrationId);
+        }
+
         Object email = attributes.get(EMAIL_ATTRIBUTE);
         if (email instanceof String emailValue && !emailValue.isBlank()) {
             return emailValue;
-        }
-
-        if ("github".equalsIgnoreCase(registrationId)) {
-            String githubEmail = fetchGithubPrimaryEmail(authentication, registrationId);
-            if (githubEmail != null && !githubEmail.isBlank()) {
-                return githubEmail;
-            }
         }
 
         Object preferredUsername = attributes.get("preferred_username");
@@ -129,7 +168,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     }
 
     @SuppressWarnings("unchecked")
-    private String fetchGithubPrimaryEmail(Authentication authentication, String registrationId) {
+    private String fetchGithubPrimaryVerifiedEmail(Authentication authentication, String registrationId) {
         if (authorizedClientService == null) {
             return null;
         }
@@ -143,11 +182,11 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         }
 
         try {
-            ArrayList<Map<String, Object>> emails = restClient.get()
+            List<Map<String, Object>> emails = restClient.get()
                     .uri("https://api.github.com/user/emails")
                     .header("Authorization", "Bearer " + authorizedClient.getAccessToken().getTokenValue())
                     .retrieve()
-                    .body(ArrayList.class);
+                    .body(List.class);
 
             if (emails == null) {
                 return null;
@@ -162,18 +201,42 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                     return emailValue;
                 }
             }
-
-            for (Map<String, Object> item : emails) {
-                Object email = item.get(EMAIL_ATTRIBUTE);
-                if (email instanceof String emailValue && !emailValue.isBlank()) {
-                    return emailValue;
-                }
-            }
         } catch (RuntimeException ex) {
             return null;
         }
 
         return null;
+    }
+
+    private boolean isEmailVerified(String registrationId, Map<String, Object> attributes) {
+        if ("github".equalsIgnoreCase(registrationId)) {
+            return true;
+        }
+
+        Object emailVerified = attributes.get("email_verified");
+        if (emailVerified == null) {
+            return true;
+        }
+
+        return Boolean.TRUE.equals(emailVerified) || "true".equalsIgnoreCase(emailVerified.toString());
+    }
+
+    private String resolveProviderUserId(Map<String, Object> attributes) {
+        Object subject = attributes.get("sub");
+        if (subject instanceof String subjectValue && !subjectValue.isBlank()) {
+            return subjectValue;
+        }
+
+        Object id = attributes.get("id");
+        if (id != null && !id.toString().isBlank()) {
+            return id.toString();
+        }
+
+        return null;
+    }
+
+    private String encode(String value) {
+        return java.net.URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     private String resolveFirstName(Map<String, Object> attributes) {

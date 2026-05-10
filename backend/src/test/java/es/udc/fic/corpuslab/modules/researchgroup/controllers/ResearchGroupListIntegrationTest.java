@@ -241,9 +241,9 @@ class ResearchGroupListIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
-        void shouldReturnForbiddenWhenNotAuthenticated() throws Exception {
+        void shouldReturnUnauthorizedWhenNotAuthenticated() throws Exception {
                 mockMvc.perform(get("/api/research-groups"))
-                                .andExpect(status().isForbidden());
+                                .andExpect(status().isUnauthorized());
         }
 
         @Test

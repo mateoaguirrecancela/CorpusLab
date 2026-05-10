@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import es.udc.fic.corpuslab.modules.auth.exceptions.EmailAlreadyRegisteredException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.InvalidCredentialsException;
+import es.udc.fic.corpuslab.modules.auth.exceptions.OAuthLoginCodeNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetEmailDeliveryException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetTokenNotFoundException;
 import es.udc.fic.corpuslab.modules.notification.exceptions.NotificationNotFoundException;
@@ -95,6 +96,12 @@ public class GlobalExceptionHandler {
         public ResponseEntity<ApiErrorResponse> handlePasswordResetTokenNotFound(
                         PasswordResetTokenNotFoundException ex) {
                 return buildErrorResponse(HttpStatus.NOT_FOUND, "auth.error.reset.token.notfound", null);
+        }
+
+        @ExceptionHandler(OAuthLoginCodeNotFoundException.class)
+        public ResponseEntity<ApiErrorResponse> handleOAuthLoginCodeNotFound(
+                        OAuthLoginCodeNotFoundException ex) {
+                return buildErrorResponse(HttpStatus.UNAUTHORIZED, "auth.error.oauth.code.notfound", null);
         }
 
         @ExceptionHandler(ResearchGroupNotFoundException.class)
