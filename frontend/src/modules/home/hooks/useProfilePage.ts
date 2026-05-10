@@ -10,6 +10,7 @@ import {
   updateProfile,
 } from '@/modules/auth/services/authService';
 import { type ProfileFormState, type ProfileResponse } from '@/modules/auth/types/profile';
+import { isAtLeast16YearsOld } from '@/modules/auth/utils/validation';
 
 type ProfilePageState = Readonly<{
   canSave: boolean;
@@ -86,9 +87,15 @@ export function useProfilePage(): ProfilePageState {
   }, [profile, t]);
 
   const canSave = useMemo(() => {
-    const hasRequiredNames = form.firstName.trim().length > 0 && form.lastName.trim().length > 0;
-    return hasRequiredNames && !isSaving;
-  }, [form.firstName, form.lastName, isSaving]);
+    const hasRequiredFields =
+      form.firstName.trim().length > 0 &&
+      form.lastName.trim().length > 0 &&
+      isAtLeast16YearsOld(form.birth) &&
+      form.gender.trim().length > 0 &&
+      form.countryCode.trim().length === 2 &&
+      form.city.trim().length > 0;
+    return hasRequiredFields && !isSaving;
+  }, [form, isSaving]);
 
   const startEditing = () => {
     if (!profile) {
@@ -108,7 +115,7 @@ export function useProfilePage(): ProfilePageState {
 
   const saveProfile = async () => {
     if (!canSave) {
-      toast.error(t('home.profile.requiredNames'));
+      toast.error(t('home.profile.requiredFields'));
       return;
     }
 
@@ -118,10 +125,10 @@ export function useProfilePage(): ProfilePageState {
       const updatedProfile = await updateProfile({
         firstName: form.firstName,
         lastName: form.lastName,
-        birth: form.birth.trim() ? form.birth : undefined,
-        gender: form.gender.trim() ? form.gender : undefined,
-        countryCode: form.countryCode.trim() ? form.countryCode : undefined,
-        city: form.city.trim() ? form.city : undefined,
+        birth: form.birth,
+        gender: form.gender,
+        countryCode: form.countryCode,
+        city: form.city,
       });
 
       queryClient.setQueryData(PROFILE_QUERY_KEY, updatedProfile);

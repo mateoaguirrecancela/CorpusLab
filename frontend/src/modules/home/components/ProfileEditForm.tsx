@@ -7,6 +7,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { CountryCombobox } from '@/modules/auth/components/CountryCombobox';
 import { getCountryOptions, getGenderOptions } from '@/modules/auth/constants/signup';
 import { type ProfileFormState } from '@/modules/auth/types/profile';
+import { isAtLeast16YearsOld } from '@/modules/auth/utils/validation';
 
 type ProfileEditFormProps = Readonly<{
   canSave: boolean;
@@ -30,6 +31,7 @@ export function ProfileEditForm({
   const { t } = useTranslation();
   const genderOptions = getGenderOptions(t);
   const countryOptions = useMemo(() => getCountryOptions(language), [language]);
+  const isUnderage = form.birth.length > 0 && !isAtLeast16YearsOld(form.birth);
 
   return (
     <div>
@@ -44,6 +46,7 @@ export function ProfileEditForm({
           }}
           label={t('home.profile.firstName')}
           onValueChange={(value) => onFieldChange('firstName', value)}
+          required
           value={form.firstName}
         />
 
@@ -57,6 +60,7 @@ export function ProfileEditForm({
           }}
           label={t('home.profile.lastName')}
           onValueChange={(value) => onFieldChange('lastName', value)}
+          required
           value={form.lastName}
         />
 
@@ -67,7 +71,9 @@ export function ProfileEditForm({
           inputProps={{ autoComplete: 'off' }}
           inputType="date"
           label={t('home.profile.birthDate')}
+          message={isUnderage ? t('auth.signup.underAge') : undefined}
           onValueChange={(value) => onFieldChange('birth', value)}
+          required
           value={form.birth}
         />
 
@@ -78,6 +84,7 @@ export function ProfileEditForm({
           label={t('home.profile.gender')}
           onValueChange={(value) => onFieldChange('gender', value)}
           options={genderOptions}
+          required
           value={form.gender}
         />
 
@@ -95,6 +102,7 @@ export function ProfileEditForm({
               onChange={(value) => onFieldChange('countryCode', value)}
             />
           )}
+          required
         />
 
         <FormFieldControl
@@ -107,6 +115,7 @@ export function ProfileEditForm({
           }}
           label={t('home.profile.city')}
           onValueChange={(value) => onFieldChange('city', value)}
+          required
           value={form.city}
         />
       </div>

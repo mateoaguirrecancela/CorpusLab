@@ -76,8 +76,9 @@
         "missingEmail": "O provedor OAuth non devolveu un correo electronico. Usa outra conta.",
         "authenticationFailed": "A autenticacion OAuth fallou. Intentalo de novo.",
         "invalidPrincipal": "Resposta OAuth inesperada. Intentalo de novo.",
+        "unverifiedEmail": "O provedor OAuth non devolveu un correo verificado. Usa outra conta.",
         "withCode": "O inicio OAuth fallou ({{code}}). Intentalo de novo.",
-        "missingToken": "O inicio OAuth volveu sen token. Intentalo de novo.",
+        "missingCode": "O inicio OAuth volveu sen codigo de acceso. Intentalo de novo.",
         "profileLoad": "O inicio OAuth completouse, pero non puidemos cargar o teu perfil. Intentalo de novo."
       }
     },

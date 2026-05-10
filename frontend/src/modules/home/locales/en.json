@@ -22,7 +22,7 @@
       "lastNamePlaceholder": "Your last name",
       "cityPlaceholder": "Your city",
       "searchCountry": "Search country",
-      "requiredNames": "Please complete first name and last name before saving.",
+      "requiredFields": "Please complete all required fields and use a birth date for someone at least 16 years old.",
       "updated": "Profile updated successfully."
     }
   }

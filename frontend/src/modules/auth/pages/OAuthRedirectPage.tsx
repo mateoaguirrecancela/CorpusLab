@@ -7,7 +7,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { AuthCard } from '@/modules/auth/components/AuthCard';
 import { OAUTH_PROVIDER_LABEL } from '@/modules/auth/constants/session';
 import { PROFILE_QUERY_KEY } from '@/modules/auth/constants/queryKeys';
-import { getProfile } from '@/modules/auth/services/authService';
+import { exchangeOAuthCode, getProfile } from '@/modules/auth/services/authService';
 import { clearSession, storeSessionToken } from '@/modules/auth/services/sessionService';
 
 function mapOAuthError(
@@ -30,6 +30,10 @@ function mapOAuthError(
     return t('auth.oauth.errors.invalidPrincipal');
   }
 
+  if (errorCode === 'unverified_email') {
+    return t('auth.oauth.errors.unverifiedEmail');
+  }
+
   return t('auth.oauth.errors.withCode', { code: errorCode });
 }
 
@@ -40,7 +44,7 @@ export default function OAuthRedirectPage() {
   const [searchParams] = useSearchParams();
   const [errorMessage, setErrorMessage] = useState('');
 
-  const token = searchParams.get('token');
+  const code = searchParams.get('code');
   const oauthError = searchParams.get('oauthError');
   const provider = searchParams.get('provider');
 
@@ -62,17 +66,17 @@ export default function OAuthRedirectPage() {
         return;
       }
 
-      if (!token) {
-        setErrorMessage(t('auth.oauth.errors.missingToken'));
+      if (!code) {
+        setErrorMessage(t('auth.oauth.errors.missingCode'));
         globalThis.setTimeout(() => {
           navigate('/auth/login', { replace: true });
         }, 1600);
         return;
       }
 
-      storeSessionToken(token);
-
       try {
+        const session = await exchangeOAuthCode(code);
+        storeSessionToken(session.token);
         const profile = await getProfile();
         queryClient.setQueryData(PROFILE_QUERY_KEY, profile);
       } catch {
@@ -88,7 +92,7 @@ export default function OAuthRedirectPage() {
     };
 
     void completeOAuthLogin();
-  }, [navigate, oauthError, queryClient, t, token]);
+  }, [code, navigate, oauthError, queryClient, t]);
 
   useToastMessages({ errorMessage });
 

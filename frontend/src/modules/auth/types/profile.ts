@@ -11,10 +11,10 @@ export type ProfileResponse = {
 export type UpdateProfilePayload = {
   firstName: string;
   lastName: string;
-  birth?: string;
-  gender?: string;
-  countryCode?: string;
-  city?: string;
+  birth: string;
+  gender: string;
+  countryCode: string;
+  city: string;
 };
 
 export type ProfileFormState = {

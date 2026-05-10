@@ -22,7 +22,7 @@
       "lastNamePlaceholder": "Teus apelidos",
       "cityPlaceholder": "Tua cidade",
       "searchCountry": "Buscar país",
-      "requiredNames": "Completa nome e apelidos antes de gardar.",
+      "requiredFields": "Completa todos os campos obrigatorios e usa unha data de nacemento de polo menos 16 anos.",
       "updated": "Perfil actualizado correctamente."
     }
   }

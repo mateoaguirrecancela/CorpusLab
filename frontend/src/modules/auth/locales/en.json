@@ -76,8 +76,9 @@
         "missingEmail": "Your OAuth provider did not return an email address. Please use another account.",
         "authenticationFailed": "OAuth authentication failed. Please try again.",
         "invalidPrincipal": "Unexpected OAuth response. Please try again.",
+        "unverifiedEmail": "Your OAuth provider did not return a verified email address. Please use another account.",
         "withCode": "OAuth sign-in failed ({{code}}). Please try again.",
-        "missingToken": "OAuth sign-in returned without a token. Please try again.",
+        "missingCode": "OAuth sign-in returned without a login code. Please try again.",
         "profileLoad": "OAuth sign-in completed, but we could not load your profile. Please try again."
       }
     },

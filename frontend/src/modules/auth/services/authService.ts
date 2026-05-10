@@ -93,6 +93,13 @@ export async function resetPassword(payload: ResetPasswordPayload): Promise<Rese
   return response.data;
 }
 
+export async function exchangeOAuthCode(code: string): Promise<LoginResponse> {
+  const response = await api.post<LoginResponse>('/auth/oauth/exchange', {
+    code: code.trim(),
+  });
+  return response.data;
+}
+
 export function getLoginErrorMessage(error: unknown): string {
   return extractApiErrorMessage(error, i18n.t('auth.errors.unexpected.login'));
 }
