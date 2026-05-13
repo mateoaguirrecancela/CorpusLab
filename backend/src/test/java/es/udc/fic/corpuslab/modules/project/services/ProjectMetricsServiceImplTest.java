@@ -57,12 +57,22 @@ class ProjectMetricsServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        projectMetricsService = new ProjectMetricsServiceImpl(
-                authApiService,
+        ProjectMetricsCalculator metricsCalculator = new ProjectMetricsCalculator(
                 projectParticipantRepository,
                 datasetItemRepository,
                 annotationRepository,
                 metricsFactory);
+        ProjectProgressCalculator progressCalculator = new ProjectProgressCalculator(
+                projectParticipantRepository,
+                datasetItemRepository,
+                annotationRepository);
+        ProjectMetricsCacheService projectMetricsCacheService = new ProjectMetricsCacheService(
+                metricsCalculator,
+                progressCalculator);
+        projectMetricsService = new ProjectMetricsServiceImpl(
+                authApiService,
+                projectParticipantRepository,
+                projectMetricsCacheService);
     }
 
     @Test
@@ -114,10 +124,10 @@ class ProjectMetricsServiceImplTest {
                 .thenReturn(new UserInfo(1L, "annotator@example.com", "Ann", "Otator"));
         when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L))
                 .thenReturn(Optional.of(requesterParticipant));
-        when(projectParticipantRepository.findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(100L))
+        when(projectParticipantRepository.findByProjectIdWithUserAndProject(100L))
                 .thenReturn(List.of(requesterParticipant, groupOneParticipant, groupTwoParticipant));
         when(datasetItemRepository.findByProjectIdOrderByItemIndexAsc(100L)).thenReturn(List.of(datasetItem));
-        when(annotationRepository.findByDatasetItemProjectId(100L)).thenReturn(List.of());
+        when(annotationRepository.findByProjectIdWithDatasetItemAndUser(100L)).thenReturn(List.of());
         when(metricsFactory.supportedMetrics(ProjectType.TEXT_CLASSIFICATION_SIMPLE))
                 .thenReturn(Set.of(MetricType.COHENS_KAPPA));
         when(metricsFactory.getCalculator(ProjectType.TEXT_CLASSIFICATION_SIMPLE, MetricType.COHENS_KAPPA))
@@ -158,10 +168,10 @@ class ProjectMetricsServiceImplTest {
                 .thenReturn(new UserInfo(1L, "annotator@example.com", "Ann", "Otator"));
         when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L))
                 .thenReturn(Optional.of(requesterParticipant));
-        when(projectParticipantRepository.findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(100L))
+        when(projectParticipantRepository.findByProjectIdWithUserAndProject(100L))
                 .thenReturn(List.of(requesterParticipant));
         when(datasetItemRepository.findByProjectIdOrderByItemIndexAsc(100L)).thenReturn(List.of());
-        when(annotationRepository.findByDatasetItemProjectId(100L)).thenReturn(List.of());
+        when(annotationRepository.findByProjectIdWithDatasetItemAndUser(100L)).thenReturn(List.of());
         when(metricsFactory.supportedMetrics(ProjectType.TEXT_CLASSIFICATION_SIMPLE))
                 .thenReturn(Set.of(MetricType.COHENS_KAPPA));
         when(metricsFactory.getCalculator(ProjectType.TEXT_CLASSIFICATION_SIMPLE, MetricType.COHENS_KAPPA))

@@ -17,6 +17,8 @@ public interface ResearchGroupMemberRepository extends JpaRepository<ResearchGro
 
         List<ResearchGroupMember> findByResearchGroupId(Long researchGroupId);
 
+        long countByResearchGroupIdAndDeletedAtIsNull(Long researchGroupId);
+
         @Query("""
                         SELECT m
                         FROM ResearchGroupMember m
@@ -38,19 +40,43 @@ public interface ResearchGroupMemberRepository extends JpaRepository<ResearchGro
         List<String> findActiveMemberEmailsByGroupId(@Param("groupId") Long groupId);
 
         @Query("""
+                        SELECT COUNT(m) > 0
+                        FROM ResearchGroupMember m
+                        JOIN m.user u
+                        WHERE m.researchGroup.id = :groupId
+                          AND m.deletedAt IS NULL
+                          AND LOWER(u.email) = LOWER(:email)
+                        """)
+        boolean existsActiveMemberByGroupIdAndEmail(
+                        @Param("groupId") Long groupId,
+                        @Param("email") String email);
+
+        @Query("""
+                        SELECT u.id
+                        FROM ResearchGroupMember m
+                        JOIN m.user u
+                        WHERE m.researchGroup.id = :groupId
+                          AND m.deletedAt IS NULL
+                        """)
+        List<Long> findActiveMemberUserIdsByGroupId(@Param("groupId") Long groupId);
+
+        @Query("""
                         SELECT new es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto(
                             u.id,
                             u.firstName,
                             u.lastName,
                             u.email,
                             m.role,
-                            (SELECT COUNT(pp) FROM ProjectParticipant pp 
-                             JOIN pp.project p 
-                             WHERE pp.user = u AND p.researchGroup.id = :groupId AND p.archived = false)
+                            COUNT(pp)
                         )
                         FROM ResearchGroupMember m
                         JOIN m.user u
+                        LEFT JOIN ProjectParticipant pp
+                          ON pp.user = u
+                         AND pp.project.researchGroup.id = :groupId
+                         AND pp.project.archived = false
                         WHERE m.researchGroup.id = :groupId AND m.deletedAt IS NULL
+                        GROUP BY u.id, u.firstName, u.lastName, u.email, m.role
                         ORDER BY u.lastName ASC, u.firstName ASC
                         """)
         List<ResearchGroupMemberDto> findMembersByGroupId(@Param("groupId") Long groupId);
@@ -61,13 +87,16 @@ public interface ResearchGroupMemberRepository extends JpaRepository<ResearchGro
                             g.name,
                             g.description,
                             m.role,
-                            (SELECT COUNT(m2) FROM ResearchGroupMember m2
-                             WHERE m2.researchGroup = g AND m2.deletedAt IS NULL),
+                            COUNT(m2),
                             g.createdAt
                         )
                         FROM ResearchGroupMember m
                         JOIN m.researchGroup g
+                        LEFT JOIN ResearchGroupMember m2
+                          ON m2.researchGroup = g
+                         AND m2.deletedAt IS NULL
                         WHERE m.user.id = :userId AND m.deletedAt IS NULL
+                        GROUP BY g.id, g.name, g.description, m.role, g.createdAt
                         ORDER BY g.name ASC
                         """)
         List<ResearchGroupSummaryDto> findGroupSummariesByUserId(@Param("userId") Long userId);

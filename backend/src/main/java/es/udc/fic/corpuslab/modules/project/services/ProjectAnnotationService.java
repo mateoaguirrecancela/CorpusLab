@@ -1,6 +1,8 @@
 package es.udc.fic.corpuslab.modules.project.services;
 
-import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationExportCsvDto;
+import java.io.IOException;
+import java.io.OutputStream;
+
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationWorkspaceDto;
 import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepResponseDto;
@@ -19,6 +21,9 @@ public interface ProjectAnnotationService {
     SaveProjectAnnotationStepResponseDto toggleAnnotationWarning(String authenticatedEmail, Long projectId,
             Long participantUserId, Long datasetItemId, Integer stepIndex);
 
-    ProjectAnnotationExportCsvDto exportAnnotationResultsCsv(String authenticatedEmail, Long projectId);
+    String getAnnotationResultsCsvFileName(String authenticatedEmail, Long projectId);
+
+    void writeAnnotationResultsCsv(String authenticatedEmail, Long projectId, OutputStream outputStream)
+            throws IOException;
 
 }

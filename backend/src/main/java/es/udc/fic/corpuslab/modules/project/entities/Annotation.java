@@ -14,6 +14,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
@@ -25,6 +26,8 @@ import jakarta.persistence.UniqueConstraint;
 @Table(name = "annotations", uniqueConstraints = {
         @UniqueConstraint(name = "uk_annotations_dataset_item_user_step", columnNames = { "dataset_item_id", "user_id",
                 "step_index" })
+}, indexes = {
+        @Index(name = "idx_annotations_dataset_user_step", columnList = "dataset_item_id, user_id, step_index")
 })
 public class Annotation {
 

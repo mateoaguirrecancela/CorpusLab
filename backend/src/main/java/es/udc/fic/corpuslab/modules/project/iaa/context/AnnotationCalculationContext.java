@@ -22,9 +22,9 @@ public record AnnotationCalculationContext(
 
     public AnnotationCalculationContext {
         Objects.requireNonNull(projectType, "projectType is required");
-        annotations = annotations == null ? List.of() : List.copyOf(annotations);
-        datasetItems = datasetItems == null ? List.of() : List.copyOf(datasetItems);
-        annotators = annotators == null ? List.of() : List.copyOf(annotators);
+        annotations = List.copyOf(Objects.requireNonNull(annotations, "annotations is required"));
+        datasetItems = List.copyOf(Objects.requireNonNull(datasetItems, "datasetItems is required"));
+        annotators = List.copyOf(Objects.requireNonNull(annotators, "annotators is required"));
         metadata = immutableCopy(metadata);
     }
 
@@ -45,7 +45,8 @@ public record AnnotationCalculationContext(
     }
 
     private static Map<String, Object> immutableCopy(Map<String, Object> source) {
-        if (source == null || source.isEmpty()) {
+        Objects.requireNonNull(source, "metadata is required");
+        if (source.isEmpty()) {
             return Map.of();
         }
         return Collections.unmodifiableMap(new LinkedHashMap<>(source));

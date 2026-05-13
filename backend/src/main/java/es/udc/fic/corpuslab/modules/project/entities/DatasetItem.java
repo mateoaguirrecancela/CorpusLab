@@ -11,13 +11,16 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "dataset_items")
+@Table(name = "dataset_items", indexes = {
+        @Index(name = "idx_dataset_items_project_item", columnList = "project_id, item_index")
+})
 public class DatasetItem {
 
     @Id

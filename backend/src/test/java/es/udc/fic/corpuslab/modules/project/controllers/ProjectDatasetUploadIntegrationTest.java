@@ -143,11 +143,8 @@ class ProjectDatasetUploadIntegrationTest extends AbstractIntegrationTest {
                                 .file(txt1)
                                 .file(txt2)
                                 .header("Authorization", "Bearer " + session))
-                                .andExpect(status().isCreated())
-                                .andExpect(jsonPath("$.projectId").value(project.getId()))
-                                .andExpect(jsonPath("$.uploadedItems").value(2))
-                                .andExpect(jsonPath("$.items.length()").value(2))
-                                .andExpect(jsonPath("$.items[0].fileName").value("notes.txt"));
+                                .andExpect(status().isAccepted())
+                                .andExpect(jsonPath("$.jobId").isNotEmpty());
         }
 
         @Test

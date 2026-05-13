@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.Base64;
+import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -178,10 +179,10 @@ class FileSecurityIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(multipart("/api/research-groups/{groupId}/projects/{projectId}/dataset", groupId, projectId)
                 .file(csv)
                 .header("Authorization", "Bearer " + sessionToken))
-                .andExpect(status().isCreated());
+                .andExpect(status().isAccepted());
 
         // Verify content in DB
-        var items = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
+        var items = waitForDatasetItems();
         String base64 = (String) items.get(0).getContent().get("base64");
         String sanitizedContent = new String(Base64.getDecoder().decode(base64));
 
@@ -191,5 +192,17 @@ class FileSecurityIntegrationTest extends AbstractIntegrationTest {
         org.junit.jupiter.api.Assertions.assertTrue(sanitizedContent.contains("John,'=1+2"));
         org.junit.jupiter.api.Assertions.assertTrue(sanitizedContent.contains("Jane,'-500"));
         org.junit.jupiter.api.Assertions.assertTrue(sanitizedContent.contains("Bob,'@SUM(A1:A2)"));
+    }
+
+    private List<es.udc.fic.corpuslab.modules.project.entities.DatasetItem> waitForDatasetItems()
+            throws InterruptedException {
+        for (int attempt = 0; attempt < 20; attempt++) {
+            var items = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
+            if (!items.isEmpty()) {
+                return items;
+            }
+            Thread.sleep(250L);
+        }
+        return datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
     }
 }

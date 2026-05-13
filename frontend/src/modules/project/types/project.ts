@@ -75,6 +75,18 @@ export type UploadDatasetResponse = {
   items: DatasetItem[];
 };
 
+export type UploadDatasetJobResponse = {
+  jobId: string;
+};
+
+export type UploadDatasetEvent = {
+  jobId: string;
+  status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+  progress: number;
+  message: string | null;
+  result: UploadDatasetResponse | null;
+};
+
 export type ProjectType =
   | 'TEXT_CLASSIFICATION_SIMPLE'
   | 'TEXT_CLASSIFICATION_MULTILABEL'

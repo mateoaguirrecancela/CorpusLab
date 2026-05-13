@@ -40,6 +40,7 @@ public class AuthServiceImpl implements AuthService {
     private final es.udc.fic.corpuslab.common.security.JwtTokenService jwtTokenService;
     private final OAuthLoginCodeService oAuthLoginCodeService;
     private final String frontendBaseUrl;
+    private final long passwordResetTokenExpirationMinutes;
 
     public AuthServiceImpl(
             UserRepository userRepository,
@@ -48,7 +49,8 @@ public class AuthServiceImpl implements AuthService {
             EmailService emailService,
             es.udc.fic.corpuslab.common.security.JwtTokenService jwtTokenService,
             OAuthLoginCodeService oAuthLoginCodeService,
-            @Value("${app.frontend.base-url:http://localhost:5173}") String frontendBaseUrl) {
+            @Value("${app.frontend.base-url:http://localhost:5173}") String frontendBaseUrl,
+            @Value("${app.auth.password-reset-token-expiration-minutes:15}") long passwordResetTokenExpirationMinutes) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
@@ -56,6 +58,7 @@ public class AuthServiceImpl implements AuthService {
         this.jwtTokenService = jwtTokenService;
         this.oAuthLoginCodeService = oAuthLoginCodeService;
         this.frontendBaseUrl = frontendBaseUrl;
+        this.passwordResetTokenExpirationMinutes = passwordResetTokenExpirationMinutes;
     }
 
     @Override
@@ -192,7 +195,7 @@ public class AuthServiceImpl implements AuthService {
 
         String rawToken = SecureTokenUtils.randomUrlSafeToken(32);
         token.setToken(SecureTokenUtils.sha256(rawToken));
-        token.setExpiryDate(LocalDateTime.now().plus(15, ChronoUnit.MINUTES));
+        token.setExpiryDate(LocalDateTime.now().plus(passwordResetTokenExpirationMinutes, ChronoUnit.MINUTES));
         passwordResetTokenRepository.save(token);
 
         String resetUrl = frontendBaseUrl + "/auth/reset-password?token=" + rawToken;

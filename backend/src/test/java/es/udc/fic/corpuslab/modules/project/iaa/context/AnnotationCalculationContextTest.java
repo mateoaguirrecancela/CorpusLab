@@ -51,17 +51,17 @@ class AnnotationCalculationContextTest {
     }
 
     @Test
-    void fromProjectShouldUseProjectIdentityAndDefaultMissingCollections() {
+    void fromProjectShouldUseProjectIdentityWithExplicitEmptyCollections() {
         Project project = ProjectTestBuilder.validProject().withProjectType(ProjectType.TEXT_CLASSIFICATION_MULTILABEL)
                 .build();
         setField(project, "id", 25L);
 
         AnnotationCalculationContext context = AnnotationCalculationContext.fromProject(
                 project,
-                null,
-                null,
-                null,
-                null);
+                List.of(),
+                List.of(),
+                List.of(),
+                Map.of());
 
         assertThat(context.projectId()).isEqualTo(25L);
         assertThat(context.projectType()).isEqualTo(ProjectType.TEXT_CLASSIFICATION_MULTILABEL);

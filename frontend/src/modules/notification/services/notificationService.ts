@@ -1,5 +1,6 @@
 import { api } from '@/lib/api';
 import i18n from '@/lib/i18n';
+import { getSessionToken } from '@/modules/auth/services/sessionService';
 import {
   type NotificationItem,
   type NotificationListResponse,
@@ -41,6 +42,56 @@ export async function markNotificationAsRead(notificationId: number): Promise<No
 
 export async function markAllNotificationsAsRead(): Promise<void> {
   await api.post('/notifications/read-all');
+}
+
+export function subscribeToNotificationEvents(onChange: () => void): () => void {
+  const abortController = new AbortController();
+  const token = getSessionToken();
+  const language = i18n.resolvedLanguage ?? i18n.language ?? 'en';
+
+  void (async () => {
+    try {
+      const response = await fetch('/api/notifications/stream', {
+        headers: {
+          Accept: 'text/event-stream',
+          'Accept-Language': language,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        signal: abortController.signal,
+      });
+
+      if (!response.ok || !response.body) {
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (!abortController.signal.aborted) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split('\n\n');
+        buffer = events.pop() ?? '';
+
+        for (const rawEvent of events) {
+          if (rawEvent.includes('event:notification') || rawEvent.includes('data:changed')) {
+            onChange();
+          }
+        }
+      }
+    } catch (error) {
+      if (!abortController.signal.aborted) {
+        console.debug('Notification stream closed', error);
+      }
+    }
+  })();
+
+  return () => abortController.abort();
 }
 
 function extractApiErrorMessage(error: unknown, fallbackKey: string): string {

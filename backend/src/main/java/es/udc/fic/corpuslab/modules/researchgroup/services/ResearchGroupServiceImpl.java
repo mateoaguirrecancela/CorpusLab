@@ -232,8 +232,7 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
             throw new AccessDeniedException("Only owners or admins can invite researchers");
         }
 
-        List<String> activeMemberEmails = memberRepository.findActiveMemberEmailsByGroupId(groupId);
-        if (activeMemberEmails.stream().anyMatch(email -> email.equalsIgnoreCase(normalizedInvitedEmail))) {
+        if (memberRepository.existsActiveMemberByGroupIdAndEmail(groupId, normalizedInvitedEmail)) {
             throw new ResearchGroupMemberAlreadyExistsException(groupId, normalizedInvitedEmail);
         }
 
@@ -340,7 +339,7 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                     group.getName());
         }
 
-        long memberCount = memberRepository.findActiveMemberEmailsByGroupId(group.getId()).size();
+        long memberCount = memberRepository.countByResearchGroupIdAndDeletedAtIsNull(group.getId());
 
         return new ResearchGroupSummaryDto(
                 group.getId(),
@@ -443,7 +442,7 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
 
         resolvePendingInvitationsAfterJoinByCode(group.getId(), userInfo.email(), getUserReference(userInfo.userId()));
 
-        long memberCount = memberRepository.findActiveMemberEmailsByGroupId(group.getId()).size();
+        long memberCount = memberRepository.countByResearchGroupIdAndDeletedAtIsNull(group.getId());
 
         return new ResearchGroupSummaryDto(
                 group.getId(),

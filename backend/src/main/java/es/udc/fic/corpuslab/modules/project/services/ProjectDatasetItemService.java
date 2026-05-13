@@ -12,6 +12,9 @@ public interface ProjectDatasetItemService {
         UploadProjectDatasetResponseDto uploadDataset(String authenticatedEmail, Long researchGroupId, Long projectId,
                         List<MultipartFile> files);
 
+        void validateDatasetUploadRequest(String authenticatedEmail, Long researchGroupId, Long projectId,
+                        List<MultipartFile> files);
+
         ProjectAnnotationSourceContentDto getAnnotationSourceContent(String authenticatedEmail, Long projectId,
                         Long datasetItemId);
 }

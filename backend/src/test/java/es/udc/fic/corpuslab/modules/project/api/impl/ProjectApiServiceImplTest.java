@@ -4,8 +4,6 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -14,8 +12,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
-import es.udc.fic.corpuslab.modules.project.entities.Project;
-import es.udc.fic.corpuslab.modules.project.fixtures.ProjectTestBuilder;
 import es.udc.fic.corpuslab.modules.project.repositories.AnnotationRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.DatasetItemRepository;
 import es.udc.fic.corpuslab.modules.project.repositories.ProjectParticipantRepository;
@@ -53,11 +49,7 @@ class ProjectApiServiceImplTest {
     }
 
     @Test
-    void deleteAllProjectsByResearchGroupIdShouldDeleteProjectDataInOrderForEachProject() {
-        Project firstProject = projectWithId(11L);
-        Project secondProject = projectWithId(12L);
-        when(projectRepository.findByResearchGroupId(7L)).thenReturn(List.of(firstProject, secondProject));
-
+    void deleteAllProjectsByResearchGroupIdShouldBulkDeleteProjectDataInOrder() {
         projectApiService.deleteAllProjectsByResearchGroupId(7L);
 
         InOrder inOrder = inOrder(
@@ -67,34 +59,10 @@ class ProjectApiServiceImplTest {
                 annotationRepository,
                 notificationService);
 
-        inOrder.verify(projectRepository).findByResearchGroupId(7L);
-
-        verifyDeletionOrder(inOrder, firstProject);
-        verifyDeletionOrder(inOrder, secondProject);
-    }
-
-    private void verifyDeletionOrder(InOrder inOrder, Project project) {
-        Long projectId = project.getId();
-        inOrder.verify(notificationService).deleteNotificationsByProjectId(projectId);
-        inOrder.verify(annotationRepository).deleteByDatasetItemProjectId(projectId);
-        inOrder.verify(datasetItemRepository).deleteByProjectId(projectId);
-        inOrder.verify(projectParticipantRepository).deleteByProjectId(projectId);
-        inOrder.verify(projectRepository).delete(project);
-    }
-
-    private Project projectWithId(Long id) {
-        Project project = ProjectTestBuilder.validProject().build();
-        setField(project, "id", id);
-        return project;
-    }
-
-    private void setField(Object target, String fieldName, Object value) {
-        try {
-            java.lang.reflect.Field field = target.getClass().getDeclaredField(fieldName);
-            field.setAccessible(true);
-            field.set(target, value);
-        } catch (ReflectiveOperationException ex) {
-            throw new IllegalStateException(ex);
-        }
+        inOrder.verify(notificationService).deleteNotificationsByResearchGroupId(7L);
+        inOrder.verify(annotationRepository).deleteByResearchGroupId(7L);
+        inOrder.verify(datasetItemRepository).deleteByProjectResearchGroupId(7L);
+        inOrder.verify(projectParticipantRepository).deleteByProjectResearchGroupId(7L);
+        inOrder.verify(projectRepository).deleteByResearchGroupId(7L);
     }
 }

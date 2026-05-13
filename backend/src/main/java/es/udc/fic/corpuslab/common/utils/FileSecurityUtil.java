@@ -6,20 +6,16 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import org.apache.tika.Tika;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectDatasetException;
 import lombok.extern.slf4j.Slf4j;
 
-@Service
 @Slf4j
-public class FileSecurityService {
-    // TODO Convertir en un Util
+public final class FileSecurityUtil {
 
     private static final Tika TIKA = new Tika();
 
@@ -34,10 +30,13 @@ public class FileSecurityService {
     // CSV Injection characters
     private static final List<String> CSV_INJECTION_CHARS = Arrays.asList("=", "+", "-", "@");
 
+    private FileSecurityUtil() {
+    }
+
     /**
      * Validates a file against various security threats.
      */
-    public void validateFile(MultipartFile file) {
+    public static void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new InvalidProjectDatasetException("File is empty or null");
         }
@@ -58,7 +57,7 @@ public class FileSecurityService {
      * Validates that the filename doesn't contain path traversal sequences and has
      * a safe extension.
      */
-    private void validateFilename(String filename) {
+    private static void validateFilename(String filename) {
         String cleanName = StringUtils.cleanPath(filename);
         if (cleanName.contains("..")) {
             log.warn("Path traversal attempt detected in filename: {}", filename);
@@ -81,7 +80,7 @@ public class FileSecurityService {
     /**
      * Uses Apache Tika to detect the actual content type via magic bytes.
      */
-    private void validateMagicBytes(MultipartFile file) {
+    private static void validateMagicBytes(MultipartFile file) {
         try (InputStream is = file.getInputStream()) {
             String detectedMimeType = TIKA.detect(is);
             String declaredMimeType = file.getContentType();
@@ -109,7 +108,7 @@ public class FileSecurityService {
     /**
      * Sanitizes CSV content to prevent formula injection.
      */
-    public byte[] sanitizeCsv(byte[] content) {
+    public static byte[] sanitizeCsv(byte[] content) {
         String csv = new String(content, StandardCharsets.UTF_8);
         String[] lines = csv.split("\\r?\\n", -1);
         StringBuilder sanitized = new StringBuilder();
@@ -125,7 +124,7 @@ public class FileSecurityService {
         return sanitized.toString().getBytes(StandardCharsets.UTF_8);
     }
 
-    private String sanitizeCsvLine(String line) {
+    private static String sanitizeCsvLine(String line) {
         if (line == null || line.isBlank())
             return line;
 
@@ -136,7 +135,7 @@ public class FileSecurityService {
         return joinCsvColumns(cells);
     }
 
-    private List<String> parseCsvColumns(String line) {
+    private static List<String> parseCsvColumns(String line) {
         List<String> values = new java.util.ArrayList<>();
         StringBuilder currentValue = new StringBuilder();
         boolean insideQuotes = false;
@@ -164,11 +163,11 @@ public class FileSecurityService {
         return values;
     }
 
-    private String joinCsvColumns(List<String> columns) {
+    private static String joinCsvColumns(List<String> columns) {
         return String.join(",", columns);
     }
 
-    private String sanitizeCell(String cell) {
+    private static String sanitizeCell(String cell) {
         if (cell == null || cell.isBlank())
             return cell;
 

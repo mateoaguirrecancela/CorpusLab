@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
@@ -18,7 +19,10 @@ import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.researchgroup.enums.ResearchGroupMemberRole;
 
 @Entity
-@Table(name = "research_group_members")
+@Table(name = "research_group_members", indexes = {
+        @Index(name = "idx_research_group_members_group_deleted", columnList = "research_group_id, deleted_at"),
+        @Index(name = "idx_research_group_members_user_deleted", columnList = "user_id, deleted_at")
+})
 public class ResearchGroupMember {
 
     @Id

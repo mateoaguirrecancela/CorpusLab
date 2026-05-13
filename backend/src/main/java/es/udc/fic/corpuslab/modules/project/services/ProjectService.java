@@ -27,6 +27,8 @@ public interface ProjectService {
 
     void deleteProject(String authenticatedEmail, Long researchGroupId, Long projectId);
 
+    void cleanupIncompleteProject(String authenticatedEmail, Long researchGroupId, Long projectId);
+
     ProjectDetailDto archiveProject(String authenticatedEmail, Long projectId);
 
     ProjectDetailDto unarchiveProject(String authenticatedEmail, Long projectId);

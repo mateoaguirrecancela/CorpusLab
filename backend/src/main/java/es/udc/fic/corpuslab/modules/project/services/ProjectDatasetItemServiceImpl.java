@@ -11,9 +11,10 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 
-import es.udc.fic.corpuslab.common.utils.FileSecurityService;
+import es.udc.fic.corpuslab.common.utils.FileSecurityUtil;
 import es.udc.fic.corpuslab.modules.auth.api.AuthApiService;
 import es.udc.fic.corpuslab.modules.auth.api.dtos.UserInfo;
 import es.udc.fic.corpuslab.modules.project.dtos.DatasetItemDto;
@@ -39,30 +40,99 @@ public class ProjectDatasetItemServiceImpl implements ProjectDatasetItemService 
     private final ProjectParticipantRepository projectParticipantRepository;
     private final AuthApiService authApiService;
     private final ResearchGroupApiService researchGroupApiService;
+    private final ProjectMetricsCacheService projectMetricsCacheService;
+    private final long maxStoredFileSizeBytes;
 
-    private final FileSecurityService fileSecurityService = new FileSecurityService();
-
+    @Autowired
     public ProjectDatasetItemServiceImpl(
             ProjectRepository projectRepository,
             DatasetItemRepository datasetItemRepository,
             ProjectParticipantRepository projectParticipantRepository,
             AuthApiService authApiService,
-            ResearchGroupApiService researchGroupApiService) {
+            ResearchGroupApiService researchGroupApiService,
+            ProjectMetricsCacheService projectMetricsCacheService,
+            @org.springframework.beans.factory.annotation.Value("${app.dataset.max-stored-file-size-bytes:10485760}") long maxStoredFileSizeBytes) {
         this.projectRepository = projectRepository;
         this.datasetItemRepository = datasetItemRepository;
         this.projectParticipantRepository = projectParticipantRepository;
         this.authApiService = authApiService;
         this.researchGroupApiService = researchGroupApiService;
+        this.projectMetricsCacheService = projectMetricsCacheService;
+        this.maxStoredFileSizeBytes = maxStoredFileSizeBytes;
     }
 
     @Override
     @Transactional
     public UploadProjectDatasetResponseDto uploadDataset(String authenticatedEmail, Long researchGroupId,
             Long projectId, List<MultipartFile> files) {
+        Project project = validateAndFindProject(authenticatedEmail, researchGroupId, projectId, files);
+
+        int nextIndex = (int) datasetItemRepository.countByProjectId(projectId);
+        List<DatasetItem> createdItems = new ArrayList<>();
+
+        for (MultipartFile file : files) {
+            FileSecurityUtil.validateFile(file);
+
+            try {
+                byte[] fileBytes = file.getBytes();
+                String originalFilename = file.getOriginalFilename();
+                String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
+
+                if (ProjectDatasetUtils.isCsvFile(originalFilename, contentType)) {
+                    fileBytes = FileSecurityUtil.sanitizeCsv(fileBytes);
+                }
+
+                if (fileBytes.length > maxStoredFileSizeBytes) {
+                    throw new InvalidProjectDatasetException(
+                            "File exceeds the maximum size allowed for dataset storage");
+                }
+
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put(ProjectConstants.CONTENT_KEY_FILE_NAME, originalFilename);
+                content.put(ProjectConstants.CONTENT_KEY_MIME_TYPE, contentType);
+                content.put(ProjectConstants.CONTENT_KEY_SIZE_BYTES, fileBytes.length);
+                content.put(ProjectConstants.CONTENT_KEY_BASE64, Base64.getEncoder().encodeToString(fileBytes));
+                content.put("uploadedAt", Instant.now().toString());
+
+                DatasetItem item = new DatasetItem();
+                item.setProject(project);
+                item.setItemIndex(nextIndex++);
+                item.setContent(content);
+                content.put(ProjectConstants.CONTENT_KEY_STEP_COUNT,
+                        ProjectDatasetUtils.resolveStepDefinition(item).totalSteps());
+                createdItems.add(item);
+            } catch (IOException ex) {
+                throw new InvalidProjectDatasetException("Could not read one of the uploaded files");
+            }
+        }
+
+        List<DatasetItem> savedItems = datasetItemRepository.saveAll(createdItems);
+        List<DatasetItemDto> itemDtos = savedItems.stream().map(this::toDatasetItemDto).toList();
+        projectMetricsCacheService.evictProjectReadCaches(projectId);
+
+        return new UploadProjectDatasetResponseDto(projectId, itemDtos.size(), itemDtos);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void validateDatasetUploadRequest(String authenticatedEmail, Long researchGroupId, Long projectId,
+            List<MultipartFile> files) {
+        validateAndFindProject(authenticatedEmail, researchGroupId, projectId, files);
+        for (MultipartFile file : files) {
+            FileSecurityUtil.validateFile(file);
+        }
+    }
+
+    private Project validateAndFindProject(String authenticatedEmail, Long researchGroupId, Long projectId,
+            List<MultipartFile> files) {
         UserInfo userInfo = authApiService.findUserByEmail(authenticatedEmail);
 
         Project project = projectRepository.findByIdAndResearchGroupId(projectId, researchGroupId)
                 .orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        if (project.isSetupCompleted()) {
+            throw new InvalidProjectDatasetException("Dataset cannot be changed after project setup is completed");
+        }
 
         ResearchGroupMemberInfo requesterMembership = researchGroupApiService
                 .findActiveMember(researchGroupId, userInfo.userId())
@@ -87,42 +157,7 @@ public class ProjectDatasetItemServiceImpl implements ProjectDatasetItemService 
             throw new InvalidProjectDatasetException("When uploading a CSV dataset, only a single file is allowed");
         }
 
-        int nextIndex = (int) datasetItemRepository.countByProjectId(projectId);
-        List<DatasetItem> createdItems = new ArrayList<>();
-
-        for (MultipartFile file : files) {
-            fileSecurityService.validateFile(file);
-
-            try {
-                byte[] fileBytes = file.getBytes();
-                String originalFilename = file.getOriginalFilename();
-                String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
-
-                if (ProjectDatasetUtils.isCsvFile(originalFilename, contentType)) {
-                    fileBytes = fileSecurityService.sanitizeCsv(fileBytes);
-                }
-
-                Map<String, Object> content = new LinkedHashMap<>();
-                content.put(ProjectConstants.CONTENT_KEY_FILE_NAME, originalFilename);
-                content.put(ProjectConstants.CONTENT_KEY_MIME_TYPE, contentType);
-                content.put(ProjectConstants.CONTENT_KEY_SIZE_BYTES, fileBytes.length);
-                content.put(ProjectConstants.CONTENT_KEY_BASE64, Base64.getEncoder().encodeToString(fileBytes));
-                content.put("uploadedAt", Instant.now().toString());
-
-                DatasetItem item = new DatasetItem();
-                item.setProject(project);
-                item.setItemIndex(nextIndex++);
-                item.setContent(content);
-                createdItems.add(item);
-            } catch (IOException ex) {
-                throw new InvalidProjectDatasetException("Could not read one of the uploaded files");
-            }
-        }
-
-        List<DatasetItem> savedItems = datasetItemRepository.saveAll(createdItems);
-        List<DatasetItemDto> itemDtos = savedItems.stream().map(this::toDatasetItemDto).toList();
-
-        return new UploadProjectDatasetResponseDto(projectId, itemDtos.size(), itemDtos);
+        return project;
     }
 
     @Override

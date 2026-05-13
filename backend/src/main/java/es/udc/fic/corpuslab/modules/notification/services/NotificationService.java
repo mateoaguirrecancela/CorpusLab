@@ -2,6 +2,7 @@ package es.udc.fic.corpuslab.modules.notification.services;
 
 import es.udc.fic.corpuslab.modules.notification.dtos.NotificationDto;
 import es.udc.fic.corpuslab.modules.notification.dtos.NotificationListResponseDto;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * Public API for the notification module.
@@ -10,6 +11,8 @@ import es.udc.fic.corpuslab.modules.notification.dtos.NotificationListResponseDt
 public interface NotificationService {
 
     NotificationListResponseDto findMyNotifications(String authenticatedEmail, int limit);
+
+    SseEmitter openNotificationStream(String authenticatedEmail);
 
     NotificationDto markNotificationAsRead(String authenticatedEmail, Long notificationId);
 

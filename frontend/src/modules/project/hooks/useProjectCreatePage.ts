@@ -10,7 +10,7 @@ import {
   useUploadProjectDatasetMutation,
 } from '@/modules/project/hooks/useProjectQueries';
 import {
-  deleteProject,
+  cleanupIncompleteProject,
   getAssignParticipantsErrorMessage,
   getCreateProjectErrorMessage,
   getProjectSetupErrorMessage,
@@ -297,7 +297,7 @@ export function useProjectCreatePage(): ProjectCreatePageState {
       ) {
         try {
           setFinalizationProjectId(null);
-          await deleteProject(numericGroupId, projectId);
+          await cleanupIncompleteProject(numericGroupId, projectId);
         } catch (deleteError) {
           console.error('Failed to cleanup project after wizard error', deleteError);
         }

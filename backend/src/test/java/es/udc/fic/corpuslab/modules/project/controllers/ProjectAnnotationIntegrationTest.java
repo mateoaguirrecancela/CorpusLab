@@ -2,12 +2,14 @@ package es.udc.fic.corpuslab.modules.project.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.nio.charset.StandardCharsets;
@@ -319,6 +321,7 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
                                 "fileName", "source.pdf",
                                 "mimeType", "application/pdf",
                                 "sizeBytes", sourceBytes.length,
+                                "stepCount", 1,
                                 "base64", Base64.getEncoder().encodeToString(sourceBytes)));
                 item = datasetItemRepository.save(item);
 
@@ -392,6 +395,7 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
                                 "fileName", "source.txt",
                                 "mimeType", "text/plain",
                                 "sizeBytes", sourceBytes.length,
+                                "stepCount", 1,
                                 "base64", "data:text/plain;base64,"
                                                 + Base64.getEncoder().encodeToString(sourceBytes)));
                 item = datasetItemRepository.save(item);
@@ -1168,9 +1172,14 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
 
                 String ownerToken = loginAs("owner.annotation.export@example.com");
 
-                MvcResult exportResult = mockMvc
+                MvcResult exportRequest = mockMvc
                                 .perform(get("/api/projects/{projectId}/annotations/export", project.getId())
                                                 .header("Authorization", "Bearer " + ownerToken))
+                                .andExpect(request().asyncStarted())
+                                .andReturn();
+
+                MvcResult exportResult = mockMvc
+                                .perform(asyncDispatch(exportRequest))
                                 .andExpect(status().isOk())
                                 .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"))
                                 .andReturn();
@@ -1269,6 +1278,7 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
                                 "fileName", "dataset.csv",
                                 "mimeType", "text/csv",
                                 "sizeBytes", bytes.length,
+                                "stepCount", Math.max(0, csvContent.split("\\R", -1).length - 1),
                                 "base64", Base64.getEncoder().encodeToString(bytes)));
 
                 return datasetItemRepository.save(item);
@@ -1284,6 +1294,7 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
                                 "fileName", "dataset-mime.csv",
                                 "mimeType", "text/csv",
                                 "sizeBytes", bytes.length,
+                                "stepCount", Math.max(0, csvContent.split("\\R", -1).length - 1),
                                 "base64", Base64.getMimeEncoder().encodeToString(bytes)));
 
                 return datasetItemRepository.save(item);
@@ -1299,6 +1310,7 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
                                 "fileName", "dataset.txt",
                                 "mimeType", "text/plain",
                                 "sizeBytes", bytes.length,
+                                "stepCount", 1,
                                 "base64", Base64.getEncoder().encodeToString(bytes)));
 
                 return datasetItemRepository.save(item);
@@ -1312,6 +1324,7 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
                                 "fileName", fileName,
                                 "mimeType", mimeType,
                                 "sizeBytes", base64.length(),
+                                "stepCount", 1,
                                 "base64", base64));
 
                 return datasetItemRepository.save(item);
