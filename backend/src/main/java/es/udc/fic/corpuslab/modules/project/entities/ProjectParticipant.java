@@ -12,6 +12,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
@@ -21,6 +22,8 @@ import jakarta.persistence.UniqueConstraint;
 @Entity
 @Table(name = "project_participants", uniqueConstraints = {
         @UniqueConstraint(columnNames = { "project_id", "user_id" })
+}, indexes = {
+        @Index(name = "idx_project_participants_user_project", columnList = "user_id, project_id")
 })
 public class ProjectParticipant {
 

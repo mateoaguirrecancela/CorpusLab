@@ -84,8 +84,8 @@ class NotificationServiceImplTest {
         setField(alreadyRead, "id", 901L);
         setField(alreadyRead, "createdAt", Instant.parse("2026-04-04T09:00:00Z"));
 
-        when(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(eq(11L), any(Pageable.class)))
-                .thenReturn(List.of(unread, alreadyRead));
+        when(notificationRepository.findDtosByRecipientUserIdOrderByCreatedAtDesc(eq(11L), any(Pageable.class)))
+                .thenReturn(List.of(toDto(unread), toDto(alreadyRead)));
         when(notificationRepository.countByRecipientUserIdAndReadAtIsNull(11L)).thenReturn(1L);
 
         NotificationListResponseDto result = notificationService.findMyNotifications("reader@example.com", 0);
@@ -103,7 +103,7 @@ class NotificationServiceImplTest {
         assertThat(first.invitationId()).isEqualTo(500L);
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        verify(notificationRepository).findByRecipientUserIdOrderByCreatedAtDesc(eq(11L), pageableCaptor.capture());
+        verify(notificationRepository).findDtosByRecipientUserIdOrderByCreatedAtDesc(eq(11L), pageableCaptor.capture());
         assertThat(pageableCaptor.getValue().getPageNumber()).isZero();
         assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(20);
     }
@@ -112,14 +112,14 @@ class NotificationServiceImplTest {
     void findMyNotificationsShouldCapLimitAtFifty() {
         when(authApiService.findUserByEmail("reader@example.com"))
                 .thenReturn(new UserInfo(11L, "reader@example.com", "Reader", "User"));
-        when(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(eq(11L), any(Pageable.class)))
+        when(notificationRepository.findDtosByRecipientUserIdOrderByCreatedAtDesc(eq(11L), any(Pageable.class)))
                 .thenReturn(List.of());
         when(notificationRepository.countByRecipientUserIdAndReadAtIsNull(11L)).thenReturn(0L);
 
         notificationService.findMyNotifications("reader@example.com", 100);
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        verify(notificationRepository).findByRecipientUserIdOrderByCreatedAtDesc(eq(11L), pageableCaptor.capture());
+        verify(notificationRepository).findDtosByRecipientUserIdOrderByCreatedAtDesc(eq(11L), pageableCaptor.capture());
         assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(50);
     }
 
@@ -316,8 +316,8 @@ class NotificationServiceImplTest {
         setField(notification, "id", 1001L);
         setField(notification, "createdAt", Instant.parse("2026-04-04T10:00:00Z"));
 
-        when(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(eq(21L), any(Pageable.class)))
-                .thenReturn(List.of(notification));
+        when(notificationRepository.findDtosByRecipientUserIdOrderByCreatedAtDesc(eq(21L), any(Pageable.class)))
+                .thenReturn(List.of(toDto(notification)));
         when(notificationRepository.countByRecipientUserIdAndReadAtIsNull(21L)).thenReturn(1L);
 
         NotificationListResponseDto result = notificationService.findMyNotifications("reader.project@example.com", 5);
@@ -347,5 +347,23 @@ class NotificationServiceImplTest {
         } catch (ReflectiveOperationException ex) {
             throw new IllegalStateException("Unable to set field " + fieldName, ex);
         }
+    }
+
+    private static NotificationDto toDto(Notification notification) {
+        User actor = notification.getActorUser();
+        String actorFullName = actor == null
+                ? null
+                : (actor.getFirstName() + " " + actor.getLastName()).trim();
+        return new NotificationDto(
+                notification.getId(),
+                notification.getType(),
+                notification.getReadAt() != null,
+                notification.getCreatedAt(),
+                actorFullName,
+                notification.getResearchGroupId(),
+                notification.getResearchGroupName(),
+                notification.getInvitationId(),
+                notification.getProjectId(),
+                notification.getProjectName());
     }
 }

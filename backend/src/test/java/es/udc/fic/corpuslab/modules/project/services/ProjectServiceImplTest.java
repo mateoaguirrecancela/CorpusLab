@@ -58,6 +58,7 @@ class ProjectServiceImplTest {
     @Mock private AnnotationRepository annotationRepository;
     @Mock private NotificationService notificationService;
     @Mock private ProjectParticipantService projectParticipantService;
+    @Mock private ProjectMetricsCacheService projectMetricsCacheService;
     @Mock private EntityManager entityManager;
 
     private ProjectService projectService;
@@ -68,7 +69,8 @@ class ProjectServiceImplTest {
                 projectRepository, projectParticipantRepository,
                 datasetItemRepository, annotationRepository,
                 authApiService, researchGroupApiService,
-                notificationService, projectParticipantService, entityManager);
+                notificationService, projectParticipantService, projectMetricsCacheService, entityManager,
+                10_485_760L, 30L);
     }
 
     @Test
@@ -204,7 +206,9 @@ class ProjectServiceImplTest {
 
         when(projectRepository.findByIdAndResearchGroupId(100L, 10L)).thenReturn(Optional.of(project));
         when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(creatorParticipant));
-        when(datasetItemRepository.findByProjectIdOrderByItemIndexAsc(100L)).thenReturn(List.of());
+        when(datasetItemRepository.findSummariesByProjectId(100L)).thenReturn(List.of());
+        when(projectParticipantRepository.findByProjectIdWithUserAndProject(100L)).thenReturn(List.of(creatorParticipant));
+        when(annotationRepository.countCompletedStepsByUser(100L)).thenReturn(List.of());
 
         UpdateProjectRequestDto request = new UpdateProjectRequestDto("New Name", "New Desc", List.of());
         projectService.updateProject("creator@example.com", 10L, 100L, request);
@@ -262,10 +266,10 @@ class ProjectServiceImplTest {
 
         when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L))
                 .thenReturn(Optional.of(creatorParticipant));
-        when(projectParticipantRepository.findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(100L))
+        when(projectParticipantRepository.findByProjectIdWithUserAndProject(100L))
                 .thenReturn(List.of(creatorParticipant));
-        when(datasetItemRepository.findByProjectIdOrderByItemIndexAsc(100L)).thenReturn(List.of());
-        when(annotationRepository.findByDatasetItemProjectId(100L)).thenReturn(List.of());
+        when(datasetItemRepository.findSummariesByProjectId(100L)).thenReturn(List.of());
+        when(annotationRepository.countCompletedStepsByUser(100L)).thenReturn(List.of());
 
         ProjectDetailDto result = projectService.archiveProject("creator@example.com", 100L);
 
@@ -294,10 +298,10 @@ class ProjectServiceImplTest {
 
         when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L))
                 .thenReturn(Optional.of(creatorParticipant));
-        when(projectParticipantRepository.findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(100L))
+        when(projectParticipantRepository.findByProjectIdWithUserAndProject(100L))
                 .thenReturn(List.of(creatorParticipant));
-        when(datasetItemRepository.findByProjectIdOrderByItemIndexAsc(100L)).thenReturn(List.of());
-        when(annotationRepository.findByDatasetItemProjectId(100L)).thenReturn(List.of());
+        when(datasetItemRepository.findSummariesByProjectId(100L)).thenReturn(List.of());
+        when(annotationRepository.countCompletedStepsByUser(100L)).thenReturn(List.of());
 
         ProjectDetailDto result = projectService.unarchiveProject("creator@example.com", 100L);
 

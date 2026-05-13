@@ -22,6 +22,8 @@ import {
   type AssignProjectParticipantsPayload,
   type ConfigureProjectSetupPayload,
   type CreateProjectPayload,
+  type ProjectAnnotationWorkspace,
+  type ProjectDetail,
   type UpdateProjectPayload,
 } from '@/modules/project/types/project';
 import {
@@ -375,11 +377,47 @@ export function useSaveProjectAnnotationStepMutation(offset: number, limit: numb
         stepIndex,
         annotation,
       }),
-    onSuccess: (_, variables) => {
+    onSuccess: (response, variables) => {
+      const workspaceKey = projectAnnotationWorkspaceQueryKey(variables.projectId, offset, limit);
+      queryClient.setQueryData<ProjectAnnotationWorkspace>(workspaceKey, (current) => {
+        if (!current) {
+          return current;
+        }
+
+        const savedStepIndex = response.stepIndex;
+        const nextSteps = current.steps.map((step) =>
+          step.datasetItemId === variables.datasetItemId && step.stepIndex === savedStepIndex
+            ? {
+                ...step,
+                annotation: variables.annotation,
+                completed: variables.annotation != null,
+              }
+            : step,
+        );
+
+        return {
+          ...current,
+          steps: nextSteps,
+          completedSteps: response.participantCompletedSteps,
+          totalSteps: response.participantTotalSteps,
+          completionPercentage: response.participantCompletionPercentage,
+        };
+      });
+
+      queryClient.setQueryData<ProjectDetail>(
+        projectDetailQueryKey(variables.projectId),
+        (current) =>
+          current
+            ? {
+                ...current,
+                completionPercentage: response.projectCompletionPercentage,
+              }
+            : current,
+      );
+
       invalidateQueryKeys(queryClient, [
         myAssignedProjectsQueryKey(),
-        projectDetailQueryKey(variables.projectId),
-        projectAnnotationWorkspaceQueryKey(variables.projectId, offset, limit),
+        projectMetricsQueryKey(variables.projectId),
       ]);
     },
   });

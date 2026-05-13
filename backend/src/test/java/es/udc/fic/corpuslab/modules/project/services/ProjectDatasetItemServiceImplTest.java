@@ -45,6 +45,7 @@ class ProjectDatasetItemServiceImplTest {
     @Mock private ProjectParticipantRepository projectParticipantRepository;
     @Mock private AuthApiService authApiService;
     @Mock private ResearchGroupApiService researchGroupApiService;
+    @Mock private ProjectMetricsCacheService projectMetricsCacheService;
 
     private ProjectDatasetItemService projectDatasetItemService;
 
@@ -52,7 +53,7 @@ class ProjectDatasetItemServiceImplTest {
     void setUp() {
         projectDatasetItemService = new ProjectDatasetItemServiceImpl(
                 projectRepository, datasetItemRepository, projectParticipantRepository,
-                authApiService, researchGroupApiService);
+                authApiService, researchGroupApiService, projectMetricsCacheService, 10_485_760L);
     }
 
     @Test

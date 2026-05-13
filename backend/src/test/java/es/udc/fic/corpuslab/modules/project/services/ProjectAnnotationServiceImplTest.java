@@ -25,6 +25,7 @@ import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationWorkspaceDto;
 import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepResponseDto;
+import es.udc.fic.corpuslab.modules.project.dtos.UserAnnotationCountDto;
 import es.udc.fic.corpuslab.modules.project.entities.Annotation;
 import es.udc.fic.corpuslab.modules.project.entities.DatasetItem;
 import es.udc.fic.corpuslab.modules.project.entities.Project;
@@ -46,6 +47,7 @@ class ProjectAnnotationServiceImplTest {
     @Mock private AnnotationRepository annotationRepository;
     @Mock private AuthApiService authApiService;
     @Mock private NotificationService notificationService;
+    @Mock private ProjectMetricsCacheService projectMetricsCacheService;
     @Mock private EntityManager entityManager;
 
     private ProjectAnnotationService projectAnnotationService;
@@ -54,7 +56,8 @@ class ProjectAnnotationServiceImplTest {
     void setUp() {
         projectAnnotationService = new ProjectAnnotationServiceImpl(
                 projectParticipantRepository, datasetItemRepository,
-                annotationRepository, authApiService, notificationService, entityManager);
+                annotationRepository, authApiService, notificationService,
+                projectMetricsCacheService, entityManager);
     }
 
     @Test
@@ -72,7 +75,7 @@ class ProjectAnnotationServiceImplTest {
                 .withRole(ProjectParticipantRole.PARTICIPANT).withProject(project).withUser(user).build();
 
         when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(participant));
-        when(projectParticipantRepository.findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(100L)).thenReturn(List.of(participant));
+        when(projectParticipantRepository.findByProjectIdWithUserAndProject(100L)).thenReturn(List.of(participant));
 
         DatasetItem item = new DatasetItem();
         item.setItemIndex(0);
@@ -87,7 +90,9 @@ class ProjectAnnotationServiceImplTest {
         annotation.setStepIndex(0);
         annotation.setPayload(Map.of("label", "positive"));
 
-        when(annotationRepository.findByDatasetItemProjectId(100L)).thenReturn(List.of(annotation));
+        when(annotationRepository.findByProjectIdAndUserIdWithDatasetItem(100L, 1L)).thenReturn(List.of(annotation));
+        when(annotationRepository.countCompletedStepsByUser(100L))
+                .thenReturn(List.of(new UserAnnotationCountDto(1L, 1L)));
 
         ProjectAnnotationWorkspaceDto workspace = projectAnnotationService.getAnnotationWorkspace(user.getEmail(), 100L, 0, 50);
 
@@ -129,7 +134,7 @@ class ProjectAnnotationServiceImplTest {
                 .withRole(ProjectParticipantRole.PARTICIPANT).withProject(project).withUser(user).build();
 
         when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(participant));
-        when(projectParticipantRepository.findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(100L)).thenReturn(List.of(participant));
+        when(projectParticipantRepository.findByProjectIdWithUserAndProject(100L)).thenReturn(List.of(participant));
 
         DatasetItem item = new DatasetItem();
         item.setItemIndex(0);
@@ -142,7 +147,9 @@ class ProjectAnnotationServiceImplTest {
         expectedAnnotation.setPayload(Map.of("label", "test"));
         
         when(datasetItemRepository.findByProjectIdOrderByItemIndexAsc(100L)).thenReturn(List.of(item));
-        when(annotationRepository.findByDatasetItemProjectId(100L)).thenReturn(List.of(), List.of(expectedAnnotation));
+        when(annotationRepository.countByDatasetItemProjectIdAndUserId(100L, 1L)).thenReturn(0L);
+        when(annotationRepository.countCompletedStepsByUser(100L))
+                .thenReturn(List.of(), List.of(new UserAnnotationCountDto(1L, 1L)));
 
         SaveProjectAnnotationStepRequestDto request = new SaveProjectAnnotationStepRequestDto(50L, 0, Map.of("label", "test"));
         

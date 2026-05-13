@@ -5,6 +5,7 @@ public class ProjectConstants {
     public static final String CONTENT_KEY_FILE_NAME = "fileName";
     public static final String CONTENT_KEY_MIME_TYPE = "mimeType";
     public static final String CONTENT_KEY_SIZE_BYTES = "sizeBytes";
+    public static final String CONTENT_KEY_STEP_COUNT = "stepCount";
     public static final String CONTENT_KEY_BASE64 = "base64";
     public static final String ANNOTATION_KEY_NOTES = "notes";
     public static final String NER_ANNOTATION_KEY_ENTITIES = "entities";

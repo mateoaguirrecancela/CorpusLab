@@ -1,5 +1,9 @@
 package es.udc.fic.corpuslab.modules.project.services;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -7,6 +11,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.access.AccessDeniedException;
@@ -16,12 +21,12 @@ import es.udc.fic.corpuslab.modules.auth.api.AuthApiService;
 import es.udc.fic.corpuslab.modules.auth.api.dtos.UserInfo;
 import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
-import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationExportCsvDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationStepDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationWorkspaceDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupLabelDto;
 import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepResponseDto;
+import es.udc.fic.corpuslab.modules.project.dtos.UserAnnotationCountDto;
 import es.udc.fic.corpuslab.modules.project.entities.Annotation;
 import es.udc.fic.corpuslab.modules.project.entities.DatasetItem;
 import es.udc.fic.corpuslab.modules.project.entities.Project;
@@ -47,20 +52,24 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
     private final AnnotationRepository annotationRepository;
     private final AuthApiService authApiService;
     private final NotificationService notificationService;
+    private final ProjectMetricsCacheService projectMetricsCacheService;
     private final EntityManager entityManager;
 
+    @Autowired
     public ProjectAnnotationServiceImpl(
             ProjectParticipantRepository projectParticipantRepository,
             DatasetItemRepository datasetItemRepository,
             AnnotationRepository annotationRepository,
             AuthApiService authApiService,
             NotificationService notificationService,
+            ProjectMetricsCacheService projectMetricsCacheService,
             EntityManager entityManager) {
         this.projectParticipantRepository = projectParticipantRepository;
         this.datasetItemRepository = datasetItemRepository;
         this.annotationRepository = annotationRepository;
         this.authApiService = authApiService;
         this.notificationService = notificationService;
+        this.projectMetricsCacheService = projectMetricsCacheService;
         this.entityManager = entityManager;
     }
 
@@ -115,7 +124,7 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                 .orElseThrow(() -> new ProjectNotFoundException(projectId));
 
         List<ProjectParticipant> participants = projectParticipantRepository
-                .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId);
+                .findByProjectIdWithUserAndProject(projectId);
         List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
 
         DatasetItem targetItem = datasetItems.stream()
@@ -123,10 +132,10 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                 .findFirst()
                 .orElseThrow(() -> new InvalidProjectDatasetException("Dataset item does not belong to this project"));
 
-        Map<Long, Map<Long, Map<Integer, Annotation>>> annotationLookupBeforeSave = buildAnnotationLookup(projectId);
-        ProjectAnnotationUtils.ProjectProgressSnapshot progressBeforeSave = ProjectAnnotationUtils
-                .buildProjectProgressSnapshot(participants, datasetItems, annotationLookupPayloadOnly(annotationLookupBeforeSave));
-        int completionBeforeSave = progressBeforeSave.completionPercentageForUser(userInfo.userId());
+        long totalSteps = countTotalSteps(datasetItems);
+        long completedStepsBeforeSave = Math.max(0L,
+                Math.min(annotationRepository.countByDatasetItemProjectIdAndUserId(projectId, userInfo.userId()), totalSteps));
+        int completionBeforeSave = ProjectAnnotationUtils.toPercentage(completedStepsBeforeSave, totalSteps);
 
         Object rawAnnotation = request.annotation();
         Object normalizedAnnotation = rawAnnotation;
@@ -153,14 +162,15 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
             storeStepAnnotation(targetItem, userRef, stepIndex, normalizedAnnotation);
         }
 
-        Map<Long, Map<Long, Map<Integer, Annotation>>> annotationLookupAfterSave = buildAnnotationLookup(projectId);
-        ProjectAnnotationUtils.ProjectProgressSnapshot progressAfterSave = ProjectAnnotationUtils
-                .buildProjectProgressSnapshot(participants, datasetItems, annotationLookupPayloadOnly(annotationLookupAfterSave));
+        Map<Long, Long> completedStepsAfterSave = buildCompletedStepCountMap(projectId);
+        ProjectAnnotationUtils.ProjectProgressSnapshot progressAfterSave = buildProjectProgressSnapshot(
+                participants, datasetItems, completedStepsAfterSave);
         int completionAfterSave = progressAfterSave.completionPercentageForUser(userInfo.userId());
 
         if (completionBeforeSave < 100 && completionAfterSave == 100) {
             notifyProjectOwnersOnAnnotationCompletion(participant.getProject(), participants, userInfo);
         }
+        projectMetricsCacheService.evictProjectReadCaches(projectId);
 
         return new SaveProjectAnnotationStepResponseDto(
                 projectId,
@@ -192,7 +202,7 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                         "Selected investigator is not assigned to this project"));
 
         List<ProjectParticipant> participants = projectParticipantRepository
-                .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId);
+                .findByProjectIdWithUserAndProject(projectId);
         List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
 
         Annotation annotation = annotationRepository
@@ -210,10 +220,12 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                     requesterParticipant.getProject().getResearchGroup().getId(),
                     requesterParticipant.getProject().getResearchGroup().getName());
         }
+        projectMetricsCacheService.evictProjectReadCaches(projectId);
 
-        Map<Long, Map<Long, Map<Integer, Annotation>>> annotationLookup = buildAnnotationLookup(projectId);
-        ProjectAnnotationUtils.ProjectProgressSnapshot progressSnapshot = ProjectAnnotationUtils
-                .buildProjectProgressSnapshot(participants, datasetItems, annotationLookupPayloadOnly(annotationLookup));
+        ProjectAnnotationUtils.ProjectProgressSnapshot progressSnapshot = buildProjectProgressSnapshot(
+                participants,
+                datasetItems,
+                buildCompletedStepCountMap(projectId));
 
         return new SaveProjectAnnotationStepResponseDto(
                 projectId,
@@ -227,7 +239,39 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
 
     @Override
     @Transactional(readOnly = true)
-    public ProjectAnnotationExportCsvDto exportAnnotationResultsCsv(String authenticatedEmail, Long projectId) {
+    public String getAnnotationResultsCsvFileName(String authenticatedEmail, Long projectId) {
+        return buildAnnotationExportFileName(findExportableProject(authenticatedEmail, projectId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void writeAnnotationResultsCsv(String authenticatedEmail, Long projectId, OutputStream outputStream)
+            throws IOException {
+        writeAnnotationResultsCsv(prepareAnnotationExport(authenticatedEmail, projectId), outputStream);
+    }
+
+    private CsvExportContext prepareAnnotationExport(String authenticatedEmail, Long projectId) {
+        Project project = findExportableProject(authenticatedEmail, projectId);
+        List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
+        Map<Long, Map<Long, Map<Integer, Annotation>>> annotationLookup = buildAnnotationLookup(projectId);
+        List<ProjectAnnotationUtils.AnnotatorExportColumn> annotatorColumns = buildAnnotatorExportColumns(projectId);
+
+        LinkedHashSet<String> csvColumns = collectCsvColumns(datasetItems);
+        List<ProjectAnnotationUtils.AnnotatorExportColumn> nonEmptyAnnotatorColumns = buildNonEmptyAnnotatorColumns(
+                datasetItems,
+                annotationLookup,
+                annotatorColumns);
+
+        return new CsvExportContext(
+                project,
+                datasetItems,
+                annotationLookup,
+                csvColumns,
+                nonEmptyAnnotatorColumns,
+                datasetItems.stream().anyMatch(ProjectDatasetUtils::isCsvDatasetItem));
+    }
+
+    private Project findExportableProject(String authenticatedEmail, Long projectId) {
         UserInfo requesterInfo = authApiService.findUserByEmail(authenticatedEmail);
 
         ProjectParticipant requesterParticipant = projectParticipantRepository
@@ -238,60 +282,52 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
             throw new AccessDeniedException("Only project creators can export annotation results");
         }
 
-        Project project = requesterParticipant.getProject();
-        List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
-        Map<Long, Map<Long, Map<Integer, Annotation>>> annotationLookup = buildAnnotationLookup(projectId);
+        return requesterParticipant.getProject();
+    }
 
-        List<ProjectAnnotationUtils.AnnotatorExportColumn> annotatorColumns = buildAnnotatorExportColumns(projectId);
-
+    private LinkedHashSet<String> collectCsvColumns(List<DatasetItem> datasetItems) {
         LinkedHashSet<String> csvColumns = new LinkedHashSet<>();
-        List<ProjectAnnotationUtils.ExportStepRow> exportRows = new ArrayList<>();
-
         for (DatasetItem datasetItem : datasetItems) {
             ProjectDatasetUtils.DatasetStepDefinition stepDefinition = ProjectDatasetUtils
                     .resolveStepDefinition(datasetItem);
-            int totalSteps = stepDefinition.totalSteps();
-
-            for (int stepIndex = 0; stepIndex < totalSteps; stepIndex++) {
+            for (int stepIndex = 0; stepIndex < stepDefinition.totalSteps(); stepIndex++) {
                 Map<String, String> rowValues = stepDefinition.rowValuesForStep(stepIndex);
                 if (rowValues != null && !rowValues.isEmpty()) {
                     csvColumns.addAll(rowValues.keySet());
                 }
-
-                Map<Long, Object> annotationsByUser = new LinkedHashMap<>();
-                for (ProjectAnnotationUtils.AnnotatorExportColumn annotatorColumn : annotatorColumns) {
-                    Annotation annotation = findStepAnnotation(annotationLookup, datasetItem.getId(),
-                            annotatorColumn.userId(),
-                            stepIndex);
-                    annotationsByUser.put(
-                            annotatorColumn.userId(),
-                            annotation == null ? null : annotation.getPayload());
-                }
-
-                exportRows.add(new ProjectAnnotationUtils.ExportStepRow(
-                        datasetItem,
-                        stepIndex,
-                        stepDefinition.previewForStep(stepIndex),
-                        rowValues == null ? Map.of() : rowValues,
-                        annotationsByUser));
             }
         }
+        return csvColumns;
+    }
 
-        boolean isCsvDataset = datasetItems.stream().anyMatch(ProjectDatasetUtils::isCsvDatasetItem);
-
-        // Determine which annotator columns have at least one non-empty value
+    private List<ProjectAnnotationUtils.AnnotatorExportColumn> buildNonEmptyAnnotatorColumns(
+            List<DatasetItem> datasetItems,
+            Map<Long, Map<Long, Map<Integer, Annotation>>> annotationLookup,
+            List<ProjectAnnotationUtils.AnnotatorExportColumn> annotatorColumns) {
         List<ProjectAnnotationUtils.AnnotatorExportColumn> nonEmptyAnnotatorColumns = new ArrayList<>();
         for (ProjectAnnotationUtils.AnnotatorExportColumn annotatorColumn : annotatorColumns) {
             boolean hasAnnotation = false;
             boolean hasComment = false;
 
-            for (ProjectAnnotationUtils.ExportStepRow row : exportRows) {
-                Object annotation = row.annotationsByUser().get(annotatorColumn.userId());
-                if (!hasAnnotation && !extractAnnotationValue(annotation).isEmpty()) {
-                    hasAnnotation = true;
-                }
-                if (!hasComment && !extractCommentValue(annotation).isEmpty()) {
-                    hasComment = true;
+            for (DatasetItem datasetItem : datasetItems) {
+                ProjectDatasetUtils.DatasetStepDefinition stepDefinition = ProjectDatasetUtils
+                        .resolveStepDefinition(datasetItem);
+                for (int stepIndex = 0; stepIndex < stepDefinition.totalSteps(); stepIndex++) {
+                    Annotation annotation = findStepAnnotation(
+                            annotationLookup,
+                            datasetItem.getId(),
+                            annotatorColumn.userId(),
+                            stepIndex);
+                    Object annotationPayload = annotation == null ? null : annotation.getPayload();
+                    if (!hasAnnotation && !extractAnnotationValue(annotationPayload).isEmpty()) {
+                        hasAnnotation = true;
+                    }
+                    if (!hasComment && !extractCommentValue(annotationPayload).isEmpty()) {
+                        hasComment = true;
+                    }
+                    if (hasAnnotation && hasComment) {
+                        break;
+                    }
                 }
                 if (hasAnnotation && hasComment) {
                     break;
@@ -307,15 +343,63 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                         hasComment));
             }
         }
+        return nonEmptyAnnotatorColumns;
+    }
 
+    private void writeAnnotationResultsCsv(CsvExportContext context, OutputStream outputStream) throws IOException {
+        Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
+        appendCsvLine(writer, buildExportHeaders(context));
+
+        for (DatasetItem datasetItem : context.datasetItems()) {
+            ProjectDatasetUtils.DatasetStepDefinition stepDefinition = ProjectDatasetUtils
+                    .resolveStepDefinition(datasetItem);
+            int totalSteps = stepDefinition.totalSteps();
+
+            for (int stepIndex = 0; stepIndex < totalSteps; stepIndex++) {
+                Map<String, String> rowValues = stepDefinition.rowValuesForStep(stepIndex);
+                List<String> values = new ArrayList<>();
+
+                if (!context.isCsvDataset()) {
+                    values.add(String.valueOf(datasetItem.getItemIndex()));
+                    values.add(ProjectDatasetUtils
+                            .valueAsString(datasetItem.getContent().get(ProjectConstants.CONTENT_KEY_FILE_NAME)));
+                }
+
+                for (String csvColumn : context.csvColumns()) {
+                    values.add(rowValues == null ? "" : rowValues.getOrDefault(csvColumn, ""));
+                }
+
+                for (ProjectAnnotationUtils.AnnotatorExportColumn annotatorColumn : context
+                        .nonEmptyAnnotatorColumns()) {
+                    Annotation annotation = findStepAnnotation(
+                            context.annotationLookup(),
+                            datasetItem.getId(),
+                            annotatorColumn.userId(),
+                            stepIndex);
+                    Object annotationPayload = annotation == null ? null : annotation.getPayload();
+                    if (annotatorColumn.hasAnnotation()) {
+                        values.add(extractAnnotationValue(annotationPayload));
+                    }
+                    if (annotatorColumn.hasComment()) {
+                        values.add(extractCommentValue(annotationPayload));
+                    }
+                }
+
+                appendCsvLine(writer, values);
+            }
+        }
+        writer.flush();
+    }
+
+    private List<String> buildExportHeaders(CsvExportContext context) {
         List<String> headers = new ArrayList<>();
-        if (!isCsvDataset) {
+        if (!context.isCsvDataset()) {
             headers.add("dataset_item_index");
             headers.add("source_name");
         }
-        headers.addAll(csvColumns);
+        headers.addAll(context.csvColumns());
 
-        for (ProjectAnnotationUtils.AnnotatorExportColumn annotatorColumn : nonEmptyAnnotatorColumns) {
+        for (ProjectAnnotationUtils.AnnotatorExportColumn annotatorColumn : context.nonEmptyAnnotatorColumns()) {
             if (annotatorColumn.hasAnnotation()) {
                 headers.add(annotatorColumn.annotationHeader());
             }
@@ -323,40 +407,7 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                 headers.add(annotatorColumn.commentHeader());
             }
         }
-
-        StringBuilder csvBuilder = new StringBuilder();
-        appendCsvLine(csvBuilder, headers);
-
-        for (ProjectAnnotationUtils.ExportStepRow row : exportRows) {
-            DatasetItem datasetItem = row.datasetItem();
-            List<String> values = new ArrayList<>();
-
-            if (!isCsvDataset) {
-                values.add(String.valueOf(datasetItem.getItemIndex()));
-                values.add(ProjectDatasetUtils
-                        .valueAsString(datasetItem.getContent().get(ProjectConstants.CONTENT_KEY_FILE_NAME)));
-            }
-
-            for (String csvColumn : csvColumns) {
-                values.add(row.rowValues().getOrDefault(csvColumn, ""));
-            }
-
-            for (ProjectAnnotationUtils.AnnotatorExportColumn annotatorColumn : nonEmptyAnnotatorColumns) {
-                Object annotation = row.annotationsByUser().get(annotatorColumn.userId());
-                if (annotatorColumn.hasAnnotation()) {
-                    values.add(extractAnnotationValue(annotation));
-                }
-                if (annotatorColumn.hasComment()) {
-                    values.add(extractCommentValue(annotation));
-                }
-            }
-
-            appendCsvLine(csvBuilder, values);
-        }
-
-        return new ProjectAnnotationExportCsvDto(
-                buildAnnotationExportFileName(project),
-                csvBuilder.toString().getBytes(StandardCharsets.UTF_8));
+        return headers;
     }
 
     private ProjectAnnotationWorkspaceDto buildAnnotationWorkspace(
@@ -364,12 +415,13 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
         Long projectId = project.getId();
 
         List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
-        List<ProjectParticipant> participants = projectParticipantRepository
-                .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId);
-        Map<Long, Map<Long, Map<Integer, Annotation>>> annotationLookup = buildAnnotationLookup(projectId);
-
-        ProjectAnnotationUtils.ProjectProgressSnapshot progressSnapshot = ProjectAnnotationUtils
-                .buildProjectProgressSnapshot(participants, datasetItems, annotationLookupPayloadOnly(annotationLookup));
+        List<ProjectParticipant> participants = projectParticipantRepository.findByProjectIdWithUserAndProject(
+                projectId);
+        Map<Long, Map<Integer, Annotation>> annotationLookup = buildUserAnnotationLookup(projectId, annotationUserId);
+        ProjectAnnotationUtils.ProjectProgressSnapshot progressSnapshot = buildProjectProgressSnapshot(
+                participants,
+                datasetItems,
+                buildCompletedStepCountMap(projectId));
 
         int sanitizedOffset = Math.max(offset, 0);
         int sanitizedLimit = sanitizeAnnotationStepsLimit(limit);
@@ -386,9 +438,8 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                 progressSnapshot.totalSteps(),
                 progressSnapshot.completedStepsForUser(annotationUserId),
                 progressSnapshot.completionPercentageForUser(annotationUserId),
-                findFirstPendingStepIndex(datasetItems, annotationUserId, annotationLookup),
-                buildAnnotationSteps(datasetItems, annotationUserId, sanitizedOffset, sanitizedLimit,
-                        annotationLookup));
+                findFirstPendingStepIndex(datasetItems, annotationLookup),
+                buildAnnotationSteps(datasetItems, sanitizedOffset, sanitizedLimit, annotationLookup));
     }
 
     private int sanitizeAnnotationStepsLimit(int limit) {
@@ -399,8 +450,8 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
     }
 
     private List<ProjectAnnotationStepDto> buildAnnotationSteps(
-            List<DatasetItem> datasetItems, Long userId, int offset, int limit,
-            Map<Long, Map<Long, Map<Integer, Annotation>>> annotationLookup) {
+            List<DatasetItem> datasetItems, int offset, int limit,
+            Map<Long, Map<Integer, Annotation>> annotationLookup) {
         List<ProjectAnnotationStepDto> steps = new ArrayList<>();
         long absoluteIndex = 0;
 
@@ -414,7 +465,7 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                 if (absoluteIndex++ < offset) continue;
                 if (steps.size() >= limit) return steps;
 
-                Annotation annotation = findStepAnnotation(annotationLookup, datasetItem.getId(), userId, stepIndex);
+                Annotation annotation = findStepAnnotation(annotationLookup, datasetItem.getId(), stepIndex);
                 Object payload = extractNormalizedPayload(annotation);
 
                 steps.add(new ProjectAnnotationStepDto(
@@ -433,15 +484,15 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
         return steps;
     }
 
-    private int findFirstPendingStepIndex(List<DatasetItem> datasetItems, Long userId,
-            Map<Long, Map<Long, Map<Integer, Annotation>>> annotationLookup) {
+    private int findFirstPendingStepIndex(List<DatasetItem> datasetItems,
+            Map<Long, Map<Integer, Annotation>> annotationLookup) {
         int globalStepIndex = 1;
         for (DatasetItem datasetItem : datasetItems) {
             ProjectDatasetUtils.DatasetStepDefinition stepDefinition = ProjectDatasetUtils
                     .resolveStepDefinition(datasetItem);
             int totalStepsForItem = stepDefinition.totalSteps();
             for (int stepIndex = 0; stepIndex < totalStepsForItem; stepIndex++) {
-                Annotation annotation = findStepAnnotation(annotationLookup, datasetItem.getId(), userId, stepIndex);
+                Annotation annotation = findStepAnnotation(annotationLookup, datasetItem.getId(), stepIndex);
                 Object payload = extractNormalizedPayload(annotation);
                 if (!ProjectAnnotationUtils.hasAnnotationPayload(payload)) {
                     return globalStepIndex;
@@ -452,8 +503,74 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
         return globalStepIndex > 1 ? 1 : 0;
     }
 
+    private ProjectAnnotationUtils.ProjectProgressSnapshot buildProjectProgressSnapshot(
+            List<ProjectParticipant> participants,
+            List<DatasetItem> datasetItems,
+            Map<Long, Long> completedStepCounts) {
+        long totalSteps = countTotalSteps(datasetItems);
+        Map<Long, Long> completedStepsByUser = new LinkedHashMap<>();
+        Map<Long, Integer> completionPercentageByUser = new LinkedHashMap<>();
+
+        for (ProjectParticipant participant : participants) {
+            if (participant.getUser() == null || participant.getUser().getId() == null) {
+                continue;
+            }
+            Long userId = participant.getUser().getId();
+            long completedSteps = Math.max(0L, Math.min(
+                    completedStepCounts.getOrDefault(userId, 0L),
+                    totalSteps));
+            completedStepsByUser.put(userId, completedSteps);
+            completionPercentageByUser.put(userId, ProjectAnnotationUtils.toPercentage(completedSteps, totalSteps));
+        }
+
+        long totalCompletedSteps = completedStepsByUser.values().stream()
+                .mapToLong(Long::longValue)
+                .sum();
+        long totalPossibleSteps = totalSteps * completedStepsByUser.size();
+
+        return new ProjectAnnotationUtils.ProjectProgressSnapshot(
+                totalSteps,
+                ProjectAnnotationUtils.toPercentage(totalCompletedSteps, totalPossibleSteps),
+                completedStepsByUser,
+                completionPercentageByUser);
+    }
+
+    private long countTotalSteps(List<DatasetItem> datasetItems) {
+        long totalSteps = 0L;
+        for (DatasetItem datasetItem : datasetItems) {
+            totalSteps += ProjectDatasetUtils.resolveStepDefinition(datasetItem).totalSteps();
+        }
+        return totalSteps;
+    }
+
+    private Map<Long, Long> buildCompletedStepCountMap(Long projectId) {
+        List<UserAnnotationCountDto> counts = annotationRepository.countCompletedStepsByUser(projectId);
+        Map<Long, Long> result = new LinkedHashMap<>();
+        for (UserAnnotationCountDto count : counts) {
+            if (count.userId() != null) {
+                result.put(count.userId(), count.completedSteps());
+            }
+        }
+        return result;
+    }
+
+    private Map<Long, Map<Integer, Annotation>> buildUserAnnotationLookup(Long projectId, Long userId) {
+        List<Annotation> annotations = annotationRepository.findByProjectIdAndUserIdWithDatasetItem(projectId, userId);
+        Map<Long, Map<Integer, Annotation>> annotationLookup = new LinkedHashMap<>();
+        for (Annotation annotation : annotations) {
+            if (annotation.getDatasetItem() == null || annotation.getDatasetItem().getId() == null
+                    || annotation.getStepIndex() == null) {
+                continue;
+            }
+            annotationLookup
+                    .computeIfAbsent(annotation.getDatasetItem().getId(), ignored -> new LinkedHashMap<>())
+                    .put(annotation.getStepIndex(), annotation);
+        }
+        return annotationLookup;
+    }
+
     private Map<Long, Map<Long, Map<Integer, Annotation>>> buildAnnotationLookup(Long projectId) {
-        List<Annotation> annotations = annotationRepository.findByDatasetItemProjectId(projectId);
+        List<Annotation> annotations = annotationRepository.findByProjectIdWithDatasetItemAndUser(projectId);
         Map<Long, Map<Long, Map<Integer, Annotation>>> annotationLookup = new LinkedHashMap<>();
         for (Annotation annotation : annotations) {
             if (annotation.getDatasetItem() == null || annotation.getUser() == null) continue;
@@ -467,22 +584,6 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                     .put(stepIndex, annotation);
         }
         return annotationLookup;
-    }
-
-    private Map<Long, Map<Long, Map<Integer, Object>>> annotationLookupPayloadOnly(
-            Map<Long, Map<Long, Map<Integer, Annotation>>> annotationLookup) {
-        Map<Long, Map<Long, Map<Integer, Object>>> payloadLookup = new LinkedHashMap<>();
-        annotationLookup.forEach((datasetItemId, userMap) -> {
-            userMap.forEach((userId, stepMap) -> {
-                stepMap.forEach((stepIndex, annotation) -> {
-                    payloadLookup
-                            .computeIfAbsent(datasetItemId, ignored -> new LinkedHashMap<>())
-                            .computeIfAbsent(userId, ignored -> new LinkedHashMap<>())
-                            .put(stepIndex, annotation.getPayload());
-                });
-            });
-        });
-        return payloadLookup;
     }
 
     private Object normalizeAnnotationPayload(Object annotationPayload) {
@@ -528,6 +629,13 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
         annotationRepository.deleteByDatasetItemIdAndUserIdAndStepIndex(datasetItem.getId(), user.getId(), stepIndex);
     }
 
+    private Annotation findStepAnnotation(Map<Long, Map<Integer, Annotation>> annotationLookup,
+            Long datasetItemId, int stepIndex) {
+        Map<Integer, Annotation> stepsByDatasetItem = annotationLookup.get(datasetItemId);
+        if (stepsByDatasetItem == null) return null;
+        return stepsByDatasetItem.get(stepIndex);
+    }
+
     private Annotation findStepAnnotation(Map<Long, Map<Long, Map<Integer, Annotation>>> annotationLookup,
             Long datasetItemId, Long userId, int stepIndex) {
         Map<Long, Map<Integer, Annotation>> userAnnotationsByDataset = annotationLookup.get(datasetItemId);
@@ -562,12 +670,12 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
         }
     }
 
-    private void appendCsvLine(StringBuilder csvBuilder, List<String> values) {
+    private void appendCsvLine(Writer writer, List<String> values) throws IOException {
         for (int index = 0; index < values.size(); index++) {
-            if (index > 0) csvBuilder.append(',');
-            csvBuilder.append(escapeCsvValue(values.get(index)));
+            if (index > 0) writer.append(',');
+            writer.append(escapeCsvValue(values.get(index)));
         }
-        csvBuilder.append('\n');
+        writer.append('\n');
     }
 
     private String escapeCsvValue(String value) {
@@ -589,8 +697,7 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
 
     private List<ProjectAnnotationUtils.AnnotatorExportColumn> buildAnnotatorExportColumns(Long projectId) {
         Map<Long, String> annotatorIdByUserId = new LinkedHashMap<>();
-        for (ProjectParticipant pp : projectParticipantRepository
-                .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId)) {
+        for (ProjectParticipant pp : projectParticipantRepository.findByProjectIdWithUserAndProject(projectId)) {
             User annotator = pp.getUser();
             if (annotator == null || annotator.getId() == null) continue;
             annotatorIdByUserId.putIfAbsent(annotator.getId(), normalizeExportAnnotatorId(annotator));
@@ -681,5 +788,14 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
         String n = s.trim().toLowerCase();
         if (n.equals("true") || n.equals("false")) return n;
         return null;
+    }
+
+    private record CsvExportContext(
+            Project project,
+            List<DatasetItem> datasetItems,
+            Map<Long, Map<Long, Map<Integer, Annotation>>> annotationLookup,
+            LinkedHashSet<String> csvColumns,
+            List<ProjectAnnotationUtils.AnnotatorExportColumn> nonEmptyAnnotatorColumns,
+            boolean isCsvDataset) {
     }
 }       

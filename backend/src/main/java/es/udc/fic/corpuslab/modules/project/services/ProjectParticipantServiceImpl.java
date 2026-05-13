@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -44,9 +45,11 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
     private final ResearchGroupApiService researchGroupApiService;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final ProjectMetricsCacheService projectMetricsCacheService;
     private final EntityManager entityManager;
     private final String frontendBaseUrl;
 
+    @Autowired
     public ProjectParticipantServiceImpl(
             ProjectParticipantRepository projectParticipantRepository,
             ProjectRepository projectRepository,
@@ -55,6 +58,7 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
             ResearchGroupApiService researchGroupApiService,
             NotificationService notificationService,
             EmailService emailService,
+            ProjectMetricsCacheService projectMetricsCacheService,
             EntityManager entityManager,
             @Value("${app.frontend.base-url:http://localhost:5173}") String frontendBaseUrl) {
         this.projectParticipantRepository = projectParticipantRepository;
@@ -64,6 +68,7 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
         this.researchGroupApiService = researchGroupApiService;
         this.notificationService = notificationService;
         this.emailService = emailService;
+        this.projectMetricsCacheService = projectMetricsCacheService;
         this.entityManager = entityManager;
         this.frontendBaseUrl = frontendBaseUrl;
     }
@@ -233,6 +238,7 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
                 .collect(Collectors.toSet());
 
         if (newParticipantIds.isEmpty()) {
+            projectMetricsCacheService.evictProjectReadCaches(projectId);
             return;
         }
 
@@ -273,6 +279,7 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
                     assignerFullName,
                     projectUrl);
         }
+        projectMetricsCacheService.evictProjectReadCaches(projectId);
     }
 
     private List<NormalizedParticipantAssignment> normalizeFlatAssignments(List<Long> participantUserIds) {
@@ -327,6 +334,7 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
                 if (participant.getRole() == ProjectParticipantRole.PARTICIPANT) {
                     removeStoredAnnotationsForUsers(project.getId(), Set.of(userId));
                     projectParticipantRepository.delete(participant);
+                    projectMetricsCacheService.evictProjectReadCaches(project.getId());
                 }
             }
         }

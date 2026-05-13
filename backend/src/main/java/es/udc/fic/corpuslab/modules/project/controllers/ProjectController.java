@@ -82,6 +82,15 @@ public class ProjectController {
         projectService.deleteProject(authentication.getName(), groupId, projectId);
     }
 
+    @DeleteMapping("/research-groups/{groupId}/projects/{projectId}/wizard-cleanup")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void cleanupIncompleteProject(
+            Authentication authentication,
+            @PathVariable Long groupId,
+            @PathVariable Long projectId) {
+        projectService.cleanupIncompleteProject(authentication.getName(), groupId, projectId);
+    }
+
     @PutMapping("/projects/{projectId}/archive")
     @ResponseStatus(HttpStatus.OK)
     public ProjectDetailDto archiveProject(

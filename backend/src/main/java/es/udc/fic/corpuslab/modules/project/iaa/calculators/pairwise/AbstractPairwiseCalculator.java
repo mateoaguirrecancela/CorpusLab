@@ -249,7 +249,7 @@ public abstract class AbstractPairwiseCalculator<K, V, T extends PairwiseAnnotat
             PairwiseAnnotationPair<K, V> pair,
             PairwiseMetricResult pairResult,
             boolean calculable,
-            String fallbackMessage) {
+            String nonCalculableMessage) {
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("leftAnnotatorId", pair.leftAnnotatorId());
         details.put("rightAnnotatorId", pair.rightAnnotatorId());
@@ -259,7 +259,7 @@ public abstract class AbstractPairwiseCalculator<K, V, T extends PairwiseAnnotat
             details.put("value", pairResult.value());
         }
         if (!calculable) {
-            details.put("message", fallbackMessage == null ? "" : fallbackMessage);
+            details.put("message", nonCalculableMessage == null ? "" : nonCalculableMessage);
         }
         if (pairResult != null && !pairResult.details().isEmpty()) {
             details.put("details", pairResult.details());

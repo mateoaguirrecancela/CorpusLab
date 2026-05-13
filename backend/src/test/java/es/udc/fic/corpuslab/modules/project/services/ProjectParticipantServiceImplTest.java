@@ -48,6 +48,7 @@ class ProjectParticipantServiceImplTest {
     @Mock private AnnotationRepository annotationRepository;
     @Mock private NotificationService notificationService;
     @Mock private EmailService emailService;
+    @Mock private ProjectMetricsCacheService projectMetricsCacheService;
     @Mock private EntityManager entityManager;
 
     private ProjectParticipantService projectParticipantService;
@@ -57,7 +58,7 @@ class ProjectParticipantServiceImplTest {
         projectParticipantService = new ProjectParticipantServiceImpl(
                 projectParticipantRepository, projectRepository,
                 annotationRepository, authApiService, researchGroupApiService,
-                notificationService, emailService, entityManager,
+                notificationService, emailService, projectMetricsCacheService, entityManager,
                 "http://localhost:5173");
     }
 

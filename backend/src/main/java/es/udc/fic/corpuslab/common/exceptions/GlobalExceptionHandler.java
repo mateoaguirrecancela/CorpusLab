@@ -1,6 +1,7 @@
 package es.udc.fic.corpuslab.common.exceptions;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import es.udc.fic.corpuslab.modules.auth.exceptions.EmailAlreadyRegisteredException;
+import es.udc.fic.corpuslab.modules.auth.exceptions.AuthRateLimitExceededException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.InvalidCredentialsException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.OAuthLoginCodeNotFoundException;
@@ -78,6 +80,25 @@ public class GlobalExceptionHandler {
         @ExceptionHandler(InvalidCredentialsException.class)
         public ResponseEntity<ApiErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex) {
                 return buildErrorResponse(HttpStatus.UNAUTHORIZED, "auth.error.invalid.credentials", null);
+        }
+
+        @ExceptionHandler(AuthRateLimitExceededException.class)
+        public ResponseEntity<ApiErrorResponse> handleAuthRateLimitExceeded(AuthRateLimitExceededException ex) {
+                HttpStatus status = HttpStatus.TOO_MANY_REQUESTS;
+                String translatedMessage = messageSource.getMessage(
+                                "auth.error.rate.limit.exceeded",
+                                null,
+                                LocaleContextHolder.getLocale());
+                ApiErrorResponse response = new ApiErrorResponse(
+                                Instant.now(),
+                                status.value(),
+                                status.getReasonPhrase(),
+                                translatedMessage,
+                                null);
+
+                return ResponseEntity.status(status)
+                                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+                                .body(response);
         }
 
         @ExceptionHandler(PasswordResetEmailDeliveryException.class)

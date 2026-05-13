@@ -4,8 +4,10 @@ import java.time.Instant;
 import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import es.udc.fic.corpuslab.modules.auth.api.AuthApiService;
 import es.udc.fic.corpuslab.modules.auth.api.dtos.UserInfo;
@@ -27,14 +29,25 @@ public class NotificationServiceImpl implements NotificationService {
     private final AuthApiService authApiService;
     private final NotificationRepository notificationRepository;
     private final EntityManager entityManager;
+    private final NotificationEvents notificationEvents;
 
+    @Autowired
     public NotificationServiceImpl(
             AuthApiService authApiService,
             NotificationRepository notificationRepository,
-            EntityManager entityManager) {
+            EntityManager entityManager,
+            NotificationEvents notificationEvents) {
         this.authApiService = authApiService;
         this.notificationRepository = notificationRepository;
         this.entityManager = entityManager;
+        this.notificationEvents = notificationEvents;
+    }
+
+    NotificationServiceImpl(
+            AuthApiService authApiService,
+            NotificationRepository notificationRepository,
+            EntityManager entityManager) {
+        this(authApiService, notificationRepository, entityManager, new NotificationEvents());
     }
 
     @Override
@@ -44,14 +57,18 @@ public class NotificationServiceImpl implements NotificationService {
         int sanitizedLimit = sanitizeLimit(limit);
 
         List<NotificationDto> notifications = notificationRepository
-                .findByRecipientUserIdOrderByCreatedAtDesc(recipientInfo.userId(), PageRequest.of(0, sanitizedLimit))
-                .stream()
-                .map(this::toDto)
-                .toList();
+                .findDtosByRecipientUserIdOrderByCreatedAtDesc(recipientInfo.userId(), PageRequest.of(0, sanitizedLimit));
 
         long unreadCount = notificationRepository.countByRecipientUserIdAndReadAtIsNull(recipientInfo.userId());
 
         return new NotificationListResponseDto(notifications, unreadCount);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SseEmitter openNotificationStream(String authenticatedEmail) {
+        UserInfo recipientInfo = authApiService.findUserByEmail(authenticatedEmail);
+        return notificationEvents.open(recipientInfo.userId());
     }
 
     @Override
@@ -66,6 +83,7 @@ public class NotificationServiceImpl implements NotificationService {
         if (notification.getReadAt() == null) {
             notification.setReadAt(Instant.now());
             notification = notificationRepository.save(notification);
+            notificationEvents.publish(recipientInfo.userId());
         }
 
         return toDto(notification);
@@ -76,6 +94,7 @@ public class NotificationServiceImpl implements NotificationService {
     public void markAllNotificationsAsRead(String authenticatedEmail) {
         UserInfo recipientInfo = authApiService.findUserByEmail(authenticatedEmail);
         notificationRepository.markAllAsReadByRecipientUserId(recipientInfo.userId(), Instant.now());
+        notificationEvents.publish(recipientInfo.userId());
     }
 
     @Override
@@ -95,6 +114,7 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setInvitationId(invitationId);
 
         notificationRepository.save(notification);
+        notificationEvents.publish(recipientUserId);
     }
 
     @Override
@@ -112,6 +132,7 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setResearchGroupName(researchGroupName);
 
         notificationRepository.save(notification);
+        notificationEvents.publish(recipientUserId);
     }
 
     @Override
@@ -133,6 +154,7 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setResearchGroupName(researchGroupName);
 
         notificationRepository.save(notification);
+        notificationEvents.publish(recipientUserId);
     }
 
     @Override
@@ -162,6 +184,7 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setResearchGroupName(researchGroupName);
 
         notificationRepository.save(notification);
+        notificationEvents.publish(recipientUserId);
     }
 
     @Override
@@ -183,6 +206,7 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setResearchGroupName(researchGroupName);
 
         notificationRepository.save(notification);
+        notificationEvents.publish(recipientUserId);
     }
 
     @Override

@@ -296,6 +296,7 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
         item1.setItemIndex(0);
         item1.setContent(Map.of(
                 "text", "Alice works at OpenAI",
+                "stepCount", 1,
                 "completedAnnotations", 1));
 
         DatasetItem item2 = new DatasetItem();
@@ -303,6 +304,7 @@ class ProjectQueryIntegrationTest extends AbstractIntegrationTest {
         item2.setItemIndex(1);
         item2.setContent(Map.of(
                 "text", "Bob moved to Paris",
+                "stepCount", 1,
                 "completedAnnotations", 2));
 
         datasetItemRepository.save(item1);

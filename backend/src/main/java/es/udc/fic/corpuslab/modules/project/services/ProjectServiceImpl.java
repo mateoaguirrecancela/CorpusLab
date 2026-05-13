@@ -1,12 +1,17 @@
 package es.udc.fic.corpuslab.modules.project.services;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -20,6 +25,7 @@ import es.udc.fic.corpuslab.modules.auth.api.dtos.UserInfo;
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
 import es.udc.fic.corpuslab.modules.project.dtos.CreateProjectRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.DatasetItemDto;
+import es.udc.fic.corpuslab.modules.project.dtos.DatasetItemSummaryProjection;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAssignedSummaryDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectDetailDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectDetailParticipantDto;
@@ -28,7 +34,7 @@ import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSetupResponseDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectSummaryDto;
 import es.udc.fic.corpuslab.modules.project.dtos.UpdateProjectRequestDto;
-import es.udc.fic.corpuslab.modules.project.entities.Annotation;
+import es.udc.fic.corpuslab.modules.project.dtos.UserAnnotationCountDto;
 import es.udc.fic.corpuslab.modules.project.entities.DatasetItem;
 import es.udc.fic.corpuslab.modules.project.entities.Guideline;
 import es.udc.fic.corpuslab.modules.project.entities.Label;
@@ -54,7 +60,6 @@ import es.udc.fic.corpuslab.modules.project.utils.ProjectConstants;
 import es.udc.fic.corpuslab.modules.project.utils.ProjectDatasetUtils;
 import es.udc.fic.corpuslab.modules.project.utils.ProjectAnnotationUtils;
 import es.udc.fic.corpuslab.modules.project.utils.ProjectCommonUtils;
-import java.util.LinkedHashMap;
 import jakarta.persistence.EntityManager;
 
 @Service
@@ -62,6 +67,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     private static final int DEFAULT_PROJECT_PAGE_SIZE = 12;
     private static final int MAX_PROJECT_PAGE_SIZE = 50;
+    private static final byte[] PDF_MAGIC = "%PDF-".getBytes(StandardCharsets.US_ASCII);
 
     private final ProjectRepository projectRepository;
     private final ProjectParticipantRepository projectParticipantRepository;
@@ -71,8 +77,12 @@ public class ProjectServiceImpl implements ProjectService {
     private final ResearchGroupApiService researchGroupApiService;
     private final NotificationService notificationService;
     private final ProjectParticipantService projectParticipantService;
+    private final ProjectMetricsCacheService projectMetricsCacheService;
     private final EntityManager entityManager;
+    private final long maxGuidelinePdfSizeBytes;
+    private final Duration wizardCleanupWindow;
 
+    @Autowired
     public ProjectServiceImpl(
             ProjectRepository projectRepository,
             ProjectParticipantRepository projectParticipantRepository,
@@ -82,7 +92,10 @@ public class ProjectServiceImpl implements ProjectService {
             ResearchGroupApiService researchGroupApiService,
             NotificationService notificationService,
             ProjectParticipantService projectParticipantService,
-            EntityManager entityManager) {
+            ProjectMetricsCacheService projectMetricsCacheService,
+            EntityManager entityManager,
+            @Value("${app.guideline.max-pdf-size-bytes:10485760}") long maxGuidelinePdfSizeBytes,
+            @Value("${app.project.wizard-cleanup-window-minutes:30}") long wizardCleanupWindowMinutes) {
         this.projectRepository = projectRepository;
         this.projectParticipantRepository = projectParticipantRepository;
         this.datasetItemRepository = datasetItemRepository;
@@ -91,7 +104,10 @@ public class ProjectServiceImpl implements ProjectService {
         this.researchGroupApiService = researchGroupApiService;
         this.notificationService = notificationService;
         this.projectParticipantService = projectParticipantService;
+        this.projectMetricsCacheService = projectMetricsCacheService;
         this.entityManager = entityManager;
+        this.maxGuidelinePdfSizeBytes = Math.max(1L, maxGuidelinePdfSizeBytes);
+        this.wizardCleanupWindow = Duration.ofMinutes(Math.max(1L, wizardCleanupWindowMinutes));
     }
 
     @Override
@@ -157,16 +173,17 @@ public class ProjectServiceImpl implements ProjectService {
         String guidelineText = guideline != null ? guideline.getContent() : null;
         String guidelinePdfBase64 = guideline != null ? guideline.getFileUrl() : null;
 
-        List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
-        List<DatasetItemDto> datasetItemDtos = datasetItems.stream().map(this::toDatasetItemDto).toList();
-        List<ProjectParticipant> projectParticipants = projectParticipantRepository
-                .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId);
-        Map<Long, Map<Long, Map<Integer, Object>>> annotationLookup = buildAnnotationLookup(projectId);
-        ProjectAnnotationUtils.ProjectProgressSnapshot progressSnapshot = ProjectAnnotationUtils
-                .buildProjectProgressSnapshot(
-                        projectParticipants,
-                        datasetItems,
-                        annotationLookup);
+        List<DatasetItemSummaryProjection> datasetItemSummaries = datasetItemRepository
+                .findSummariesByProjectId(projectId);
+        List<DatasetItemDto> datasetItemDtos = datasetItemSummaries.stream()
+                .map(this::toDatasetItemDto)
+                .toList();
+        List<ProjectParticipant> projectParticipants = projectParticipantRepository.findByProjectIdWithUserAndProject(
+                projectId);
+        ProjectAnnotationUtils.ProjectProgressSnapshot progressSnapshot = buildProjectProgressSnapshot(
+                projectId,
+                projectParticipants,
+                datasetItemSummaries);
 
         List<ProjectDetailParticipantDto> participants = projectParticipants
                 .stream()
@@ -190,7 +207,7 @@ public class ProjectServiceImpl implements ProjectService {
                 guidelineText,
                 guidelinePdfBase64,
                 project.getAnnotationTargetColumn(),
-                datasetItems.size(),
+                datasetItemSummaries.size(),
                 project.isArchived(),
                 project.getCreatedAt());
     }
@@ -303,6 +320,33 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional
+    public void cleanupIncompleteProject(String authenticatedEmail, Long researchGroupId, Long projectId) {
+        UserInfo requesterInfo = authApiService.findUserByEmail(authenticatedEmail);
+
+        Project project = projectRepository.findByIdAndResearchGroupId(projectId, researchGroupId)
+                .orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        ProjectParticipant requesterParticipant = projectParticipantRepository
+                .findByProjectIdAndUserId(projectId, requesterInfo.userId())
+                .orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        if (requesterParticipant.getRole() != ProjectParticipantRole.CREATOR) {
+            throw new AccessDeniedException("Only project creators can cleanup project creation failures");
+        }
+
+        if (!isEligibleForWizardCleanup(project)) {
+            throw new AccessDeniedException("Project is not eligible for wizard cleanup");
+        }
+
+        notificationService.deleteNotificationsByProjectId(projectId);
+        annotationRepository.deleteByDatasetItemProjectId(projectId);
+        datasetItemRepository.deleteByProjectId(projectId);
+        projectParticipantRepository.deleteByProjectId(projectId);
+        projectRepository.delete(project);
+    }
+
+    @Override
+    @Transactional
     public ProjectDetailDto archiveProject(String authenticatedEmail, Long projectId) {
         return updateProjectArchiveState(authenticatedEmail, projectId, true);
     }
@@ -333,12 +377,14 @@ public class ProjectServiceImpl implements ProjectService {
         List<ProjectSetupLabelDto> normalizedLabels = normalizeLabels(request.labels());
         String normalizedAnnotationTargetColumn = StringUtils.trimToNull(request.annotationTargetColumn());
 
+        String normalizedGuidelinePdfBase64 = normalizeAndValidateGuidelinePdfBase64(request.guidelinePdfBase64());
+
         validateSetupRequest(
                 project.getId(),
                 request.projectType(),
                 normalizedLabels,
                 request.guidelineText(),
-                request.guidelinePdfBase64(),
+                normalizedGuidelinePdfBase64,
                 normalizedAnnotationTargetColumn);
 
         if (request.projectType() == ProjectType.NER) {
@@ -367,11 +413,12 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         String guidelineText = StringUtils.trimToNull(request.guidelineText());
-        String guidelinePdfBase64 = StringUtils.trimToNull(request.guidelinePdfBase64());
+        String guidelinePdfBase64 = normalizedGuidelinePdfBase64;
         guideline.setContent(guidelineText);
         guideline.setFileUrl(guidelinePdfBase64);
 
         projectRepository.save(project);
+        projectMetricsCacheService.evictProjectReadCaches(projectId);
 
         return new ProjectSetupResponseDto(
                 project.getId(),
@@ -408,6 +455,65 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         return normalizedLabels;
+    }
+
+    private boolean isEligibleForWizardCleanup(Project project) {
+        Long projectId = project.getId();
+        Instant createdAt = project.getCreatedAt();
+        if (createdAt == null || createdAt.isBefore(Instant.now().minus(wizardCleanupWindow))) {
+            return false;
+        }
+
+        if (annotationRepository.countByDatasetItemProjectId(projectId) > 0) {
+            return false;
+        }
+
+        return projectParticipantRepository.countByProjectIdAndRole(
+                projectId,
+                ProjectParticipantRole.PARTICIPANT) == 0;
+    }
+
+    private String normalizeAndValidateGuidelinePdfBase64(String rawGuidelinePdfBase64) {
+        String normalizedInput = StringUtils.trimToNull(rawGuidelinePdfBase64);
+        if (normalizedInput == null) {
+            return null;
+        }
+
+        String normalizedBase64 = ProjectDatasetUtils.normalizeStoredBase64(normalizedInput);
+        long maxBase64Length = ((maxGuidelinePdfSizeBytes + 2L) / 3L) * 4L + 128L;
+        if (normalizedBase64.length() > maxBase64Length) {
+            throw new InvalidProjectSetupException("Guideline PDF exceeds the maximum allowed size");
+        }
+
+        byte[] pdfBytes;
+        try {
+            pdfBytes = ProjectDatasetUtils.decodeStoredBase64(normalizedBase64);
+        } catch (IllegalArgumentException ex) {
+            throw new InvalidProjectSetupException("Guideline PDF content is not valid Base64");
+        }
+
+        if (pdfBytes.length == 0 || pdfBytes.length > maxGuidelinePdfSizeBytes) {
+            throw new InvalidProjectSetupException("Guideline PDF exceeds the maximum allowed size");
+        }
+
+        if (!hasPdfMagicHeader(pdfBytes)) {
+            throw new InvalidProjectSetupException("Guideline file must be a valid PDF");
+        }
+
+        return normalizedBase64;
+    }
+
+    private boolean hasPdfMagicHeader(byte[] bytes) {
+        if (bytes.length < PDF_MAGIC.length) {
+            return false;
+        }
+
+        for (int index = 0; index < PDF_MAGIC.length; index++) {
+            if (bytes[index] != PDF_MAGIC[index]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void validateSetupRequest(
@@ -521,32 +627,65 @@ public class ProjectServiceImpl implements ProjectService {
         return extension.equals("txt") || extension.equals("json") || extension.equals("csv");
     }
 
-    private DatasetItemDto toDatasetItemDto(DatasetItem item) {
-        String fileName = ProjectDatasetUtils
-                .valueAsString(item.getContent().get(ProjectConstants.CONTENT_KEY_FILE_NAME));
-        String mimeType = ProjectDatasetUtils
-                .valueAsString(item.getContent().get(ProjectConstants.CONTENT_KEY_MIME_TYPE));
-        long sizeBytes = valueAsLong(item.getContent().get(ProjectConstants.CONTENT_KEY_SIZE_BYTES));
-
+    private DatasetItemDto toDatasetItemDto(DatasetItemSummaryProjection item) {
         return new DatasetItemDto(
                 item.getId(),
                 item.getItemIndex(),
-                fileName,
-                mimeType,
-                sizeBytes,
+                item.getFileName(),
+                item.getMimeType(),
+                item.getSizeBytes() == null ? 0L : item.getSizeBytes(),
                 item.getCreatedAt());
     }
 
-    private long valueAsLong(Object value) {
-        if (value instanceof Number number) {
-            return number.longValue();
+    private ProjectAnnotationUtils.ProjectProgressSnapshot buildProjectProgressSnapshot(
+            Long projectId,
+            List<ProjectParticipant> participants,
+            List<DatasetItemSummaryProjection> datasetItemSummaries) {
+        long totalSteps = resolveTotalSteps(datasetItemSummaries);
+        Map<Long, Long> completedStepCounts = buildCompletedStepCountMap(projectId);
+        Map<Long, Long> completedStepsByUser = new LinkedHashMap<>();
+        Map<Long, Integer> completionPercentageByUser = new LinkedHashMap<>();
+
+        for (ProjectParticipant participant : participants) {
+            if (participant.getUser() == null || participant.getUser().getId() == null) {
+                continue;
+            }
+            Long userId = participant.getUser().getId();
+            long completedSteps = Math.max(0L, Math.min(
+                    completedStepCounts.getOrDefault(userId, 0L),
+                    totalSteps));
+            completedStepsByUser.put(userId, completedSteps);
+            completionPercentageByUser.put(userId, ProjectAnnotationUtils.toPercentage(completedSteps, totalSteps));
         }
 
-        try {
-            return value == null ? 0L : Long.parseLong(String.valueOf(value));
-        } catch (NumberFormatException ex) {
-            return 0L;
+        long totalCompletedSteps = completedStepsByUser.values().stream()
+                .mapToLong(Long::longValue)
+                .sum();
+        long totalPossibleSteps = totalSteps * completedStepsByUser.size();
+
+        return new ProjectAnnotationUtils.ProjectProgressSnapshot(
+                totalSteps,
+                ProjectAnnotationUtils.toPercentage(totalCompletedSteps, totalPossibleSteps),
+                completedStepsByUser,
+                completionPercentageByUser);
+    }
+
+    private long resolveTotalSteps(List<DatasetItemSummaryProjection> datasetItemSummaries) {
+        return datasetItemSummaries.stream()
+                .map(DatasetItemSummaryProjection::getStepCount)
+                .mapToLong(Long::longValue)
+                .sum();
+    }
+
+    private Map<Long, Long> buildCompletedStepCountMap(Long projectId) {
+        List<UserAnnotationCountDto> counts = annotationRepository.countCompletedStepsByUser(projectId);
+        Map<Long, Long> result = new LinkedHashMap<>();
+        for (UserAnnotationCountDto count : counts) {
+            if (count.userId() != null) {
+                result.put(count.userId(), count.completedSteps());
+            }
         }
+        return result;
     }
 
     private ProjectAssignedSummaryDto toAssignedSummaryDto(ProjectParticipant participant) {
@@ -610,37 +749,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     private int calculateCompletionPercentage(Long projectId) {
-        return ProjectAnnotationUtils.buildProjectProgressSnapshot(
-                projectParticipantRepository.findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId),
-                datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId),
-                buildAnnotationLookup(projectId))
-                .projectCompletionPercentage();
-    }
-
-    private Map<Long, Map<Long, Map<Integer, Object>>> buildAnnotationLookup(Long projectId) {
-        List<Annotation> annotations = annotationRepository.findByDatasetItemProjectId(projectId);
-
-        Map<Long, Map<Long, Map<Integer, Object>>> annotationLookup = new LinkedHashMap<>();
-        for (Annotation annotation : annotations) {
-            if (annotation.getDatasetItem() == null || annotation.getUser() == null) {
-                continue;
-            }
-
-            Long datasetItemId = annotation.getDatasetItem().getId();
-            Long userId = annotation.getUser().getId();
-            Integer stepIndex = annotation.getStepIndex();
-
-            if (datasetItemId == null || userId == null || stepIndex == null) {
-                continue;
-            }
-
-            annotationLookup
-                    .computeIfAbsent(datasetItemId, ignored -> new LinkedHashMap<>())
-                    .computeIfAbsent(userId, ignored -> new LinkedHashMap<>())
-                    .put(stepIndex, annotation.getPayload());
-        }
-
-        return annotationLookup;
+        return projectMetricsCacheService.getProjectCompletionPercentage(projectId);
     }
 
 }

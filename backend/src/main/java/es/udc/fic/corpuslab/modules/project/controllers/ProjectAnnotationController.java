@@ -1,10 +1,14 @@
 package es.udc.fic.corpuslab.modules.project.controllers;
 
+import java.nio.charset.StandardCharsets;
+
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -14,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationExportCsvDto;
 import es.udc.fic.corpuslab.modules.project.dtos.ProjectAnnotationWorkspaceDto;
 import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepRequestDto;
 import es.udc.fic.corpuslab.modules.project.dtos.SaveProjectAnnotationStepResponseDto;
@@ -58,20 +61,20 @@ public class ProjectAnnotationController {
     }
 
     @GetMapping("/{projectId}/annotations/export")
-    public ResponseEntity<byte[]> exportAnnotationResultsCsv(
+    public ResponseEntity<StreamingResponseBody> exportAnnotationResultsCsv(
             Authentication authentication,
             @PathVariable Long projectId) {
-        ProjectAnnotationExportCsvDto exportCsv = projectAnnotationService
-                .exportAnnotationResultsCsv(authentication.getName(), projectId);
-
-        String fileName = exportCsv.fileName() == null || exportCsv.fileName().isBlank()
-                ? "project-" + projectId + "-annotations.csv"
-                : exportCsv.fileName().replace("\"", "");
+        String fileName = projectAnnotationService
+                .getAnnotationResultsCsvFileName(authentication.getName(), projectId)
+                .replace("\"", "");
+        StreamingResponseBody body = outputStream -> projectAnnotationService
+                .writeAnnotationResultsCsv(authentication.getName(), projectId, outputStream);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
-                .body(exportCsv.bytes());
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(fileName, StandardCharsets.UTF_8).build().toString())
+                .body(body);
     }
 
     @PutMapping("/{projectId}/annotations/steps")

@@ -79,7 +79,8 @@ class AuthServiceTest {
                 emailService,
                 jwtTokenService,
                 oAuthLoginCodeService,
-                "http://frontend.test");
+                "http://frontend.test",
+                15L);
     }
 
     @Test

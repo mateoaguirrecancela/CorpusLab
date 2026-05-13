@@ -1,6 +1,7 @@
 package es.udc.fic.corpuslab.modules.auth.controllers;
 
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
@@ -25,17 +26,21 @@ import es.udc.fic.corpuslab.modules.auth.dtos.ForgotPasswordResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.OAuthExchangeRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.ResetPasswordRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.ResetPasswordResponseDto;
+import es.udc.fic.corpuslab.modules.auth.services.AuthRateLimiter;
 import es.udc.fic.corpuslab.modules.auth.services.AuthService;
+import es.udc.fic.corpuslab.common.security.ClientIpResolver;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthRateLimiter authRateLimiter;
     private final MessageSource messageSource;
 
-    public AuthController(AuthService authService, MessageSource messageSource) {
+    public AuthController(AuthService authService, AuthRateLimiter authRateLimiter, MessageSource messageSource) {
         this.authService = authService;
+        this.authRateLimiter = authRateLimiter;
         this.messageSource = messageSource;
     }
 
@@ -46,8 +51,11 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public UserLoginResponseDto login(@Valid @RequestBody UserLoginRequestDto request) {
-        return authService.login(request);
+    public UserLoginResponseDto login(@Valid @RequestBody UserLoginRequestDto request, HttpServletRequest httpRequest) {
+        authRateLimiter.checkLogin(request.email(), ClientIpResolver.resolve(httpRequest));
+        UserLoginResponseDto response = authService.login(request);
+        authRateLimiter.clearSuccessfulLogin(request.email());
+        return response;
     }
 
     @GetMapping("/profile")
@@ -73,7 +81,10 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ForgotPasswordResponseDto forgotPassword(@Valid @RequestBody ForgotPasswordRequestDto request) {
+    public ForgotPasswordResponseDto forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequestDto request,
+            HttpServletRequest httpRequest) {
+        authRateLimiter.checkForgotPassword(request.email(), ClientIpResolver.resolve(httpRequest));
         authService.requestPasswordReset(request.email());
         String message = messageSource.getMessage(
                 "auth.info.reset.link.sent",
@@ -83,8 +94,12 @@ public class AuthController {
     }
 
     @PostMapping("/reset-password")
-    public ResetPasswordResponseDto resetPassword(@Valid @RequestBody ResetPasswordRequestDto request) {
+    public ResetPasswordResponseDto resetPassword(
+            @Valid @RequestBody ResetPasswordRequestDto request,
+            HttpServletRequest httpRequest) {
+        authRateLimiter.checkResetPassword(request.token(), ClientIpResolver.resolve(httpRequest));
         authService.resetPassword(request.token(), request.newPassword());
+        authRateLimiter.clearSuccessfulResetPassword(request.token());
         String message = messageSource.getMessage(
                 "auth.info.reset.password.done",
                 null,

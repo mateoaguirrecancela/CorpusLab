@@ -9,7 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 import es.udc.fic.corpuslab.modules.researchgroup.api.ResearchGroupApiService;
 import es.udc.fic.corpuslab.modules.researchgroup.api.dtos.ResearchGroupInfo;
 import es.udc.fic.corpuslab.modules.researchgroup.api.dtos.ResearchGroupMemberInfo;
-import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroup;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroupMember;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupMemberRepository;
@@ -48,9 +47,7 @@ public class ResearchGroupApiServiceImpl implements ResearchGroupApiService {
 
     @Override
     public List<Long> findActiveMemberUserIds(Long groupId) {
-        return memberRepository.findMembersByGroupId(groupId).stream()
-                .map(ResearchGroupMemberDto::userId)
-                .toList();
+        return memberRepository.findActiveMemberUserIdsByGroupId(groupId);
     }
 
     private ResearchGroupInfo toGroupInfo(ResearchGroup group) {

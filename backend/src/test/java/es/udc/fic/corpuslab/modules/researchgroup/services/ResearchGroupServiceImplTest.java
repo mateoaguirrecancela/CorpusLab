@@ -330,7 +330,8 @@ class ResearchGroupServiceImplTest {
                 when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(inviterMember));
-                when(memberRepository.findActiveMemberEmailsByGroupId(10L)).thenReturn(List.of("admin@example.com"));
+                when(memberRepository.existsActiveMemberByGroupIdAndEmail(10L, "invitee@example.com"))
+                                .thenReturn(false);
                 when(invitationRepository.existsActivePendingInvitation(
                                 eq(10L),
                                 eq("invitee@example.com"),
@@ -388,7 +389,8 @@ class ResearchGroupServiceImplTest {
                 when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(inviterMember));
-                when(memberRepository.findActiveMemberEmailsByGroupId(10L)).thenReturn(List.of("admin@example.com"));
+                when(memberRepository.existsActiveMemberByGroupIdAndEmail(10L, "invitee@example.com"))
+                                .thenReturn(false);
                 when(invitationRepository.existsActivePendingInvitation(
                                 eq(10L),
                                 eq("invitee@example.com"),
@@ -421,7 +423,8 @@ class ResearchGroupServiceImplTest {
                 when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
                                 .thenReturn(Optional.of(inviterMember));
-                when(memberRepository.findActiveMemberEmailsByGroupId(10L)).thenReturn(List.of("existing@example.com"));
+                when(memberRepository.existsActiveMemberByGroupIdAndEmail(10L, "existing@example.com"))
+                                .thenReturn(true);
 
                 assertThatThrownBy(() -> researchGroupService.inviteResearcherByEmail(
                                 "owner@example.com",
@@ -472,8 +475,7 @@ class ResearchGroupServiceImplTest {
                 when(researchGroupRepository.findByInvitationCodeIgnoreCase("JOINCODE12345"))
                                 .thenReturn(Optional.of(group));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(44L, 21L)).thenReturn(Optional.empty());
-                when(memberRepository.findActiveMemberEmailsByGroupId(44L))
-                                .thenReturn(List.of("owner@example.com", "joiner@example.com"));
+                when(memberRepository.countByResearchGroupIdAndDeletedAtIsNull(44L)).thenReturn(2L);
 
                 ResearchGroupSummaryDto result = researchGroupService.joinResearchGroupByCode("joiner@example.com",
                                 "JOINCODE12345");
@@ -503,8 +505,7 @@ class ResearchGroupServiceImplTest {
                                 eq("joiner@example.com"),
                                 any(Instant.class)))
                                 .thenReturn(List.of(pendingInvitation));
-                when(memberRepository.findActiveMemberEmailsByGroupId(44L))
-                                .thenReturn(List.of("owner@example.com", "joiner@example.com"));
+                when(memberRepository.countByResearchGroupIdAndDeletedAtIsNull(44L)).thenReturn(2L);
                 when(entityManager.getReference(User.class, 21L)).thenReturn(user);
 
                 researchGroupService.joinResearchGroupByCode("joiner@example.com", "JOINCODE12345");
@@ -908,8 +909,7 @@ class ResearchGroupServiceImplTest {
                                 any(Instant.class)))
                                 .thenReturn(Optional.of(invitation));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 50L)).thenReturn(Optional.empty());
-                when(memberRepository.findActiveMemberEmailsByGroupId(10L))
-                                .thenReturn(List.of("owner@example.com", "invitee@example.com"));
+                when(memberRepository.countByResearchGroupIdAndDeletedAtIsNull(10L)).thenReturn(2L);
 
                 when(entityManager.getReference(User.class, 50L)).thenReturn(user);
 
