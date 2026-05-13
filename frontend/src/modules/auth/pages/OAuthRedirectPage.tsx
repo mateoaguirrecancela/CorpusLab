@@ -48,6 +48,12 @@ export default function OAuthRedirectPage() {
   const oauthError = searchParams.get('oauthError');
   const provider = searchParams.get('provider');
 
+  useEffect(() => {
+    if (code || oauthError || provider) {
+      globalThis.history.replaceState(null, '', globalThis.location.pathname);
+    }
+  }, [code, oauthError, provider]);
+
   const providerLabel = useMemo(() => {
     if (provider === 'google' || provider === 'github') {
       return OAUTH_PROVIDER_LABEL[provider];

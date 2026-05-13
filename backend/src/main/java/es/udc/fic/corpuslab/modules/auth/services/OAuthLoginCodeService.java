@@ -44,13 +44,15 @@ public class OAuthLoginCodeService {
             throw new OAuthLoginCodeNotFoundException();
         }
 
-        OAuthLoginCode loginCode = oauthLoginCodeRepository.findByCodeHash(SecureTokenUtils.sha256(rawCode.trim()))
-                .filter(currentCode -> currentCode.getConsumedAt() == null)
-                .filter(currentCode -> currentCode.getExpiresAt().isAfter(Instant.now()))
-                .orElseThrow(OAuthLoginCodeNotFoundException::new);
+        Instant now = Instant.now();
+        String codeHash = SecureTokenUtils.sha256(rawCode.trim());
+        int consumedCodes = oauthLoginCodeRepository.markAsConsumedIfValid(codeHash, now);
+        if (consumedCodes != 1) {
+            throw new OAuthLoginCodeNotFoundException();
+        }
 
-        loginCode.setConsumedAt(Instant.now());
-        oauthLoginCodeRepository.save(loginCode);
+        OAuthLoginCode loginCode = oauthLoginCodeRepository.findByCodeHash(codeHash)
+                .orElseThrow(OAuthLoginCodeNotFoundException::new);
         return loginCode.getUser();
     }
 }
