@@ -11,11 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginResponseDto;
-import es.udc.fic.corpuslab.modules.auth.dtos.UserProfileResponseDto;
-import es.udc.fic.corpuslab.modules.auth.dtos.UserUpdateProfileRequestDto;
-import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterRequestDto;
-import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLogoutResponseDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.UserProfileResponseDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterRequestDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.UserUpdateProfileRequestDto;
 import es.udc.fic.corpuslab.modules.auth.entities.PasswordResetToken;
 import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.exceptions.EmailAlreadyRegisteredException;
@@ -25,7 +24,7 @@ import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetEmailDeliveryEx
 import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetTokenNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.repositories.PasswordResetTokenRepository;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
-import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
+import es.udc.fic.corpuslab.common.utils.EmailNormalizer;
 import es.udc.fic.corpuslab.modules.auth.utils.SecureTokenUtils;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 import es.udc.fic.corpuslab.common.utils.StringUtils;
@@ -63,7 +62,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public UserRegisterResponseDto signup(UserRegisterRequestDto request) {
+    public UserLoginResponseDto signup(UserRegisterRequestDto request) {
         String normalizedEmail = EmailNormalizer.canonicalizeGoogleEmail(request.email());
         if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
             throw new EmailAlreadyRegisteredException(normalizedEmail);
@@ -80,12 +79,8 @@ public class AuthServiceImpl implements AuthService {
         user.setPasswordHash(passwordEncoder.encode(request.password()));
 
         User saved = userRepository.save(user);
-        return new UserRegisterResponseDto(
-                saved.getId(),
-                saved.getEmail(),
-                saved.getFirstName(),
-                saved.getLastName(),
-                saved.getCreatedAt());
+        String token = jwtTokenService.generateToken(saved.getEmail());
+        return toLoginResponse(saved, token);
     }
 
     @Override
@@ -102,12 +97,7 @@ public class AuthServiceImpl implements AuthService {
 
         String token = jwtTokenService.generateToken(user.getEmail());
 
-        return new UserLoginResponseDto(
-                user.getId(),
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName(),
-                token);
+        return toLoginResponse(user, token);
     }
 
     @Override
@@ -152,6 +142,20 @@ public class AuthServiceImpl implements AuthService {
                 user.getCity());
     }
 
+    private UserLoginResponseDto toLoginResponse(User user, String token) {
+        return new UserLoginResponseDto(
+                user.getId(),
+                user.getEmail(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getBirth(),
+                user.getGender(),
+                user.getCountryCode(),
+                user.getCity(),
+                user.getCreatedAt(),
+                token);
+    }
+
     @Override
     public UserLogoutResponseDto logout() {
         return new UserLogoutResponseDto("Logged out successfully");
@@ -163,12 +167,7 @@ public class AuthServiceImpl implements AuthService {
         User user = oAuthLoginCodeService.consumeCode(code);
         String token = jwtTokenService.generateToken(user.getEmail());
 
-        return new UserLoginResponseDto(
-                user.getId(),
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName(),
-                token);
+        return toLoginResponse(user, token);
     }
 
     @Override

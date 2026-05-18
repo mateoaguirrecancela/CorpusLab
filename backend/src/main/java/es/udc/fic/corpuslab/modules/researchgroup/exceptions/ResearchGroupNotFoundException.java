@@ -1,6 +1,10 @@
 package es.udc.fic.corpuslab.modules.researchgroup.exceptions;
 
-public class ResearchGroupNotFoundException extends RuntimeException {
+import org.springframework.http.HttpStatus;
+
+import es.udc.fic.corpuslab.common.exceptions.TranslatableApiException;
+
+public class ResearchGroupNotFoundException extends RuntimeException implements TranslatableApiException {
     private final Long id;
 
     public ResearchGroupNotFoundException(Long id) {
@@ -10,5 +14,20 @@ public class ResearchGroupNotFoundException extends RuntimeException {
 
     public Long getId() {
         return id;
+    }
+
+    @Override
+    public String getMessageKey() {
+        return "researchgroup.error.notfound";
+    }
+
+    @Override
+    public Object[] getMessageArgs() {
+        return new Object[] { id };
+    }
+
+    @Override
+    public HttpStatus getHttpStatus() {
+        return HttpStatus.NOT_FOUND;
     }
 }

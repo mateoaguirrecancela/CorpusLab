@@ -12,7 +12,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import es.udc.fic.corpuslab.modules.auth.exceptions.AuthRateLimitExceededException;
-import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
+import es.udc.fic.corpuslab.common.utils.EmailNormalizer;
 import es.udc.fic.corpuslab.modules.auth.utils.SecureTokenUtils;
 
 @Service

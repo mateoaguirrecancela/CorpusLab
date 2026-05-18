@@ -1,9 +1,9 @@
 package es.udc.fic.corpuslab.modules.project.fixtures;
 
 import es.udc.fic.corpuslab.modules.auth.entities.User;
-import es.udc.fic.corpuslab.modules.project.entities.Project;
-import es.udc.fic.corpuslab.modules.project.entities.ProjectParticipant;
-import es.udc.fic.corpuslab.modules.project.enums.ProjectParticipantRole;
+import es.udc.fic.corpuslab.modules.project.shared.entities.Project;
+import es.udc.fic.corpuslab.modules.project.shared.entities.ProjectParticipant;
+import es.udc.fic.corpuslab.modules.project.shared.enums.ProjectParticipantRole;
 
 public class ProjectParticipantTestBuilder {
 

@@ -17,4 +17,10 @@ public interface ProjectApiService {
      * annotations) belonging to a research group.
      */
     void deleteAllProjectsByResearchGroupId(Long researchGroupId);
+
+    /**
+     * Removes a user as participant from every project in a research group.
+     * Creator memberships are preserved.
+     */
+    void removeParticipantFromAllGroupProjects(Long researchGroupId, Long userId);
 }

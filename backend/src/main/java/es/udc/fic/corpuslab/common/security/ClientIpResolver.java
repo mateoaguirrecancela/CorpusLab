@@ -1,13 +1,24 @@
 package es.udc.fic.corpuslab.common.security;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
 import jakarta.servlet.http.HttpServletRequest;
 
+@Component
 public final class ClientIpResolver {
 
-    private ClientIpResolver() {
+    private final boolean trustForwardedHeaders;
+
+    public ClientIpResolver(@Value("${app.security.trust-forwarded-headers:false}") boolean trustForwardedHeaders) {
+        this.trustForwardedHeaders = trustForwardedHeaders;
     }
 
-    public static String resolve(HttpServletRequest request) {
+    public String resolve(HttpServletRequest request) {
+        if (!trustForwardedHeaders) {
+            return request.getRemoteAddr();
+        }
+
         String forwardedFor = firstHeaderValue(request.getHeader("X-Forwarded-For"));
         if (forwardedFor != null) {
             return forwardedFor;
@@ -29,7 +40,7 @@ public final class ClientIpResolver {
         return request.getRemoteAddr();
     }
 
-    private static String firstHeaderValue(String header) {
+    private String firstHeaderValue(String header) {
         if (header == null || header.isBlank()) {
             return null;
         }
@@ -37,7 +48,7 @@ public final class ClientIpResolver {
         return firstValue.isBlank() ? null : firstValue;
     }
 
-    private static String parseForwardedFor(String header) {
+    private String parseForwardedFor(String header) {
         for (String part : header.split(";")) {
             String trimmed = part.trim();
             if (trimmed.regionMatches(true, 0, "for=", 0, 4)) {

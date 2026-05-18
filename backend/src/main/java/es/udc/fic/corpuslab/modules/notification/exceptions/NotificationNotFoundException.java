@@ -1,6 +1,10 @@
 package es.udc.fic.corpuslab.modules.notification.exceptions;
 
-public class NotificationNotFoundException extends RuntimeException {
+import org.springframework.http.HttpStatus;
+
+import es.udc.fic.corpuslab.common.exceptions.TranslatableApiException;
+
+public class NotificationNotFoundException extends RuntimeException implements TranslatableApiException {
 
     private final Long notificationId;
 
@@ -11,5 +15,20 @@ public class NotificationNotFoundException extends RuntimeException {
 
     public Long getNotificationId() {
         return notificationId;
+    }
+
+    @Override
+    public String getMessageKey() {
+        return "notification.error.notfound";
+    }
+
+    @Override
+    public Object[] getMessageArgs() {
+        return new Object[] { notificationId };
+    }
+
+    @Override
+    public HttpStatus getHttpStatus() {
+        return HttpStatus.NOT_FOUND;
     }
 }

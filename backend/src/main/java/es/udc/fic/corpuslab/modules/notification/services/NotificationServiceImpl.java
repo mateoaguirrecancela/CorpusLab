@@ -3,10 +3,12 @@ package es.udc.fic.corpuslab.modules.notification.services;
 import java.time.Instant;
 import java.util.List;
 
-import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import es.udc.fic.corpuslab.modules.auth.api.AuthApiService;
@@ -83,7 +85,7 @@ public class NotificationServiceImpl implements NotificationService {
         if (notification.getReadAt() == null) {
             notification.setReadAt(Instant.now());
             notification = notificationRepository.save(notification);
-            notificationEvents.publish(recipientInfo.userId());
+            publishNotificationChange(recipientInfo.userId());
         }
 
         return toDto(notification);
@@ -93,8 +95,13 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void markAllNotificationsAsRead(String authenticatedEmail) {
         UserInfo recipientInfo = authApiService.findUserByEmail(authenticatedEmail);
-        notificationRepository.markAllAsReadByRecipientUserId(recipientInfo.userId(), Instant.now());
-        notificationEvents.publish(recipientInfo.userId());
+        int updatedNotifications = notificationRepository.markAllAsReadByRecipientUserId(
+                recipientInfo.userId(),
+                Instant.now());
+
+        if (updatedNotifications > 0) {
+            publishNotificationChange(recipientInfo.userId());
+        }
     }
 
     @Override
@@ -105,16 +112,15 @@ public class NotificationServiceImpl implements NotificationService {
             Long researchGroupId,
             String researchGroupName,
             Long invitationId) {
-        Notification notification = new Notification();
-        notification.setRecipientUser(getUserReference(recipientUserId));
-        notification.setActorUser(getUserReference(actorUserId));
-        notification.setType(NotificationType.RESEARCH_GROUP_INVITATION_RECEIVED);
-        notification.setResearchGroupId(researchGroupId);
-        notification.setResearchGroupName(researchGroupName);
-        notification.setInvitationId(invitationId);
-
-        notificationRepository.save(notification);
-        notificationEvents.publish(recipientUserId);
+        createNotification(
+                NotificationType.RESEARCH_GROUP_INVITATION_RECEIVED,
+                recipientUserId,
+                actorUserId,
+                researchGroupId,
+                researchGroupName,
+                invitationId,
+                null,
+                null);
     }
 
     @Override
@@ -124,15 +130,15 @@ public class NotificationServiceImpl implements NotificationService {
             Long actorUserId,
             Long researchGroupId,
             String researchGroupName) {
-        Notification notification = new Notification();
-        notification.setRecipientUser(getUserReference(recipientUserId));
-        notification.setActorUser(getUserReference(actorUserId));
-        notification.setType(NotificationType.RESEARCH_GROUP_INVITATION_ACCEPTED);
-        notification.setResearchGroupId(researchGroupId);
-        notification.setResearchGroupName(researchGroupName);
-
-        notificationRepository.save(notification);
-        notificationEvents.publish(recipientUserId);
+        createNotification(
+                NotificationType.RESEARCH_GROUP_INVITATION_ACCEPTED,
+                recipientUserId,
+                actorUserId,
+                researchGroupId,
+                researchGroupName,
+                null,
+                null,
+                null);
     }
 
     @Override
@@ -144,17 +150,15 @@ public class NotificationServiceImpl implements NotificationService {
             String projectName,
             Long researchGroupId,
             String researchGroupName) {
-        Notification notification = new Notification();
-        notification.setRecipientUser(getUserReference(recipientUserId));
-        notification.setActorUser(getUserReference(actorUserId));
-        notification.setType(NotificationType.PROJECT_PARTICIPANT_ASSIGNED);
-        notification.setProjectId(projectId);
-        notification.setProjectName(projectName);
-        notification.setResearchGroupId(researchGroupId);
-        notification.setResearchGroupName(researchGroupName);
-
-        notificationRepository.save(notification);
-        notificationEvents.publish(recipientUserId);
+        createNotification(
+                NotificationType.PROJECT_PARTICIPANT_ASSIGNED,
+                recipientUserId,
+                actorUserId,
+                researchGroupId,
+                researchGroupName,
+                null,
+                projectId,
+                projectName);
     }
 
     @Override
@@ -174,17 +178,15 @@ public class NotificationServiceImpl implements NotificationService {
             return;
         }
 
-        Notification notification = new Notification();
-        notification.setRecipientUser(getUserReference(recipientUserId));
-        notification.setActorUser(getUserReference(actorUserId));
-        notification.setType(NotificationType.PROJECT_ANNOTATION_COMPLETED);
-        notification.setProjectId(projectId);
-        notification.setProjectName(projectName);
-        notification.setResearchGroupId(researchGroupId);
-        notification.setResearchGroupName(researchGroupName);
-
-        notificationRepository.save(notification);
-        notificationEvents.publish(recipientUserId);
+        createNotification(
+                NotificationType.PROJECT_ANNOTATION_COMPLETED,
+                recipientUserId,
+                actorUserId,
+                researchGroupId,
+                researchGroupName,
+                null,
+                projectId,
+                projectName);
     }
 
     @Override
@@ -196,29 +198,31 @@ public class NotificationServiceImpl implements NotificationService {
             String projectName,
             Long researchGroupId,
             String researchGroupName) {
-        Notification notification = new Notification();
-        notification.setRecipientUser(getUserReference(recipientUserId));
-        notification.setActorUser(getUserReference(actorUserId));
-        notification.setType(NotificationType.ANNOTATION_WARNING_MARKED);
-        notification.setProjectId(projectId);
-        notification.setProjectName(projectName);
-        notification.setResearchGroupId(researchGroupId);
-        notification.setResearchGroupName(researchGroupName);
-
-        notificationRepository.save(notification);
-        notificationEvents.publish(recipientUserId);
+        createNotification(
+                NotificationType.ANNOTATION_WARNING_MARKED,
+                recipientUserId,
+                actorUserId,
+                researchGroupId,
+                researchGroupName,
+                null,
+                projectId,
+                projectName);
     }
 
     @Override
     @Transactional
     public void deleteNotificationsByProjectId(Long projectId) {
-        notificationRepository.deleteByProjectId(projectId);
+        List<Long> recipientUserIds = notificationRepository.findRecipientUserIdsByProjectId(projectId);
+        long deletedNotifications = notificationRepository.deleteByProjectId(projectId);
+        publishNotificationChangesIfNeeded(recipientUserIds, deletedNotifications);
     }
 
     @Override
     @Transactional
     public void deleteNotificationsByResearchGroupId(Long researchGroupId) {
-        notificationRepository.deleteByResearchGroupId(researchGroupId);
+        List<Long> recipientUserIds = notificationRepository.findRecipientUserIdsByResearchGroupId(researchGroupId);
+        long deletedNotifications = notificationRepository.deleteByResearchGroupId(researchGroupId);
+        publishNotificationChangesIfNeeded(recipientUserIds, deletedNotifications);
     }
 
     private NotificationDto toDto(Notification notification) {
@@ -238,6 +242,53 @@ public class NotificationServiceImpl implements NotificationService {
                 notification.getInvitationId(),
                 notification.getProjectId(),
                 notification.getProjectName());
+    }
+
+    private void createNotification(
+            NotificationType type,
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName,
+            Long invitationId,
+            Long projectId,
+            String projectName) {
+        Notification notification = new Notification();
+        notification.setRecipientUser(getUserReference(recipientUserId));
+        notification.setActorUser(actorUserId == null ? null : getUserReference(actorUserId));
+        notification.setType(type);
+        notification.setResearchGroupId(researchGroupId);
+        notification.setResearchGroupName(researchGroupName);
+        notification.setInvitationId(invitationId);
+        notification.setProjectId(projectId);
+        notification.setProjectName(projectName);
+
+        notificationRepository.save(notification);
+        publishNotificationChange(recipientUserId);
+    }
+
+    private void publishNotificationChange(Long userId) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            notificationEvents.publish(userId);
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                notificationEvents.publish(userId);
+            }
+        });
+    }
+
+    private void publishNotificationChangesIfNeeded(List<Long> recipientUserIds, long changedNotifications) {
+        if (changedNotifications <= 0) {
+            return;
+        }
+
+        for (Long recipientUserId : recipientUserIds) {
+            publishNotificationChange(recipientUserId);
+        }
     }
 
     private int sanitizeLimit(int limit) {

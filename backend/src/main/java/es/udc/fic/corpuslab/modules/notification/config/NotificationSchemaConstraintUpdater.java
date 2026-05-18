@@ -30,7 +30,8 @@ public class NotificationSchemaConstraintUpdater {
                             'RESEARCH_GROUP_INVITATION_RECEIVED',
                             'RESEARCH_GROUP_INVITATION_ACCEPTED',
                             'PROJECT_PARTICIPANT_ASSIGNED',
-                            'PROJECT_ANNOTATION_COMPLETED'
+                            'PROJECT_ANNOTATION_COMPLETED',
+                            'ANNOTATION_WARNING_MARKED'
                         ));
                 END IF;
             END;

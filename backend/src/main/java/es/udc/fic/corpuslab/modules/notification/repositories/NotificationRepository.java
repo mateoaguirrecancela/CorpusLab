@@ -17,8 +17,6 @@ import es.udc.fic.corpuslab.modules.notification.enums.NotificationType;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-        List<Notification> findByRecipientUserIdOrderByCreatedAtDesc(Long recipientUserId, Pageable pageable);
-
         @Query("""
                         select new es.udc.fic.corpuslab.modules.notification.dtos.NotificationDto(
                             n.id,
@@ -53,6 +51,20 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
                         Long actorUserId,
                         NotificationType type,
                         Long projectId);
+
+        @Query("""
+                        select distinct n.recipientUser.id
+                        from Notification n
+                        where n.projectId = :projectId
+                        """)
+        List<Long> findRecipientUserIdsByProjectId(@Param("projectId") Long projectId);
+
+        @Query("""
+                        select distinct n.recipientUser.id
+                        from Notification n
+                        where n.researchGroupId = :researchGroupId
+                        """)
+        List<Long> findRecipientUserIdsByResearchGroupId(@Param("researchGroupId") Long researchGroupId);
 
         @Modifying
         @Query("""

@@ -1,6 +1,10 @@
 package es.udc.fic.corpuslab.modules.researchgroup.exceptions;
 
-public class ResearchGroupInvitationAlreadyExistsException extends RuntimeException {
+import org.springframework.http.HttpStatus;
+
+import es.udc.fic.corpuslab.common.exceptions.TranslatableApiException;
+
+public class ResearchGroupInvitationAlreadyExistsException extends RuntimeException implements TranslatableApiException {
     private final Long groupId;
     private final String email;
 
@@ -16,5 +20,20 @@ public class ResearchGroupInvitationAlreadyExistsException extends RuntimeExcept
 
     public String getEmail() {
         return email;
+    }
+
+    @Override
+    public String getMessageKey() {
+        return "researchgroup.invitation.error.already.exists";
+    }
+
+    @Override
+    public Object[] getMessageArgs() {
+        return new Object[] { email, groupId };
+    }
+
+    @Override
+    public HttpStatus getHttpStatus() {
+        return HttpStatus.CONFLICT;
     }
 }

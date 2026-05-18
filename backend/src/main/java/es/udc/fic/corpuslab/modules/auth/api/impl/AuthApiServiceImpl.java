@@ -12,7 +12,7 @@ import es.udc.fic.corpuslab.modules.auth.api.dtos.UserInfo;
 import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
-import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
+import es.udc.fic.corpuslab.common.utils.EmailNormalizer;
 
 @Service
 @Transactional(readOnly = true)
