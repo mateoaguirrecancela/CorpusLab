@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "corpuslab-backend"
+    metrics_path: "/actuator/prometheus"
+    scheme: "http"
+    static_configs:
+      - targets:
+          # Backend started from the host/IDE. If it is containerized later, use its Docker service name here, for example:
+          # - "backend:8080".
+          - "host.docker.internal:8080"
+        labels:
+          namespace: "local"
