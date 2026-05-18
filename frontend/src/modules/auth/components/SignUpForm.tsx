@@ -1,20 +1,24 @@
 import { type FormEventHandler, useMemo } from 'react';
-import { CalendarDays, Github, Globe, Lock, Mail, MapPin, User } from 'lucide-react';
+import { CalendarDays, Globe, Lock, Mail, MapPin, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
-import { Button } from '@/components/ui/button';
 import { useToastMessages } from '@/hooks/useToastMessages';
-import { SubmitButtonWithSpinner } from '@/components/ui/submit-button-with-spinner';
+import { getResolvedLanguage } from '@/lib/i18n';
+import {
+  AuthDivider,
+  AuthLinkPrompt,
+  AuthSubmitButton,
+} from '@/modules/auth/components/AuthFormActions';
 import { getCountryOptions, getGenderOptions } from '@/modules/auth/constants/signup';
+import { OAuthButtons } from '@/modules/auth/components/OAuthButtons';
 import { CountryCombobox } from '@/modules/auth/components/CountryCombobox';
 import { type OAuthProvider } from '@/modules/auth/constants/session';
 import { type RegisterFormState } from '@/modules/auth/types/signup';
-import { isAtLeast16YearsOld, isEmailValid } from '@/modules/auth/utils/validation';
 
 type SignUpFormProps = {
   form: RegisterFormState;
   canSubmit: boolean;
+  fieldErrors?: Partial<Record<keyof RegisterFormState, string>>;
   isSubmitting: boolean;
   errorMessage: string;
   successMessage: string;
@@ -26,6 +30,7 @@ type SignUpFormProps = {
 export function SignUpForm({
   form,
   canSubmit,
+  fieldErrors = {},
   isSubmitting,
   errorMessage,
   successMessage,
@@ -34,14 +39,9 @@ export function SignUpForm({
   onOAuthClick,
 }: Readonly<SignUpFormProps>) {
   const { t, i18n } = useTranslation();
-  const trimmedEmail = form.email.trim();
-  const isEmailInvalid = trimmedEmail.length > 0 && !isEmailValid(trimmedEmail);
-  const isUnderage = form.birth.length > 0 && !isAtLeast16YearsOld(form.birth);
+  const language = getResolvedLanguage(i18n);
   const genderOptions = getGenderOptions(t);
-  const countryOptions = useMemo(
-    () => getCountryOptions(i18n.resolvedLanguage ?? i18n.language ?? 'en'),
-    [i18n.language, i18n.resolvedLanguage],
-  );
+  const countryOptions = useMemo(() => getCountryOptions(language), [language]);
 
   useToastMessages({ errorMessage, successMessage });
 
@@ -53,6 +53,7 @@ export function SignUpForm({
           id="firstName"
           inputProps={{ name: 'firstName', placeholder: 'David' }}
           label={t('auth.signup.firstName')}
+          message={fieldErrors.firstName}
           onValueChange={(value) => onFieldChange('firstName', value)}
           required
           value={form.firstName}
@@ -62,6 +63,7 @@ export function SignUpForm({
           id="lastName"
           inputProps={{ name: 'lastName', placeholder: 'García Fernández' }}
           label={t('auth.signup.lastName')}
+          message={fieldErrors.lastName}
           onValueChange={(value) => onFieldChange('lastName', value)}
           required
           value={form.lastName}
@@ -74,7 +76,7 @@ export function SignUpForm({
         inputProps={{ placeholder: 'example@email.com' }}
         inputType="email"
         label={t('auth.signup.email')}
-        message={isEmailInvalid ? t('auth.signup.invalidEmail') : undefined}
+        message={fieldErrors.email}
         onValueChange={(value) => onFieldChange('email', value)}
         required
         value={form.email}
@@ -87,11 +89,7 @@ export function SignUpForm({
         inputProps={{ minLength: 8, placeholder: '********' }}
         inputType="password"
         label={t('auth.signup.password')}
-        message={
-          form.password.length > 0 && form.password.length < 8
-            ? t('auth.signup.passwordLength')
-            : undefined
-        }
+        message={fieldErrors.password}
         onValueChange={(value) => onFieldChange('password', value)}
         required
         showPasswordLabel={t('common.aria.showPassword')}
@@ -104,7 +102,7 @@ export function SignUpForm({
           id="birth"
           inputType="date"
           label={t('auth.signup.dateOfBirth')}
-          message={isUnderage ? t('auth.signup.underAge') : undefined}
+          message={fieldErrors.birth}
           onValueChange={(value) => onFieldChange('birth', value)}
           required
           value={form.birth}
@@ -114,6 +112,7 @@ export function SignUpForm({
           icon={<User className="size-4" />}
           id="gender"
           label={t('auth.signup.gender')}
+          message={fieldErrors.gender}
           onValueChange={(value) => onFieldChange('gender', value as RegisterFormState['gender'])}
           options={genderOptions}
           required
@@ -127,6 +126,7 @@ export function SignUpForm({
           icon={<Globe className="size-4" />}
           id="countryCode"
           label={t('auth.signup.country')}
+          message={fieldErrors.countryCode}
           renderControl={({ id }) => (
             <CountryCombobox
               id={id}
@@ -144,55 +144,29 @@ export function SignUpForm({
           id="city"
           inputProps={{ placeholder: 'Madrid' }}
           label={t('auth.signup.city')}
+          message={fieldErrors.city}
           onValueChange={(value) => onFieldChange('city', value)}
           required
           value={form.city}
         />
       </div>
 
-      <SubmitButtonWithSpinner
-        className="h-11 w-full rounded-md bg-primary text-sm font-semibold text-white shadow-[var(--shadow-primary-action)] hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
-        disabled={!canSubmit}
+      <AuthSubmitButton
+        canSubmit={canSubmit}
         idleLabel={t('auth.signup.submit')}
         isSubmitting={isSubmitting}
         submittingLabel={t('auth.signup.submitting')}
       />
 
-      <div className="my-8 flex items-center gap-3 text-[0.67rem] font-bold tracking-[0.12em] text-muted-foreground uppercase">
-        <span className="h-px flex-1 bg-border" />
-        <span>{t('auth.signup.orContinueWith')}</span>
-        <span className="h-px flex-1 bg-border" />
-      </div>
+      <AuthDivider label={t('auth.signup.orContinueWith')} />
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Button
-          className="h-10 rounded-md border border-border bg-surface-base text-sm font-semibold text-foreground hover:bg-accent cursor-pointer"
-          disabled={isSubmitting}
-          onClick={() => onOAuthClick('google')}
-          type="button"
-          variant="outline"
-        >
-          <span className="text-base text-red-500">G</span>
-          <span>Google</span>
-        </Button>
-        <Button
-          className="h-10 rounded-md border border-border bg-surface-base text-sm font-semibold text-foreground hover:bg-accent cursor-pointer"
-          disabled={isSubmitting}
-          onClick={() => onOAuthClick('github')}
-          type="button"
-          variant="outline"
-        >
-          <Github className="size-4" />
-          <span>GitHub</span>
-        </Button>
-      </div>
+      <OAuthButtons disabled={isSubmitting} onProviderClick={onOAuthClick} />
 
-      <p className="mt-8 text-center text-sm text-muted-foreground">
-        {t('auth.signup.alreadyInLab')}{' '}
-        <Link className="font-semibold text-primary hover:underline" to="/auth/login">
-          {t('auth.signup.goToLogin')}
-        </Link>
-      </p>
+      <AuthLinkPrompt
+        linkLabel={t('auth.signup.goToLogin')}
+        message={t('auth.signup.alreadyInLab')}
+        to="/auth/login"
+      />
     </form>
   );
 }

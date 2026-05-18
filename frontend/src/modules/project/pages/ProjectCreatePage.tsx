@@ -8,6 +8,7 @@ import { ProjectCreateProgress } from '@/modules/project/components/ProjectCreat
 import { ProjectAssignmentStep } from '@/modules/project/components/ProjectAssignmentStep';
 import { ProjectSetupStep } from '@/modules/project/components/ProjectSetupStep';
 import { useProjectCreatePage } from '@/modules/project/hooks/useProjectCreatePage';
+import { isPositiveId } from '@/modules/project/utils/projectFormUtils';
 
 export default function ProjectCreatePage() {
   const { t } = useTranslation();
@@ -17,6 +18,7 @@ export default function ProjectCreatePage() {
     canUploadDataset,
     currentStep,
     description,
+    descriptionErrorMessage,
     finalizeProject,
     goToDatasetStep,
     goToInfoStep,
@@ -26,6 +28,7 @@ export default function ProjectCreatePage() {
     isLoadingGroups,
     manageableGroups,
     name,
+    nameErrorMessage,
     numericGroupId,
     projectSetupPayload,
     rejectFiles,
@@ -33,6 +36,7 @@ export default function ProjectCreatePage() {
     selectFiles,
     selectedFiles,
     selectedGroupId,
+    selectedGroupErrorMessage,
     setCurrentStep,
     setDescription,
     setName,
@@ -65,13 +69,16 @@ export default function ProjectCreatePage() {
         <ProjectCreateInfoStep
           canContinue={canCreateProject}
           description={description}
+          descriptionErrorMessage={descriptionErrorMessage}
           groups={manageableGroups}
           isGroupLocked={isGroupLocked}
           name={name}
+          nameErrorMessage={nameErrorMessage}
           onContinue={goToDatasetStep}
           onDescriptionChange={setDescription}
           onGroupChange={setSelectedGroupId}
           onNameChange={setName}
+          selectedGroupErrorMessage={selectedGroupErrorMessage}
           selectedGroupId={selectedGroupId}
         />
       );
@@ -91,7 +98,7 @@ export default function ProjectCreatePage() {
       );
     }
 
-    if (currentStep === 3 && Number.isFinite(numericGroupId) && numericGroupId > 0) {
+    if (currentStep === 3 && isPositiveId(numericGroupId)) {
       return (
         <ProjectSetupStep
           datasetFiles={selectedFiles}
@@ -101,12 +108,7 @@ export default function ProjectCreatePage() {
       );
     }
 
-    if (
-      currentStep === 4 &&
-      Number.isFinite(numericGroupId) &&
-      numericGroupId > 0 &&
-      projectSetupPayload !== null
-    ) {
+    if (currentStep === 4 && isPositiveId(numericGroupId) && projectSetupPayload !== null) {
       return (
         <ProjectAssignmentStep
           groupId={numericGroupId}

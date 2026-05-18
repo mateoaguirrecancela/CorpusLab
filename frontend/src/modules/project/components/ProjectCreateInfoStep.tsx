@@ -14,6 +14,9 @@ type ProjectCreateInfoStepProps = Readonly<{
   name: string;
   description: string;
   canContinue: boolean;
+  descriptionErrorMessage?: string;
+  nameErrorMessage?: string;
+  selectedGroupErrorMessage?: string;
   onGroupChange: (groupId: string) => void;
   onNameChange: (name: string) => void;
   onDescriptionChange: (description: string) => void;
@@ -27,6 +30,9 @@ export function ProjectCreateInfoStep({
   name,
   description,
   canContinue,
+  descriptionErrorMessage,
+  nameErrorMessage,
+  selectedGroupErrorMessage,
   onGroupChange,
   onNameChange,
   onDescriptionChange,
@@ -46,7 +52,12 @@ export function ProjectCreateInfoStep({
           value: String(group.id),
         }))}
         required
-        selectProps={{ disabled: isGroupLocked, required: true }}
+        selectProps={{
+          'aria-invalid': Boolean(selectedGroupErrorMessage),
+          disabled: isGroupLocked,
+          required: true,
+        }}
+        message={selectedGroupErrorMessage}
         value={selectedGroupId}
       />
 
@@ -56,8 +67,10 @@ export function ProjectCreateInfoStep({
           maxLength: 256,
           placeholder: t('project.create.namePlaceholder'),
           required: true,
+          'aria-invalid': Boolean(nameErrorMessage),
         }}
         label={t('project.create.nameLabel')}
+        message={nameErrorMessage}
         onValueChange={onNameChange}
         required
         value={name}
@@ -71,8 +84,10 @@ export function ProjectCreateInfoStep({
         textareaProps={{
           maxLength: 2048,
           placeholder: t('project.create.descriptionPlaceholder'),
+          'aria-invalid': Boolean(descriptionErrorMessage),
         }}
         value={description}
+        message={descriptionErrorMessage}
       />
 
       <div className="flex justify-end gap-3">

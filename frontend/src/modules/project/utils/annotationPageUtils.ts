@@ -5,6 +5,7 @@ import {
   type ProjectType,
 } from '@/modules/project/types/project';
 import { projectTypeI18nKey } from '@/modules/project/utils/projectDisplayUtils';
+import { getFileExtension } from '@/modules/project/utils/projectFileUtils';
 
 export const ANNOTATION_PAGE_SIZE = 50;
 
@@ -38,11 +39,6 @@ export type NerTextSegment = {
   key: string;
   text: string;
   entities: NerAnnotationEntity[];
-};
-
-export type CsvStepPreview = {
-  headerColumns: string[];
-  rowColumns: string[];
 };
 
 export type CsvLabelColumnValue = {
@@ -300,13 +296,10 @@ export function getNerSourceText(
     return sourceTextContent;
   }
 
-  if (step.rowValues && annotationTargetColumn) {
-    const normalizedTargetColumn = annotationTargetColumn.trim().toLowerCase();
-
-    for (const [key, value] of Object.entries(step.rowValues)) {
-      if (key.trim().toLowerCase() === normalizedTargetColumn) {
-        return value || '';
-      }
+  if (annotationTargetColumn) {
+    const columnValue = findCsvColumnValue(annotationTargetColumn, step.rowValues);
+    if (columnValue != null) {
+      return columnValue;
     }
   }
 
@@ -467,20 +460,6 @@ export function isInlineSourceMimeType(mimeType: string): boolean {
   return normalizedMimeType.startsWith('image/') || normalizedMimeType.includes('pdf');
 }
 
-function getFileExtension(fileName: string | null): string {
-  if (!fileName) {
-    return '';
-  }
-
-  const normalizedName = fileName.trim().toLowerCase();
-  const lastDotIndex = normalizedName.lastIndexOf('.');
-  if (lastDotIndex < 0 || lastDotIndex === normalizedName.length - 1) {
-    return '';
-  }
-
-  return normalizedName.slice(lastDotIndex + 1);
-}
-
 export function isJsonSourceMimeType(mimeType: string, fileName: string | null): boolean {
   const normalizedMimeType = mimeType.toLowerCase();
   return (
@@ -515,66 +494,9 @@ export function formatTextSourceContent(
   }
 }
 
-function parseCsvLine(line: string): string[] {
-  const values: string[] = [];
-  let currentValue = '';
-  let insideQuotes = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-
-    if (char === '"') {
-      if (insideQuotes && line[index + 1] === '"') {
-        currentValue += '"';
-        index += 1;
-      } else {
-        insideQuotes = !insideQuotes;
-      }
-
-      continue;
-    }
-
-    if (char === ',' && !insideQuotes) {
-      values.push(currentValue.trim());
-      currentValue = '';
-      continue;
-    }
-
-    currentValue += char;
-  }
-
-  values.push(currentValue.trim());
-
-  return values;
-}
-
-export function parseCsvStepPreview(preview: string): CsvStepPreview | null {
-  const lines = preview
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-
-  if (lines.length < 2) {
-    return null;
-  }
-
-  const headerColumns = parseCsvLine(lines[0]);
-  const rowColumns = parseCsvLine(lines[1]);
-
-  if (headerColumns.length === 0 || rowColumns.length === 0) {
-    return null;
-  }
-
-  return {
-    headerColumns,
-    rowColumns,
-  };
-}
-
 export function findCsvColumnValue(
   columnName: string,
   rowValues: Record<string, string> | null,
-  csvStepPreview: CsvStepPreview | null,
 ): string | null {
   const normalizedColumnName = columnName.trim().toLowerCase();
   if (normalizedColumnName.length === 0) {
@@ -586,16 +508,6 @@ export function findCsvColumnValue(
       if (key.trim().toLowerCase() === normalizedColumnName) {
         return value || '';
       }
-    }
-  }
-
-  if (csvStepPreview) {
-    const columnIndex = csvStepPreview.headerColumns.findIndex(
-      (header) => header.trim().toLowerCase() === normalizedColumnName,
-    );
-
-    if (columnIndex >= 0) {
-      return csvStepPreview.rowColumns[columnIndex] ?? '';
     }
   }
 

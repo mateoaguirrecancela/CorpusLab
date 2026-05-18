@@ -8,6 +8,7 @@ export default function SignUpPage() {
   const {
     form,
     canSubmit,
+    fieldErrors,
     isSubmitting,
     errorMessage,
     successMessage,
@@ -21,6 +22,7 @@ export default function SignUpPage() {
       <SignUpForm
         canSubmit={canSubmit}
         errorMessage={errorMessage}
+        fieldErrors={fieldErrors}
         form={form}
         isSubmitting={isSubmitting}
         successMessage={successMessage}

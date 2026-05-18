@@ -20,6 +20,7 @@ import {
   myAssignedProjectsQueryKey,
 } from '@/modules/project/hooks/useProjectQueries';
 import {
+  type InvitableResearchGroupMemberRole,
   type InviteResearchGroupMemberPayload,
   type UpdateResearchGroupPayload,
 } from '@/modules/researchgroup/types/researchGroup';
@@ -152,8 +153,13 @@ export function useUpdateResearchGroupMemberRoleMutation(groupId: number) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ memberUserId, role }: { memberUserId: number; role: 'ADMIN' | 'ANNOTATOR' }) =>
-      updateResearchGroupMemberRole(groupId, memberUserId, { role }),
+    mutationFn: ({
+      memberUserId,
+      role,
+    }: {
+      memberUserId: number;
+      role: InvitableResearchGroupMemberRole;
+    }) => updateResearchGroupMemberRole(groupId, memberUserId, { role }),
     onSuccess: () => {
       invalidateQueryKeys(queryClient, [
         researchGroupDetailQueryKey(groupId),

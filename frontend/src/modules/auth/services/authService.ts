@@ -1,6 +1,5 @@
 import { api } from '@/lib/api';
-import { extractApiErrorMessage } from '@/lib/apiErrors';
-import i18n from '@/lib/i18n';
+import { extractTranslatedApiErrorMessage } from '@/lib/apiErrors';
 import { type OAuthProvider } from '@/modules/auth/constants/session';
 import {
   type LoginFormState,
@@ -16,35 +15,40 @@ import {
   type ResetPasswordPayload,
   type ResetPasswordResponse,
 } from '@/modules/auth/types/resetPassword';
-import { type RegisterFormState, type RegisterResponse } from '@/modules/auth/types/signup';
+import { type RegisterFormState } from '@/modules/auth/types/signup';
+import {
+  toForgotPasswordPayload,
+  toLoginPayload,
+  toOAuthExchangePayload,
+  toProfileUpdatePayload,
+  toResetPasswordPayload,
+  toSignupPayload,
+} from '@/modules/auth/utils/authPayloads';
 
 const OAUTH_BACKEND_BASE_URL =
   (import.meta.env.VITE_BACKEND_URL as string | undefined)?.replace(/\/$/, '') ??
   'http://localhost:8080';
+const AUTH_ERROR_KEYS = {
+  forgotPassword: 'auth.errors.unexpected.forgotPassword',
+  login: 'auth.errors.unexpected.login',
+  logout: 'auth.errors.unexpected.logout',
+  profile: 'auth.errors.unexpected.profile',
+  resetPassword: 'auth.errors.unexpected.resetPassword',
+  signup: 'auth.errors.unexpected.signup',
+  updateProfile: 'auth.errors.unexpected.updateProfile',
+} as const;
 
-export async function signup(form: RegisterFormState): Promise<RegisterResponse> {
-  const payload = {
-    email: form.email.trim().toLowerCase(),
-    firstName: form.firstName.trim(),
-    lastName: form.lastName.trim(),
-    birth: form.birth,
-    gender: form.gender.length > 0 ? form.gender : undefined,
-    countryCode: form.countryCode,
-    city: form.city.trim(),
-    password: form.password,
-  };
+function getAuthErrorMessage(error: unknown, key: keyof typeof AUTH_ERROR_KEYS): string {
+  return extractTranslatedApiErrorMessage(error, AUTH_ERROR_KEYS[key]);
+}
 
-  const response = await api.post<RegisterResponse>('/auth/signup', payload);
+export async function signup(form: RegisterFormState): Promise<LoginResponse> {
+  const response = await api.post<LoginResponse>('/auth/signup', toSignupPayload(form));
   return response.data;
 }
 
 export async function login(form: LoginFormState): Promise<LoginResponse> {
-  const payload = {
-    email: form.email.trim().toLowerCase(),
-    password: form.password,
-  };
-
-  const response = await api.post<LoginResponse>('/auth/login', payload);
+  const response = await api.post<LoginResponse>('/auth/login', toLoginPayload(form));
   return response.data;
 }
 
@@ -59,73 +63,62 @@ export async function getProfile(): Promise<ProfileResponse> {
 }
 
 export async function updateProfile(payload: UpdateProfilePayload): Promise<ProfileResponse> {
-  const body = {
-    firstName: payload.firstName.trim(),
-    lastName: payload.lastName.trim(),
-    birth: payload.birth,
-    gender: payload.gender,
-    countryCode: payload.countryCode,
-    city: payload.city,
-  };
-
-  const response = await api.put<ProfileResponse>('/auth/profile', body);
+  const response = await api.put<ProfileResponse>('/auth/profile', toProfileUpdatePayload(payload));
   return response.data;
 }
 
 export async function requestPasswordReset(
   form: ForgotPasswordFormState,
 ): Promise<ForgotPasswordResponse> {
-  const payload = {
-    email: form.email.trim().toLowerCase(),
-  };
-
-  const response = await api.post<ForgotPasswordResponse>('/auth/forgot-password', payload);
+  const response = await api.post<ForgotPasswordResponse>(
+    '/auth/forgot-password',
+    toForgotPasswordPayload(form),
+  );
   return response.data;
 }
 
 export async function resetPassword(payload: ResetPasswordPayload): Promise<ResetPasswordResponse> {
-  const body = {
-    token: payload.token.trim(),
-    newPassword: payload.newPassword,
-  };
-
-  const response = await api.post<ResetPasswordResponse>('/auth/reset-password', body);
+  const response = await api.post<ResetPasswordResponse>(
+    '/auth/reset-password',
+    toResetPasswordPayload(payload),
+  );
   return response.data;
 }
 
 export async function exchangeOAuthCode(code: string): Promise<LoginResponse> {
-  const response = await api.post<LoginResponse>('/auth/oauth/exchange', {
-    code: code.trim(),
-  });
+  const response = await api.post<LoginResponse>(
+    '/auth/oauth/exchange',
+    toOAuthExchangePayload(code),
+  );
   return response.data;
 }
 
 export function getLoginErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('auth.errors.unexpected.login'));
+  return getAuthErrorMessage(error, 'login');
 }
 
 export function getRegisterErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('auth.errors.unexpected.signup'));
+  return getAuthErrorMessage(error, 'signup');
 }
 
 export function getLogoutErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('auth.errors.unexpected.logout'));
+  return getAuthErrorMessage(error, 'logout');
 }
 
 export function getForgotPasswordErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('auth.errors.unexpected.forgotPassword'));
+  return getAuthErrorMessage(error, 'forgotPassword');
 }
 
 export function getResetPasswordErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('auth.errors.unexpected.resetPassword'));
+  return getAuthErrorMessage(error, 'resetPassword');
 }
 
 export function getProfileErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('auth.errors.unexpected.profile'));
+  return getAuthErrorMessage(error, 'profile');
 }
 
 export function getUpdateProfileErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('auth.errors.unexpected.updateProfile'));
+  return getAuthErrorMessage(error, 'updateProfile');
 }
 
 export function getOAuthAuthorizationUrl(provider: OAuthProvider): string {
@@ -134,42 +127,4 @@ export function getOAuthAuthorizationUrl(provider: OAuthProvider): string {
 
 export function redirectToOAuthAuthorization(provider: OAuthProvider): void {
   globalThis.location.assign(getOAuthAuthorizationUrl(provider));
-}
-
-function decodeBase64Url(input: string): string | null {
-  try {
-    const normalized = input.replaceAll('-', '+').replaceAll('_', '/');
-    const paddingLength = (4 - (normalized.length % 4)) % 4;
-    const padded = normalized + '='.repeat(paddingLength);
-    return atob(padded);
-  } catch {
-    return null;
-  }
-}
-
-export function extractEmailFromJwt(token: string): string | null {
-  const parts = token.split('.');
-  if (parts.length < 2) {
-    return null;
-  }
-
-  const payloadRaw = decodeBase64Url(parts[1]);
-  if (!payloadRaw) {
-    return null;
-  }
-
-  try {
-    const payload = JSON.parse(payloadRaw) as { email?: unknown; sub?: unknown };
-    if (typeof payload.email === 'string' && payload.email.trim().length > 0) {
-      return payload.email.trim().toLowerCase();
-    }
-
-    if (typeof payload.sub === 'string' && payload.sub.includes('@')) {
-      return payload.sub.trim().toLowerCase();
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
 }

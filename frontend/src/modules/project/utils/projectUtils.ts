@@ -1,4 +1,5 @@
 import type { DatasetItem } from '@/modules/project/types/project';
+import { getFileExtension } from '@/modules/project/utils/projectFileUtils';
 
 const NER_SUPPORTED_EXTENSIONS = new Set(['txt', 'json', 'csv']);
 
@@ -61,20 +62,6 @@ export function completionColor(pct: number): {
     text: 'text-sky-700',
     bg: 'bg-sky-50',
   };
-}
-
-function getFileExtension(fileName: string | null | undefined): string {
-  if (!fileName) {
-    return '';
-  }
-
-  const normalizedName = fileName.trim().toLowerCase();
-  const dotIndex = normalizedName.lastIndexOf('.');
-  if (dotIndex < 0 || dotIndex === normalizedName.length - 1) {
-    return '';
-  }
-
-  return normalizedName.slice(dotIndex + 1);
 }
 
 export function isNerCompatibleDatasetItem(

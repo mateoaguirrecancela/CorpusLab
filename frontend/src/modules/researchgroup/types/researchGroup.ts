@@ -1,5 +1,13 @@
 export type ResearchGroupMemberRole = 'OWNER' | 'ADMIN' | 'ANNOTATOR';
 
+export const INVITABLE_RESEARCH_GROUP_MEMBER_ROLES = [
+  'ADMIN',
+  'ANNOTATOR',
+] as const satisfies readonly ResearchGroupMemberRole[];
+
+export type InvitableResearchGroupMemberRole =
+  (typeof INVITABLE_RESEARCH_GROUP_MEMBER_ROLES)[number];
+
 export type ResearchGroupSummary = {
   id: number;
   name: string;
@@ -27,12 +35,13 @@ export type ResearchGroupDetail = {
   activeProjects: number;
   createdAt: string;
   members: ResearchGroupMember[];
+  canManageResearchers: boolean;
+  canCreateProjects: boolean;
 };
 
 export type InviteResearchGroupMemberPayload = {
   email: string;
-  role: ResearchGroupMemberRole;
-  expiresAt: string;
+  role: InvitableResearchGroupMemberRole;
 };
 
 export type UpdateResearchGroupPayload = {
@@ -41,7 +50,7 @@ export type UpdateResearchGroupPayload = {
 };
 
 export type UpdateResearchGroupMemberRolePayload = {
-  role: ResearchGroupMemberRole;
+  role: InvitableResearchGroupMemberRole;
 };
 
 export type ResearchGroupInvitationStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';

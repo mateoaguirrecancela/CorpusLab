@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import { AuthCard } from '@/modules/auth/components/AuthCard';
@@ -8,8 +7,8 @@ import { useResetPasswordForm } from '@/modules/auth/hooks/useResetPasswordForm'
 export default function ResetPasswordPage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
-  const initialToken = useMemo(() => searchParams.get('token') ?? '', [searchParams]);
-  const { form, canSubmit, isSubmitting, errorMessage, updateField, handleSubmit } =
+  const initialToken = searchParams.get('token') ?? '';
+  const { form, canSubmit, fieldErrors, isSubmitting, errorMessage, updateField, handleSubmit } =
     useResetPasswordForm(initialToken);
 
   return (
@@ -17,6 +16,7 @@ export default function ResetPasswordPage() {
       <ResetPasswordForm
         canSubmit={canSubmit}
         errorMessage={errorMessage}
+        fieldErrors={fieldErrors}
         form={form}
         isSubmitting={isSubmitting}
         onFieldChange={updateField}

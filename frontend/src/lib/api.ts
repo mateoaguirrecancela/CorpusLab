@@ -1,5 +1,5 @@
 import axios from 'axios';
-import i18n from '@/lib/i18n';
+import i18n, { getResolvedLanguage } from '@/lib/i18n';
 import { SESSION_AUTH_TOKEN_STORAGE_KEY } from '@/modules/auth/constants/session';
 import { getSessionToken } from '@/modules/auth/services/sessionService';
 
@@ -13,7 +13,7 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const token = getSessionToken();
-  const language = i18n.resolvedLanguage ?? i18n.language ?? 'en';
+  const language = getResolvedLanguage(i18n);
 
   config.headers = config.headers ?? {};
   config.headers['Accept-Language'] = language;

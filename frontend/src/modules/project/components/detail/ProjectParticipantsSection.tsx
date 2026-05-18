@@ -50,7 +50,7 @@ export function ProjectParticipantsSection({ project }: ProjectParticipantsSecti
                 <TableHead className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                   {t('project.detail.participantsCompletion')}
                 </TableHead>
-                {project.participantRole === 'CREATOR' && (
+                {project.canManageProject && (
                   <TableHead className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                     {t('project.detail.participantsActions')}
                   </TableHead>
@@ -101,7 +101,7 @@ export function ProjectParticipantsSection({ project }: ProjectParticipantsSecti
                       {participantCompletion}%
                     </TableCell>
 
-                    {project.participantRole === 'CREATOR' && (
+                    {project.canManageProject && (
                       <TableCell className="px-4 py-3 text-right">
                         {participant.role === 'PARTICIPANT' ? (
                           <Link

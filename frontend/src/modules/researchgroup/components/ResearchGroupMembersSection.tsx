@@ -13,12 +13,89 @@ import {
 import { InviteResearchGroupMemberDialog } from '@/modules/researchgroup/components/InviteResearchGroupMemberDialog';
 import { ManageResearchGroupMemberDialog } from '@/modules/researchgroup/components/ManageResearchGroupMemberDialog';
 import { type ResearchGroupDetail } from '@/modules/researchgroup/types/researchGroup';
+import { type ResearchGroupMember } from '@/modules/researchgroup/types/researchGroup';
 import { getResearchGroupMemberInitials } from '@/modules/researchgroup/utils/researchGroupUtils';
 
 type ResearchGroupMembersSectionProps = Readonly<{
   canManageResearchers: boolean;
   group: ResearchGroupDetail;
 }>;
+
+type ResearchGroupMemberRowProps = Readonly<{
+  canManageResearchers: boolean;
+  groupId: number;
+  member: ResearchGroupMember;
+}>;
+
+function ResearchGroupMemberActions({
+  canManageResearchers,
+  groupId,
+  member,
+}: ResearchGroupMemberRowProps) {
+  const { t } = useTranslation();
+
+  if (!canManageResearchers || member.role === 'OWNER') {
+    return null;
+  }
+
+  return (
+    <ManageResearchGroupMemberDialog
+      groupId={groupId}
+      member={member}
+      trigger={
+        <button
+          aria-label={t('researchGroup.detail.memberActions')}
+          className="inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+          type="button"
+        >
+          <MoreVertical className="size-4" />
+        </button>
+      }
+    />
+  );
+}
+
+function ResearchGroupMemberRow({
+  canManageResearchers,
+  groupId,
+  member,
+}: ResearchGroupMemberRowProps) {
+  const { t } = useTranslation();
+
+  return (
+    <TableRow className="hover:bg-transparent">
+      <TableCell className="px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="flex size-8 items-center justify-center rounded-full bg-accent text-xs font-bold text-primary">
+            {getResearchGroupMemberInitials(member)}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-primary">
+              {member.firstName} {member.lastName}
+            </p>
+            <p className="text-xs text-muted-foreground">{member.email}</p>
+          </div>
+        </div>
+      </TableCell>
+
+      <TableCell className="px-4 py-3">
+        <RoleBadge label={t(`researchGroup.roles.${member.role}`)} role={member.role} />
+      </TableCell>
+
+      <TableCell className="px-4 py-3 text-sm font-semibold text-muted-foreground tabular-nums">
+        {member.activeProjectsCount}
+      </TableCell>
+
+      <TableCell className="px-4 py-3 text-right">
+        <ResearchGroupMemberActions
+          canManageResearchers={canManageResearchers}
+          groupId={groupId}
+          member={member}
+        />
+      </TableCell>
+    </TableRow>
+  );
+}
 
 export function ResearchGroupMembersSection({
   canManageResearchers,
@@ -70,47 +147,12 @@ export function ResearchGroupMembersSection({
 
           <TableBody>
             {group.members.map((member) => (
-              <TableRow className="hover:bg-transparent" key={member.userId}>
-                <TableCell className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-8 items-center justify-center rounded-full bg-accent text-xs font-bold text-primary">
-                      {getResearchGroupMemberInitials(member)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-primary">
-                        {member.firstName} {member.lastName}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{member.email}</p>
-                    </div>
-                  </div>
-                </TableCell>
-
-                <TableCell className="px-4 py-3">
-                  <RoleBadge label={t(`researchGroup.roles.${member.role}`)} role={member.role} />
-                </TableCell>
-
-                <TableCell className="px-4 py-3 text-sm font-semibold text-muted-foreground tabular-nums">
-                  {member.activeProjectsCount}
-                </TableCell>
-
-                <TableCell className="px-4 py-3 text-right">
-                  {canManageResearchers && member.role !== 'OWNER' && (
-                    <ManageResearchGroupMemberDialog
-                      groupId={group.id}
-                      member={member}
-                      trigger={
-                        <button
-                          aria-label={t('researchGroup.detail.memberActions')}
-                          className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary cursor-pointer"
-                          type="button"
-                        >
-                          <MoreVertical className="size-4" />
-                        </button>
-                      }
-                    />
-                  )}
-                </TableCell>
-              </TableRow>
+              <ResearchGroupMemberRow
+                canManageResearchers={canManageResearchers}
+                groupId={group.id}
+                key={member.userId}
+                member={member}
+              />
             ))}
           </TableBody>
         </Table>

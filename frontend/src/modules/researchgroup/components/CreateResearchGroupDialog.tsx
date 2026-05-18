@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { FormFieldControl } from '@/components/common/FormFieldControl';
-import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -11,9 +11,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Spinner } from '@/components/ui/spinner';
+import { DialogActionButton } from '@/modules/researchgroup/components/DialogActionButton';
+import { ResearchGroupFormFields } from '@/modules/researchgroup/components/ResearchGroupFormFields';
 import { useCreateResearchGroupMutation } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
+import {
+  createResearchGroupFormSchema,
+  type ResearchGroupFormValues,
+} from '@/modules/researchgroup/schemas/researchGroupFormSchemas';
 import { getCreateGroupErrorMessage } from '@/modules/researchgroup/services/researchGroupService';
+import {
+  canSubmitResearchGroupForm,
+  DIRTY_VALIDATED_FIELD_OPTIONS,
+  EMPTY_RESEARCH_GROUP_FORM,
+  toResearchGroupPayload,
+} from '@/modules/researchgroup/utils/researchGroupForm';
 
 type CreateResearchGroupDialogProps = {
   trigger: React.ReactNode;
@@ -22,16 +33,32 @@ type CreateResearchGroupDialogProps = {
 export function CreateResearchGroupDialog({ trigger }: Readonly<CreateResearchGroupDialogProps>) {
   const { t } = useTranslation();
   const createGroupMutation = useCreateResearchGroupMutation();
+  const researchGroupSchema = useMemo(() => createResearchGroupFormSchema(t), [t]);
+  const form = useForm<ResearchGroupFormValues>({
+    defaultValues: EMPTY_RESEARCH_GROUP_FORM,
+    mode: 'onChange',
+    resolver: zodResolver(researchGroupSchema),
+  });
+  const {
+    control,
+    formState: { errors, isValid },
+    handleSubmit,
+    reset,
+    setValue,
+  } = form;
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const name = useWatch({ control, name: 'name' });
+  const description = useWatch({ control, name: 'description' });
   const isSaving = createGroupMutation.isPending;
-
-  const canSave = name.trim().length > 0 && !isSaving;
+  const values = { description, name };
+  const canSave = canSubmitResearchGroupForm({
+    isPending: isSaving,
+    isValid,
+    values,
+  });
 
   const resetForm = () => {
-    setName('');
-    setDescription('');
+    reset(EMPTY_RESEARCH_GROUP_FORM);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -41,16 +68,9 @@ export function CreateResearchGroupDialog({ trigger }: Readonly<CreateResearchGr
     setOpen(nextOpen);
   };
 
-  const handleSubmit = async () => {
-    if (!canSave) {
-      return;
-    }
-
+  const submitForm = async (values: ResearchGroupFormValues) => {
     try {
-      await createGroupMutation.mutateAsync({
-        name: name.trim(),
-        description: description.trim() || undefined,
-      });
+      await createGroupMutation.mutateAsync(toResearchGroupPayload(values));
 
       setOpen(false);
       resetForm();
@@ -69,50 +89,30 @@ export function CreateResearchGroupDialog({ trigger }: Readonly<CreateResearchGr
           <DialogTitle>{t('researchGroup.create.title')}</DialogTitle>
         </DialogHeader>
 
-        <div className="my-8 space-y-4">
-          <FormFieldControl
-            id="create-group-name"
-            inputProps={{
-              autoFocus: true,
-              maxLength: 256,
-              placeholder: t('researchGroup.create.namePlaceholder'),
-              required: true,
-            }}
-            label={t('researchGroup.create.nameLabel')}
-            onValueChange={setName}
-            required
-            value={name}
-          />
-
-          <FormFieldControl
-            controlType="textarea"
-            id="create-group-description"
-            label={t('researchGroup.create.descriptionLabel')}
-            onValueChange={setDescription}
-            textareaProps={{
-              maxLength: 2048,
-              placeholder: t('researchGroup.create.descriptionPlaceholder'),
-            }}
-            value={description}
-          />
-        </div>
+        <ResearchGroupFormFields
+          description={description}
+          descriptionId="create-group-description"
+          descriptionLabel={t('researchGroup.create.descriptionLabel')}
+          descriptionPlaceholder={t('researchGroup.create.descriptionPlaceholder')}
+          errors={errors}
+          name={name}
+          nameId="create-group-name"
+          nameLabel={t('researchGroup.create.nameLabel')}
+          namePlaceholder={t('researchGroup.create.namePlaceholder')}
+          onDescriptionChange={(nextDescription) =>
+            setValue('description', nextDescription, DIRTY_VALIDATED_FIELD_OPTIONS)
+          }
+          onNameChange={(nextName) => setValue('name', nextName, DIRTY_VALIDATED_FIELD_OPTIONS)}
+        />
 
         <DialogFooter>
-          <Button
-            className="h-10 min-w-28 rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
+          <DialogActionButton
             disabled={!canSave}
-            onClick={() => void handleSubmit()}
-            type="button"
-          >
-            {isSaving ? (
-              <span className="inline-flex items-center gap-2">
-                <Spinner aria-hidden className="size-4" />
-                {t('common.actions.saving')}
-              </span>
-            ) : (
-              t('researchGroup.create.submit')
-            )}
-          </Button>
+            isPending={isSaving}
+            label={t('researchGroup.create.submit')}
+            loadingLabel={t('common.actions.saving')}
+            onClick={() => void handleSubmit(submitForm)()}
+          />
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Check, Copy } from 'lucide-react';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
@@ -12,23 +14,26 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Spinner } from '@/components/ui/spinner';
+import { DialogActionButton } from '@/modules/researchgroup/components/DialogActionButton';
 import { useInviteResearchGroupMemberMutation } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
+import {
+  createInviteResearchGroupMemberSchema,
+  type InviteResearchGroupMemberFormValues,
+} from '@/modules/researchgroup/schemas/researchGroupFormSchemas';
 import { getInviteResearcherErrorMessage } from '@/modules/researchgroup/services/researchGroupService';
-import { type ResearchGroupMemberRole } from '@/modules/researchgroup/types/researchGroup';
+import {
+  canSubmitInviteMember,
+  DEFAULT_INVITE_MEMBER_FORM,
+  DIRTY_VALIDATED_FIELD_OPTIONS,
+  INVITABLE_ROLES,
+  toInviteResearchGroupMemberPayload,
+} from '@/modules/researchgroup/utils/researchGroupForm';
 
 type InviteResearchGroupMemberDialogProps = {
   groupId: number;
   invitationCode: string;
   trigger: React.ReactNode;
 };
-
-const INVITABLE_ROLES: ResearchGroupMemberRole[] = ['ADMIN', 'ANNOTATOR'];
-
-function getDefaultExpirationIsoString(): string {
-  const expirationDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  return expirationDate.toISOString();
-}
 
 export function InviteResearchGroupMemberDialog({
   groupId,
@@ -37,20 +42,33 @@ export function InviteResearchGroupMemberDialog({
 }: Readonly<InviteResearchGroupMemberDialogProps>) {
   const { t } = useTranslation();
   const inviteMutation = useInviteResearchGroupMemberMutation(groupId);
+  const inviteSchema = useMemo(() => createInviteResearchGroupMemberSchema(t), [t]);
+  const form = useForm<InviteResearchGroupMemberFormValues>({
+    defaultValues: DEFAULT_INVITE_MEMBER_FORM,
+    mode: 'onChange',
+    resolver: zodResolver(inviteSchema),
+  });
+  const {
+    control,
+    formState: { errors, isValid },
+    handleSubmit,
+    reset,
+    setValue,
+  } = form;
   const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<ResearchGroupMemberRole>('ANNOTATOR');
   const [hasCopiedCode, setHasCopiedCode] = useState(false);
+  const email = useWatch({ control, name: 'email' });
+  const role = useWatch({ control, name: 'role' });
   const isSaving = inviteMutation.isPending;
-
-  const isEmailInvalid =
-    email.trim().length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-
-  const canSave = email.trim().length > 0 && role.length > 0 && !isSaving && !isEmailInvalid;
+  const canSave = canSubmitInviteMember({
+    email,
+    isPending: isSaving,
+    isValid,
+    role,
+  });
 
   const resetForm = () => {
-    setEmail('');
-    setRole('ANNOTATOR');
+    reset(DEFAULT_INVITE_MEMBER_FORM);
     setHasCopiedCode(false);
   };
 
@@ -77,20 +95,11 @@ export function InviteResearchGroupMemberDialog({
     setOpen(nextOpen);
   };
 
-  const handleSubmit = async () => {
-    if (!canSave) {
-      return;
-    }
-
+  const submitForm = async (values: InviteResearchGroupMemberFormValues) => {
     try {
-      await inviteMutation.mutateAsync({
-        email: email.trim(),
-        role,
-        expiresAt: getDefaultExpirationIsoString(),
-      });
+      await inviteMutation.mutateAsync(toInviteResearchGroupMemberPayload(values));
       toast.success(t('researchGroup.invite.success'));
-      setEmail('');
-      setRole('ANNOTATOR');
+      reset(DEFAULT_INVITE_MEMBER_FORM);
     } catch (error) {
       toast.error(getInviteResearcherErrorMessage(error));
     }
@@ -130,11 +139,14 @@ export function InviteResearchGroupMemberDialog({
               maxLength: 254,
               placeholder: t('researchGroup.invite.emailPlaceholder'),
               required: true,
+              'aria-invalid': Boolean(errors.email),
             }}
             inputType="email"
             label={t('researchGroup.invite.emailLabel')}
-            message={isEmailInvalid ? t('researchGroup.invite.invalidEmail') : undefined}
-            onValueChange={setEmail}
+            message={errors.email?.message}
+            onValueChange={(nextEmail) =>
+              setValue('email', nextEmail, DIRTY_VALIDATED_FIELD_OPTIONS)
+            }
             value={email}
           />
 
@@ -142,7 +154,14 @@ export function InviteResearchGroupMemberDialog({
             controlType="select"
             id="invite-member-role"
             label={t('researchGroup.invite.roleLabel')}
-            onValueChange={(value) => setRole(value as ResearchGroupMemberRole)}
+            onValueChange={(value) =>
+              setValue(
+                'role',
+                value as InviteResearchGroupMemberFormValues['role'],
+                DIRTY_VALIDATED_FIELD_OPTIONS,
+              )
+            }
+            selectProps={{ 'aria-invalid': Boolean(errors.role) }}
             value={role}
           >
             {INVITABLE_ROLES.map((roleOption) => (
@@ -154,21 +173,13 @@ export function InviteResearchGroupMemberDialog({
         </div>
 
         <DialogFooter>
-          <Button
-            className="h-10 min-w-28 rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
+          <DialogActionButton
             disabled={!canSave}
-            onClick={() => void handleSubmit()}
-            type="button"
-          >
-            {isSaving ? (
-              <span className="inline-flex items-center gap-2">
-                <Spinner aria-hidden className="size-4" />
-                {t('common.actions.saving')}
-              </span>
-            ) : (
-              t('researchGroup.invite.submit')
-            )}
-          </Button>
+            isPending={isSaving}
+            label={t('researchGroup.invite.submit')}
+            loadingLabel={t('common.actions.saving')}
+            onClick={() => void handleSubmit(submitForm)()}
+          />
         </DialogFooter>
       </DialogContent>
     </Dialog>

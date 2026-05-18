@@ -1,58 +1,59 @@
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { INITIAL_FORGOT_PASSWORD_STATE } from '@/modules/auth/constants/forgotPassword';
+import {
+  createForgotPasswordSchema,
+  type ForgotPasswordFormValues,
+} from '@/modules/auth/schemas/authFormSchemas';
 import {
   getForgotPasswordErrorMessage,
   requestPasswordReset,
 } from '@/modules/auth/services/authService';
 import { type ForgotPasswordFormState } from '@/modules/auth/types/forgotPassword';
-import { isEmailValid } from '@/modules/auth/utils/validation';
+import { useAuthFormController } from '@/modules/auth/hooks/useAuthFormController';
+
+const FORGOT_PASSWORD_FIELDS = [
+  'email',
+] as const satisfies readonly (keyof ForgotPasswordFormValues)[];
 
 export function useForgotPasswordForm() {
   const { t } = useTranslation();
-  const [form, setForm] = useState<ForgotPasswordFormState>(INITIAL_FORGOT_PASSWORD_STATE);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const forgotPasswordSchema = useMemo(() => createForgotPasswordSchema(t), [t]);
+  const {
+    form,
+    canSubmit,
+    fieldErrors,
+    isSubmitting,
+    errorMessage,
+    successMessage,
+    setErrorMessage,
+    setSuccessMessage,
+    submitForm,
+    updateField,
+  } = useAuthFormController<ForgotPasswordFormValues>({
+    defaultValues: INITIAL_FORGOT_PASSWORD_STATE,
+    fieldNames: FORGOT_PASSWORD_FIELDS,
+    schema: forgotPasswordSchema,
+  });
 
-  const canSubmit = useMemo(
-    () => isEmailValid(form.email.trim()) && !isSubmitting,
-    [form.email, isSubmitting],
-  );
-
-  const updateField = <K extends keyof ForgotPasswordFormState>(
-    field: K,
-    value: ForgotPasswordFormState[K],
-  ) => {
-    setForm((current) => ({ ...current, [field]: value }));
-  };
+  const forgotPasswordValues: ForgotPasswordFormState = form;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!canSubmit) {
-      setErrorMessage(t('auth.forgotPassword.required'));
-      setSuccessMessage('');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    try {
-      const response = await requestPasswordReset(form);
-      setSuccessMessage(response.message);
-    } catch (error) {
-      setErrorMessage(getForgotPasswordErrorMessage(error));
-    } finally {
-      setIsSubmitting(false);
-    }
+    await submitForm({
+      event,
+      invalidMessage: t('auth.forgotPassword.required'),
+      onError: (error) => setErrorMessage(getForgotPasswordErrorMessage(error)),
+      onValid: async (values) => {
+        const response = await requestPasswordReset(values);
+        setSuccessMessage(response.message);
+      },
+    });
   };
 
   return {
-    form,
+    form: forgotPasswordValues,
     canSubmit,
+    fieldErrors,
     isSubmitting,
     errorMessage,
     successMessage,

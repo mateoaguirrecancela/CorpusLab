@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
@@ -13,11 +12,14 @@ import {
   useToggleProjectAnnotationWarningMutation,
 } from '@/modules/project/hooks/useProjectQueries';
 import {
+  getProjectGuidelinePdf,
+  getProjectGuidelinePdfErrorMessage,
   getProjectAnnotationLoadErrorMessage,
   getProjectAnnotationSaveErrorMessage,
   getProjectDetailLoadErrorMessage,
 } from '@/modules/project/services/projectService';
 import type { AnnotationStep } from '@/modules/project/types/project';
+import { useAnnotationUIStore } from '@/modules/project/stores/useAnnotationUIStore';
 import {
   ANNOTATION_PAGE_SIZE,
   annotationStepKey,
@@ -28,13 +30,11 @@ import {
   buildNerTextSegments,
   clearTextSelection,
   findCsvColumnValue,
-  getNerEntityStyle,
   getNerSourceText,
   isCsvMimeType,
   mergeNerEntity,
   normalizeStepIndex,
   parseCommaSeparatedLabels,
-  parseCsvStepPreview,
   selectionOffsetsWithinElement,
   type AnnotationDraft,
   type AnnotationDraftByStep,
@@ -46,6 +46,7 @@ import {
   completionColor,
   normalizeCompletionPercentage,
 } from '@/modules/project/utils/projectUtils';
+import { isPositiveId } from '@/modules/project/utils/projectFormUtils';
 
 export function useProjectAnnotationPage() {
   // NOSONAR - Flujo completo de anotacion en una sola pantalla.
@@ -55,7 +56,7 @@ export function useProjectAnnotationPage() {
   const [searchParams] = useSearchParams();
 
   const numericProjectId = useMemo(() => Number(projectId), [projectId]);
-  const isInvalidProjectId = !Number.isFinite(numericProjectId) || numericProjectId <= 0;
+  const isInvalidProjectId = !isPositiveId(numericProjectId);
   const reviewedParticipantUserId = useMemo(() => {
     const rawParticipantUserId = searchParams.get('participantUserId');
     if (!rawParticipantUserId) {
@@ -63,7 +64,7 @@ export function useProjectAnnotationPage() {
     }
 
     const parsedParticipantUserId = Number(rawParticipantUserId);
-    if (!Number.isInteger(parsedParticipantUserId) || parsedParticipantUserId <= 0) {
+    if (!Number.isInteger(parsedParticipantUserId) || !isPositiveId(parsedParticipantUserId)) {
       return null;
     }
 
@@ -71,15 +72,23 @@ export function useProjectAnnotationPage() {
   }, [searchParams]);
   const isReviewMode = reviewedParticipantUserId != null;
 
-  const [annotationOffset, setAnnotationOffset] = useState(0);
-  const [resumeGlobalStepIndex, setResumeGlobalStepIndex] = useState<number | null>(null);
-  const [hasResolvedResumeStep, setHasResolvedResumeStep] = useState(false);
+  const {
+    activeNerLabel,
+    annotationOffset,
+    hasResolvedResumeStep,
+    isGuidelineCollapsed,
+    resetAnnotationUI,
+    resumeGlobalStepIndex,
+    setActiveNerLabel,
+    setAnnotationOffset,
+    setHasResolvedResumeStep,
+    setIsGuidelineCollapsed,
+    setResumeGlobalStepIndex,
+  } = useAnnotationUIStore();
   const [draftByStep, setDraftByStep] = useState<AnnotationDraftByStep>({});
   const [savingStepId, setSavingStepId] = useState<string | null>(null);
   const [guidelinePdfUrl, setGuidelinePdfUrl] = useState<string | null>(null);
   const [guidelinePdfError, setGuidelinePdfError] = useState('');
-  const [isGuidelineCollapsed, setIsGuidelineCollapsed] = useState(true);
-  const [activeNerLabel, setActiveNerLabel] = useState('');
   const nerSourceSelectionRef = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -175,46 +184,44 @@ export function useProjectAnnotationPage() {
 
   useEffect(() => {
     let createdGuidelineUrl: string | null = null;
+    let cancelled = false;
     setGuidelinePdfUrl(null);
     setGuidelinePdfError('');
 
-    const guidelinePdfBase64 = project?.guidelinePdfBase64;
-    if (!guidelinePdfBase64) {
+    if (!project?.guidelinePdfAvailable) {
       return;
     }
 
-    try {
-      const normalizedGuidelinePdfBase64 = guidelinePdfBase64.includes(',')
-        ? (guidelinePdfBase64.split(',').pop() ?? guidelinePdfBase64)
-        : guidelinePdfBase64;
+    void getProjectGuidelinePdf(project.id)
+      .then((guidelinePdf) => {
+        if (cancelled) {
+          return;
+        }
 
-      const binary = globalThis.atob(normalizedGuidelinePdfBase64);
-      const bytes = new Uint8Array(binary.length);
-
-      for (let index = 0; index < binary.length; index += 1) {
-        bytes[index] = binary.codePointAt(index) ?? 0;
-      }
-
-      createdGuidelineUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
-      setGuidelinePdfUrl(createdGuidelineUrl);
-    } catch {
-      setGuidelinePdfError(t('project.detail.openGuidelinePdfError'));
-    }
+        createdGuidelineUrl = URL.createObjectURL(guidelinePdf.blob);
+        setGuidelinePdfUrl(createdGuidelineUrl);
+      })
+      .catch((loadError) => {
+        if (!cancelled) {
+          setGuidelinePdfError(getProjectGuidelinePdfErrorMessage(loadError));
+        }
+      });
 
     return () => {
+      cancelled = true;
       if (createdGuidelineUrl != null) {
         URL.revokeObjectURL(createdGuidelineUrl);
       }
     };
-  }, [project?.guidelinePdfBase64, t]);
+  }, [project?.guidelinePdfAvailable, project?.id]);
 
   const steps = annotationWorkspace?.steps ?? [];
   const totalSteps = annotationWorkspace?.totalSteps ?? 0;
 
   useEffect(() => {
-    setResumeGlobalStepIndex(null);
-    setHasResolvedResumeStep(false);
-  }, [numericProjectId]);
+    resetAnnotationUI();
+    setDraftByStep({});
+  }, [numericProjectId, resetAnnotationUI, reviewedParticipantUserId]);
 
   useEffect(() => {
     if (hasResolvedResumeStep || isInvalidProjectId || !annotationWorkspace) {
@@ -237,7 +244,13 @@ export function useProjectAnnotationPage() {
 
     setResumeGlobalStepIndex(initialStep);
     setHasResolvedResumeStep(true);
-  }, [annotationWorkspace, hasResolvedResumeStep, isInvalidProjectId]);
+  }, [
+    annotationWorkspace,
+    hasResolvedResumeStep,
+    isInvalidProjectId,
+    setHasResolvedResumeStep,
+    setResumeGlobalStepIndex,
+  ]);
 
   const {
     activeStepOnPage,
@@ -293,7 +306,7 @@ export function useProjectAnnotationPage() {
     }
 
     setActiveNerLabel('');
-  }, [activeNerLabel, annotationProjectType, labels]);
+  }, [activeNerLabel, annotationProjectType, labels, setActiveNerLabel]);
 
   const getDraft = useCallback(
     (step: AnnotationStep): AnnotationDraft => {
@@ -521,14 +534,6 @@ export function useProjectAnnotationPage() {
   );
   const completionColors = completionColor(completionPercentage);
 
-  const csvStepPreview = useMemo(() => {
-    if (!currentStep || !isCsvMimeType(currentStep.sourceMimeType)) {
-      return null;
-    }
-
-    return parseCsvStepPreview(currentStep.preview);
-  }, [currentStep]);
-
   const csvTargetColumnValue = useMemo(() => {
     if (!currentStep || !isCsvMimeType(currentStep.sourceMimeType)) {
       return null;
@@ -537,11 +542,7 @@ export function useProjectAnnotationPage() {
     const normalizedTarget = annotationTargetColumn?.trim().toLowerCase() ?? '';
 
     if (normalizedTarget.length > 0) {
-      const targetValue = findCsvColumnValue(
-        normalizedTarget,
-        currentStep.rowValues,
-        csvStepPreview,
-      );
+      const targetValue = findCsvColumnValue(normalizedTarget, currentStep.rowValues);
 
       if (targetValue != null) {
         return targetValue;
@@ -549,7 +550,7 @@ export function useProjectAnnotationPage() {
     }
 
     return currentStep.preview;
-  }, [annotationTargetColumn, csvStepPreview, currentStep]);
+  }, [annotationTargetColumn, currentStep]);
 
   const csvLabelColumnValues = useMemo<CsvLabelColumnValue[]>(() => {
     if (!currentStep || !isCsvMimeType(currentStep.sourceMimeType)) {
@@ -561,7 +562,7 @@ export function useProjectAnnotationPage() {
     return labels
       .map((label) => ({
         name: label.name,
-        value: findCsvColumnValue(label.name, currentStep.rowValues, csvStepPreview),
+        value: findCsvColumnValue(label.name, currentStep.rowValues),
       }))
       .filter((entry): entry is CsvLabelColumnValue => {
         const normalizedName = entry.name.trim().toLowerCase();
@@ -570,7 +571,7 @@ export function useProjectAnnotationPage() {
           normalizedName.length > 0 && normalizedName !== normalizedTarget && entry.value !== null
         );
       });
-  }, [annotationTargetColumn, csvStepPreview, currentStep, labels]);
+  }, [annotationTargetColumn, currentStep, labels]);
 
   const selectedLabels = useMemo(() => {
     return parseCommaSeparatedLabels(currentDraft.value);
@@ -618,144 +619,10 @@ export function useProjectAnnotationPage() {
   const classificationHeading = isReviewMode
     ? t('project.annotationPage.classificationTitle')
     : `${t('project.annotationPage.classificationTitle')} *`;
-  let csvSourceContent: ReactNode = (
-    <pre className="whitespace-pre-wrap px-3 py-2 text-sm leading-relaxed text-foreground/90">
-      {currentStep?.preview ?? ''}
-    </pre>
-  );
-  const csvLabelColumnContent =
-    csvLabelColumnValues.length > 0 ? (
-      <div className="mt-6">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-          {t('project.annotationPage.csvLabelOptionsTitle')}
-        </h3>
-        <div className="mt-3 space-y-4">
-          {csvLabelColumnValues.map((columnValue) => (
-            <div key={columnValue.name}>
-              <p className="truncate text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                {columnValue.name}
-              </p>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-                {columnValue.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-    ) : null;
-
-  if (csvTargetColumnValue != null) {
-    const columnHeader = annotationTargetColumn ? (
-      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-        {annotationTargetColumn}
-      </span>
-    ) : null;
-
-    if (annotationProjectType === 'NER') {
-      csvSourceContent = (
-        <div>
-          {columnHeader}
-          <div
-            aria-label={t('project.annotationPage.nerSelectionAreaLabel')}
-            className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90 select-text"
-            ref={nerSourceSelectionRef}
-          >
-            {nerTextSegments.map((segment) => {
-              if (segment.entities.length === 0) {
-                return <span key={segment.key}>{segment.text}</span>;
-              }
-
-              const segEnd = Number.parseInt(segment.key.split('-')[2], 10);
-
-              const nestedMarks = segment.entities.reduce(
-                (acc, entity) => (
-                  <mark
-                    className="rounded-xs px-px text-current"
-                    key={`${entity.label}-${entity.startOffset}`}
-                    style={getNerEntityStyle(entity.label, nerLabelColorMap)}
-                    title={entity.label}
-                  >
-                    {acc}
-                  </mark>
-                ),
-                <>{segment.text}</>,
-              );
-
-              return (
-                <span className="group/ner relative inline" key={segment.key}>
-                  {nestedMarks}
-                  {!isReviewMode &&
-                    segment.entities
-                      .filter((entity) => entity.endOffset === segEnd)
-                      .map((entity, index) => (
-                        <button
-                          aria-label={t('project.annotationPage.removeEntity')}
-                          className="absolute -top-2 -right-2 inline-flex size-4 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-destructive group-hover/ner:opacity-100"
-                          key={`${entity.label}-${entity.startOffset}`}
-                          onClick={() => removeNerEntity(currentStep, entity)}
-                          onMouseDown={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                          }}
-                          style={{
-                            transform: index > 0 ? `translateX(${index * 1}rem)` : undefined,
-                          }}
-                          type="button"
-                        >
-                          <X aria-hidden className="size-3" />
-                        </button>
-                      ))}
-                </span>
-              );
-            })}
-          </div>
-          {csvLabelColumnContent}
-        </div>
-      );
-    } else {
-      csvSourceContent = (
-        <div>
-          {columnHeader}
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-            {csvTargetColumnValue}
-          </p>
-          {csvLabelColumnContent}
-        </div>
-      );
-    }
-  }
-
-  let guidelineContent = (
-    <p className="text-sm text-muted-foreground">{t('project.detail.noGuideline')}</p>
-  );
-
-  if (project?.guidelineText) {
-    guidelineContent = (
-      <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-        {project.guidelineText}
-      </p>
-    );
-  } else if (guidelinePdfUrl != null) {
-    guidelineContent = (
-      <iframe
-        className="h-120 w-full rounded-md border border-border bg-background"
-        src={guidelinePdfUrl}
-        title={t('project.annotationPage.guidelineTitle')}
-      />
-    );
-  } else if (guidelinePdfError.length > 0) {
-    guidelineContent = <p className="text-sm text-destructive">{guidelinePdfError}</p>;
-  } else if (project?.guidelinePdfBase64) {
-    guidelineContent = (
-      <p className="text-sm text-muted-foreground">
-        {t('project.annotationPage.guidelinePdfLoading')}
-      </p>
-    );
-  }
-
   return {
     activeNerLabel,
     annotationProjectType,
+    annotationTargetColumn,
     annotationWorkspace,
     areStepActionsDisabled,
     canMoveNext,
@@ -764,11 +631,13 @@ export function useProjectAnnotationPage() {
     classificationHeading,
     completionColors,
     completionPercentage,
-    csvSourceContent,
+    csvLabelColumnValues,
+    csvTargetColumnValue,
     currentDraft,
     currentGlobalStepIndex,
     currentStep,
-    guidelineContent,
+    guidelinePdfError,
+    guidelinePdfUrl,
     handleBackNavigation,
     handleFinishAction,
     handleNextAction,

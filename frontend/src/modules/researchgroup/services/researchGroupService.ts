@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import { extractApiErrorMessage } from '@/lib/apiErrors';
 import i18n from '@/lib/i18n';
 import { type CreateResearchGroupPayload } from '@/modules/researchgroup/types/createResearchGroup';
 import {
@@ -9,6 +10,10 @@ import {
   type UpdateResearchGroupPayload,
   type UpdateResearchGroupMemberRolePayload,
 } from '@/modules/researchgroup/types/researchGroup';
+import {
+  toInviteResearchGroupMemberPayload,
+  toResearchGroupPayload,
+} from '@/modules/researchgroup/utils/researchGroupForm';
 
 export async function getMyResearchGroups(): Promise<ResearchGroupSummary[]> {
   const response = await api.get<ResearchGroupSummary[]>('/research-groups');
@@ -18,12 +23,10 @@ export async function getMyResearchGroups(): Promise<ResearchGroupSummary[]> {
 export async function createResearchGroup(
   payload: CreateResearchGroupPayload,
 ): Promise<ResearchGroupSummary> {
-  const body = {
-    name: payload.name.trim(),
-    description: payload.description?.trim() || undefined,
-  };
-
-  const response = await api.post<ResearchGroupSummary>('/research-groups', body);
+  const response = await api.post<ResearchGroupSummary>(
+    '/research-groups',
+    toResearchGroupPayload(payload),
+  );
   return response.data;
 }
 
@@ -36,12 +39,10 @@ export async function updateResearchGroup(
   groupId: number,
   payload: UpdateResearchGroupPayload,
 ): Promise<ResearchGroupDetail> {
-  const body = {
-    name: payload.name.trim(),
-    description: payload.description?.trim() || undefined,
-  };
-
-  const response = await api.put<ResearchGroupDetail>(`/research-groups/${groupId}`, body);
+  const response = await api.put<ResearchGroupDetail>(
+    `/research-groups/${groupId}`,
+    toResearchGroupPayload(payload),
+  );
   return response.data;
 }
 
@@ -53,13 +54,10 @@ export async function inviteResearchGroupMember(
   groupId: number,
   payload: InviteResearchGroupMemberPayload,
 ): Promise<void> {
-  const body = {
-    email: payload.email.trim(),
-    role: payload.role,
-    expiresAt: payload.expiresAt,
-  };
-
-  await api.post(`/research-groups/${groupId}/invitations`, body);
+  await api.post(
+    `/research-groups/${groupId}/invitations`,
+    toInviteResearchGroupMemberPayload(payload),
+  );
 }
 
 export async function getMyResearchGroupInvitations(): Promise<ResearchGroupInvitation[]> {
@@ -104,60 +102,43 @@ export async function removeResearchGroupMember(
   await api.post(`/research-groups/${groupId}/members/${memberUserId}/remove`);
 }
 
-function extractApiErrorMessage(error: unknown, fallbackKey: string): string {
-  if (typeof error === 'object' && error !== null && 'response' in error) {
-    const response = (error as { response?: { data?: { message?: string; error?: string } } })
-      .response;
-    return response?.data?.message ?? response?.data?.error ?? i18n.t(fallbackKey);
-  }
-
-  return i18n.t(fallbackKey);
+function researchGroupErrorMessage(translationKey: string) {
+  return (error: unknown): string => extractApiErrorMessage(error, i18n.t(translationKey));
 }
 
-export function getResearchGroupsErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'researchGroup.errors.loadFailed');
-}
-
-export function getCreateGroupErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'researchGroup.errors.createFailed');
-}
-
-export function getUpdateGroupErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'researchGroup.errors.updateFailed');
-}
-
-export function getDeleteGroupErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'researchGroup.errors.deleteFailed');
-}
-
-export function getResearchGroupDetailErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'researchGroup.errors.detailLoadFailed');
-}
-
-export function getInviteResearcherErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'researchGroup.errors.inviteFailed');
-}
-
-export function getInvitationsErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'researchGroup.errors.invitationsLoadFailed');
-}
-
-export function getJoinByCodeErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'researchGroup.errors.joinByCodeFailed');
-}
-
-export function getAcceptInvitationErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'researchGroup.errors.acceptInvitationFailed');
-}
-
-export function getDeclineInvitationErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'researchGroup.errors.declineInvitationFailed');
-}
-
-export function getUpdateMemberRoleErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'researchGroup.errors.updateMemberRoleFailed');
-}
-
-export function getRemoveMemberErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'researchGroup.errors.removeMemberFailed');
-}
+export const getResearchGroupsErrorMessage = researchGroupErrorMessage(
+  'researchGroup.errors.loadFailed',
+);
+export const getCreateGroupErrorMessage = researchGroupErrorMessage(
+  'researchGroup.errors.createFailed',
+);
+export const getUpdateGroupErrorMessage = researchGroupErrorMessage(
+  'researchGroup.errors.updateFailed',
+);
+export const getDeleteGroupErrorMessage = researchGroupErrorMessage(
+  'researchGroup.errors.deleteFailed',
+);
+export const getResearchGroupDetailErrorMessage = researchGroupErrorMessage(
+  'researchGroup.errors.detailLoadFailed',
+);
+export const getInviteResearcherErrorMessage = researchGroupErrorMessage(
+  'researchGroup.errors.inviteFailed',
+);
+export const getInvitationsErrorMessage = researchGroupErrorMessage(
+  'researchGroup.errors.invitationsLoadFailed',
+);
+export const getJoinByCodeErrorMessage = researchGroupErrorMessage(
+  'researchGroup.errors.joinByCodeFailed',
+);
+export const getAcceptInvitationErrorMessage = researchGroupErrorMessage(
+  'researchGroup.errors.acceptInvitationFailed',
+);
+export const getDeclineInvitationErrorMessage = researchGroupErrorMessage(
+  'researchGroup.errors.declineInvitationFailed',
+);
+export const getUpdateMemberRoleErrorMessage = researchGroupErrorMessage(
+  'researchGroup.errors.updateMemberRoleFailed',
+);
+export const getRemoveMemberErrorMessage = researchGroupErrorMessage(
+  'researchGroup.errors.removeMemberFailed',
+);

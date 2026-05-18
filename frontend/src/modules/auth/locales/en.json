@@ -10,6 +10,11 @@
       "female": "Female",
       "other": "Other"
     },
+    "validation": {
+      "cityMax": "City cannot exceed 128 characters.",
+      "emailMax": "Email cannot exceed 254 characters.",
+      "nameMax": "Name cannot exceed 128 characters."
+    },
     "login": {
       "title": "Log In",
       "email": "Email",

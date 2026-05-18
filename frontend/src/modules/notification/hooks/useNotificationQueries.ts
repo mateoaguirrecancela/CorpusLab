@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { invalidateQueryKeys } from '@/lib/queryInvalidation';
 import {
   getMyNotifications,
@@ -10,43 +10,45 @@ import {
 
 export const NOTIFICATIONS_QUERY_KEY = ['notifications'] as const;
 
+export const notificationQueryKeys = {
+  all: NOTIFICATIONS_QUERY_KEY,
+  list: (limit: number) => [...NOTIFICATIONS_QUERY_KEY, limit] as const,
+};
+
 export function useNotificationsQuery(limit = 12) {
   const queryClient = useQueryClient();
-  const queryKey = useMemo(() => [...NOTIFICATIONS_QUERY_KEY, limit] as const, [limit]);
 
   useEffect(() => {
     return subscribeToNotificationEvents(() => {
-      invalidateQueryKeys(queryClient, [queryKey]);
+      invalidateQueryKeys(queryClient, [notificationQueryKeys.all]);
     });
-  }, [queryClient, queryKey]);
+  }, [queryClient]);
 
   return useQuery({
-    queryKey,
+    queryKey: notificationQueryKeys.list(limit),
     queryFn: () => getMyNotifications(limit),
     refetchInterval: false,
   });
 }
 
-export function useMarkNotificationAsReadMutation(limit = 12) {
+export function useMarkNotificationAsReadMutation() {
   const queryClient = useQueryClient();
-  const queryKey = [...NOTIFICATIONS_QUERY_KEY, limit] as const;
 
   return useMutation({
     mutationFn: (notificationId: number) => markNotificationAsRead(notificationId),
     onSuccess: () => {
-      invalidateQueryKeys(queryClient, [queryKey]);
+      invalidateQueryKeys(queryClient, [notificationQueryKeys.all]);
     },
   });
 }
 
-export function useMarkAllNotificationsAsReadMutation(limit = 12) {
+export function useMarkAllNotificationsAsReadMutation() {
   const queryClient = useQueryClient();
-  const queryKey = [...NOTIFICATIONS_QUERY_KEY, limit] as const;
 
   return useMutation({
     mutationFn: () => markAllNotificationsAsRead(),
     onSuccess: () => {
-      invalidateQueryKeys(queryClient, [queryKey]);
+      invalidateQueryKeys(queryClient, [notificationQueryKeys.all]);
     },
   });
 }

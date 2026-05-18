@@ -21,6 +21,13 @@
     },
     "loading": {
       "profile": "Cargando perfil..."
+    },
+    "notFound": {
+      "documentTitle": "Paxina non atopada | CorpusLab",
+      "code": "Erro 404",
+      "name": "Paxina non atopada",
+      "primaryAction": "Volver ao inicio",
+      "imageAlt": "Ilustracion de paxina non atopada"
     }
   }
 }

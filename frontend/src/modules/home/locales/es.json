@@ -23,7 +23,11 @@
       "cityPlaceholder": "Tu ciudad",
       "searchCountry": "Buscar país",
       "requiredFields": "Completa todos los campos obligatorios y usa una fecha de nacimiento de al menos 16 anos.",
-      "updated": "Perfil actualizado correctamente."
+      "updated": "Perfil actualizado correctamente.",
+      "validation": {
+        "cityMax": "La ciudad no puede superar 128 caracteres.",
+        "nameMax": "El nombre no puede superar 128 caracteres."
+      }
     }
   }
 }

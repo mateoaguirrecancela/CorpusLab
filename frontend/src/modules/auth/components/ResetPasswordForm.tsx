@@ -1,15 +1,15 @@
 import { type FormEventHandler } from 'react';
 import { Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { useToastMessages } from '@/hooks/useToastMessages';
-import { SubmitButtonWithSpinner } from '@/components/ui/submit-button-with-spinner';
+import { AuthLinkPrompt, AuthSubmitButton } from '@/modules/auth/components/AuthFormActions';
 import { type ResetPasswordFormState } from '@/modules/auth/types/resetPassword';
 
 type ResetPasswordFormProps = {
   form: ResetPasswordFormState;
   canSubmit: boolean;
+  fieldErrors?: Partial<Record<keyof ResetPasswordFormState, string>>;
   isSubmitting: boolean;
   errorMessage: string;
   onSubmit: FormEventHandler<HTMLFormElement>;
@@ -22,6 +22,7 @@ type ResetPasswordFormProps = {
 export function ResetPasswordForm({
   form,
   canSubmit,
+  fieldErrors = {},
   isSubmitting,
   errorMessage,
   onSubmit,
@@ -40,11 +41,7 @@ export function ResetPasswordForm({
         inputProps={{ minLength: 8, placeholder: '********' }}
         inputType="password"
         label={t('auth.resetPassword.newPassword')}
-        message={
-          form.newPassword.length > 0 && form.newPassword.length < 8
-            ? t('auth.signup.passwordLength')
-            : undefined
-        }
+        message={fieldErrors.newPassword}
         onValueChange={(value) => onFieldChange('newPassword', value)}
         showPasswordLabel={t('common.aria.showPassword')}
         value={form.newPassword}
@@ -57,34 +54,24 @@ export function ResetPasswordForm({
         inputProps={{ minLength: 8, placeholder: '********' }}
         inputType="password"
         label={t('auth.resetPassword.confirmPassword')}
-        message={
-          form.confirmPassword.length > 0
-            ? form.confirmPassword !== form.newPassword
-              ? t('auth.resetPassword.passwordMismatch')
-              : form.confirmPassword.length < 8
-                ? t('auth.signup.passwordLength')
-                : undefined
-            : undefined
-        }
+        message={fieldErrors.confirmPassword}
         onValueChange={(value) => onFieldChange('confirmPassword', value)}
         showPasswordLabel={t('common.aria.showPassword')}
         value={form.confirmPassword}
       />
 
-      <SubmitButtonWithSpinner
-        className="h-11 w-full rounded-md bg-primary text-sm font-semibold text-white shadow-[var(--shadow-primary-action)] hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
-        disabled={!canSubmit}
+      <AuthSubmitButton
+        canSubmit={canSubmit}
         idleLabel={t('auth.resetPassword.submit')}
         isSubmitting={isSubmitting}
         submittingLabel={t('auth.resetPassword.submitting')}
       />
 
-      <p className="mt-8 text-center text-sm text-muted-foreground">
-        {t('auth.resetPassword.alreadyUpdated')}{' '}
-        <Link className="font-semibold text-primary hover:underline" to="/auth/login">
-          {t('auth.resetPassword.goToLogin')}
-        </Link>
-      </p>
+      <AuthLinkPrompt
+        linkLabel={t('auth.resetPassword.goToLogin')}
+        message={t('auth.resetPassword.alreadyUpdated')}
+        to="/auth/login"
+      />
     </form>
   );
 }

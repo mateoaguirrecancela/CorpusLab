@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import { type FileRejection } from 'react-dropzone';
+import { useForm, useWatch } from 'react-hook-form';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import {
@@ -20,7 +22,17 @@ import {
   type ConfigureProjectSetupPayload,
   type ProjectParticipantAssignment,
 } from '@/modules/project/types/project';
+import {
+  createProjectInfoSchema,
+  type ProjectCreateInfoFormValues,
+} from '@/modules/project/schemas/projectFormSchemas';
 import { validateProjectFiles } from '@/modules/project/utils/projectCreateValidation';
+import {
+  DIRTY_VALIDATED_FIELD_OPTIONS,
+  hasText,
+  isPositiveId,
+  toProjectPayload,
+} from '@/modules/project/utils/projectFormUtils';
 import { useResearchGroupsQuery } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
 import { type ResearchGroupSummary } from '@/modules/researchgroup/types/researchGroup';
 
@@ -41,13 +53,16 @@ type ProjectCreatePageState = Readonly<{
   projectSetupPayload: ConfigureProjectSetupPayload | null;
   selectedFiles: File[];
   selectedGroupId: string;
+  descriptionErrorMessage?: string;
   finalizeProject: (participantAssignments: ProjectParticipantAssignment[]) => Promise<void>;
   goToDatasetStep: () => void;
   goToInfoStep: () => void;
   goToSetupStep: () => void;
+  nameErrorMessage?: string;
   rejectFiles: (fileRejections: FileRejection[]) => void;
   removeFile: (fileName: string, index: number) => void;
   selectFiles: (files: File[]) => void;
+  selectedGroupErrorMessage?: string;
   setCurrentStep: (step: WizardStep) => void;
   setDescription: (description: string) => void;
   setName: (name: string) => void;
@@ -65,6 +80,23 @@ export function useProjectCreatePage(): ProjectCreatePageState {
   const uploadDatasetMutation = useUploadProjectDatasetMutation();
   const configureProjectSetupMutation = useConfigureProjectSetupMutation();
   const assignProjectParticipantsMutation = useAssignProjectParticipantsMutation();
+  const projectInfoSchema = useMemo(() => createProjectInfoSchema(t), [t]);
+  const projectInfoForm = useForm<ProjectCreateInfoFormValues>({
+    defaultValues: {
+      description: '',
+      name: '',
+      selectedGroupId: '',
+    },
+    mode: 'onChange',
+    resolver: zodResolver(projectInfoSchema),
+  });
+  const {
+    formState: { errors: projectInfoErrors, isValid: isProjectInfoValid },
+    control,
+    getValues: getProjectInfoValues,
+    setValue: setProjectInfoValue,
+    trigger: triggerProjectInfo,
+  } = projectInfoForm;
 
   const manageableGroups = useMemo(
     () => groups.filter((group) => group.role === 'OWNER' || group.role === 'ADMIN'),
@@ -72,7 +104,7 @@ export function useProjectCreatePage(): ProjectCreatePageState {
   );
 
   const initialGroupId = Number(searchParams.get('groupId'));
-  const hasInitialGroupId = Number.isFinite(initialGroupId) && initialGroupId > 0;
+  const hasInitialGroupId = isPositiveId(initialGroupId);
 
   const lockedGroup = useMemo(
     () => manageableGroups.find((group) => group.id === initialGroupId),
@@ -83,30 +115,40 @@ export function useProjectCreatePage(): ProjectCreatePageState {
   const backFallbackPath =
     isGroupLocked && lockedGroup ? `/home/research-groups/${lockedGroup.id}` : '/home/projects';
 
-  const [customSelectedGroupId, setCustomSelectedGroupId] = useState('');
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
   const [finalizationProjectId, setFinalizationProjectId] = useState<number | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [projectSetupPayload, setProjectSetupPayload] =
     useState<ConfigureProjectSetupPayload | null>(null);
 
-  const selectedGroupId = useMemo(() => {
+  const selectedGroupId = useWatch({ control, name: 'selectedGroupId' });
+  const name = useWatch({ control, name: 'name' });
+  const description = useWatch({ control, name: 'description' });
+
+  useEffect(() => {
     if (isGroupLocked && lockedGroup) {
-      return String(lockedGroup.id);
+      setProjectInfoValue('selectedGroupId', String(lockedGroup.id), DIRTY_VALIDATED_FIELD_OPTIONS);
+      return;
     }
 
-    if (customSelectedGroupId.length > 0) {
-      return customSelectedGroupId;
+    const currentGroupId = getProjectInfoValues('selectedGroupId');
+    const numericCurrentGroupId = Number(currentGroupId);
+    const hasCurrentGroup = manageableGroups.some((group) => group.id === numericCurrentGroupId);
+    if (currentGroupId.length > 0 && hasCurrentGroup) {
+      return;
     }
 
     if (manageableGroups.length > 0) {
-      return String(manageableGroups[0].id);
+      setProjectInfoValue(
+        'selectedGroupId',
+        String(manageableGroups[0].id),
+        DIRTY_VALIDATED_FIELD_OPTIONS,
+      );
+      return;
     }
 
-    return '';
-  }, [customSelectedGroupId, isGroupLocked, lockedGroup, manageableGroups]);
+    setProjectInfoValue('selectedGroupId', '', DIRTY_VALIDATED_FIELD_OPTIONS);
+  }, [getProjectInfoValues, isGroupLocked, lockedGroup, manageableGroups, setProjectInfoValue]);
 
   const numericGroupId = Number(selectedGroupId);
   const isFinalizingProject =
@@ -115,11 +157,9 @@ export function useProjectCreatePage(): ProjectCreatePageState {
     configureProjectSetupMutation.isPending ||
     assignProjectParticipantsMutation.isPending;
 
-  const canCreateProject =
-    Number.isFinite(numericGroupId) && numericGroupId > 0 && name.trim().length > 0;
+  const canCreateProject = isPositiveId(numericGroupId) && hasText(name) && isProjectInfoValid;
 
-  const canUploadDataset =
-    Number.isFinite(numericGroupId) && numericGroupId > 0 && selectedFiles.length > 0;
+  const canUploadDataset = isPositiveId(numericGroupId) && selectedFiles.length > 0;
 
   const selectFiles = (files: File[]) => {
     if (files.length === 0) {
@@ -154,6 +194,7 @@ export function useProjectCreatePage(): ProjectCreatePageState {
 
   const goToDatasetStep = () => {
     if (!canCreateProject) {
+      void triggerProjectInfo();
       return;
     }
 
@@ -184,10 +225,7 @@ export function useProjectCreatePage(): ProjectCreatePageState {
     try {
       const createdProject = await projectCreateMutation.mutateAsync({
         groupId: numericGroupId,
-        payload: {
-          name: name.trim(),
-          description: description.trim() || undefined,
-        },
+        payload: toProjectPayload(getProjectInfoValues()),
       });
 
       setFinalizationProjectId(createdProject.id);
@@ -248,13 +286,7 @@ export function useProjectCreatePage(): ProjectCreatePageState {
   };
 
   const finalizeProject = async (participantAssignments: ProjectParticipantAssignment[]) => {
-    if (
-      !canCreateProject ||
-      !canUploadDataset ||
-      !projectSetupPayload ||
-      Number.isFinite(numericGroupId) === false ||
-      numericGroupId <= 0
-    ) {
+    if (!canCreateProject || !canUploadDataset || !projectSetupPayload) {
       return;
     }
 
@@ -311,6 +343,7 @@ export function useProjectCreatePage(): ProjectCreatePageState {
     canUploadDataset,
     currentStep,
     description,
+    descriptionErrorMessage: projectInfoErrors.description?.message,
     finalizeProject,
     goToDatasetStep,
     goToInfoStep: () => setCurrentStep(1),
@@ -320,6 +353,7 @@ export function useProjectCreatePage(): ProjectCreatePageState {
     isLoadingGroups,
     manageableGroups,
     name,
+    nameErrorMessage: projectInfoErrors.name?.message,
     numericGroupId,
     projectSetupPayload,
     rejectFiles,
@@ -327,10 +361,13 @@ export function useProjectCreatePage(): ProjectCreatePageState {
     selectFiles,
     selectedFiles,
     selectedGroupId,
+    selectedGroupErrorMessage: projectInfoErrors.selectedGroupId?.message,
     setCurrentStep,
-    setDescription,
-    setName,
-    setSelectedGroupId: setCustomSelectedGroupId,
+    setDescription: (nextDescription) =>
+      setProjectInfoValue('description', nextDescription, DIRTY_VALIDATED_FIELD_OPTIONS),
+    setName: (nextName) => setProjectInfoValue('name', nextName, DIRTY_VALIDATED_FIELD_OPTIONS),
+    setSelectedGroupId: (nextGroupId) =>
+      setProjectInfoValue('selectedGroupId', nextGroupId, DIRTY_VALIDATED_FIELD_OPTIONS),
     setupCompleted,
   };
 }

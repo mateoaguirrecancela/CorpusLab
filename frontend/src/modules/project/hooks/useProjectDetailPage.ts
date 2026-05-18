@@ -14,22 +14,36 @@ import {
   getProjectDatasetItemContent,
   getProjectDatasetItemContentErrorMessage,
   getProjectDetailLoadErrorMessage,
+  getProjectGuidelinePdf,
+  getProjectGuidelinePdfErrorMessage,
   getUnarchiveProjectErrorMessage,
 } from '@/modules/project/services/projectService';
-import { type ProjectDetail } from '@/modules/project/types/project';
 import {
-  calculateBase64SizeBytes,
-  decodeBase64ToBuffer,
-  parseBase64FilePayload,
-  triggerBlobDownload,
-} from '@/modules/project/utils/fileDownloadUtils';
+  type ProjectDatasetItemContent,
+  type ProjectDetail,
+} from '@/modules/project/types/project';
+import { triggerBlobDownload } from '@/modules/project/utils/fileDownloadUtils';
 import { formatFileSize } from '@/modules/project/utils/projectDisplayUtils';
 import {
   completionColor,
   normalizeCompletionPercentage,
 } from '@/modules/project/utils/projectUtils';
+import { isPositiveId } from '@/modules/project/utils/projectFormUtils';
 
 type CompletionColors = ReturnType<typeof completionColor>;
+
+function openBlobInNewTab(blob: Blob): void {
+  const blobUrl = URL.createObjectURL(blob);
+  globalThis.open(blobUrl, '_blank', 'noopener,noreferrer');
+
+  setTimeout(() => {
+    URL.revokeObjectURL(blobUrl);
+  }, 60_000);
+}
+
+function getDownloadFileName(file: ProjectDatasetItemContent, fallbackFileName: string): string {
+  return file.fileName?.trim() || fallbackFileName;
+}
 
 type ProjectDetailPageState = Readonly<{
   colors: CompletionColors;
@@ -44,12 +58,12 @@ type ProjectDetailPageState = Readonly<{
   closeProjectActions: () => void;
   downloadAnnotationResultsCsv: () => Promise<void>;
   downloadDatasetFile: (datasetItemId: number, fallbackFileName: string) => Promise<void>;
-  downloadGuidelinePdf: () => void;
+  downloadGuidelinePdf: () => Promise<void>;
   handleArchiveAction: () => Promise<void>;
   handleExportAction: () => Promise<void>;
   openDatasetFile: (datasetItemId: number) => Promise<void>;
   openEditProject: () => void;
-  openGuidelinePdf: () => void;
+  openGuidelinePdf: () => Promise<void>;
   setEditProjectOpen: (open: boolean) => void;
   setProjectActionsOpen: (open: boolean) => void;
 }>;
@@ -61,7 +75,7 @@ export function useProjectDetailPage(): ProjectDetailPageState {
   const [editProjectOpen, setEditProjectOpen] = useState(false);
 
   const numericProjectId = useMemo(() => Number(projectId), [projectId]);
-  const isInvalidProjectId = !Number.isFinite(numericProjectId) || numericProjectId <= 0;
+  const isInvalidProjectId = !isPositiveId(numericProjectId);
 
   const { data: project, isLoading, isError, error } = useProjectDetailQuery(numericProjectId);
   const archiveProjectMutation = useArchiveProjectMutation();
@@ -89,66 +103,39 @@ export function useProjectDetailPage(): ProjectDetailPageState {
 
   const completionPercentage = normalizeCompletionPercentage(project?.completionPercentage ?? 0);
   const colors = completionColor(completionPercentage);
-  const guidelinePdfBase64 = project?.guidelinePdfBase64;
 
-  const guidelinePdfMetadata = useMemo(() => {
-    if (!guidelinePdfBase64) {
-      return '';
-    }
+  let guidelinePdfMetadata = '';
+  if (project?.guidelinePdfAvailable) {
+    const mimeType = project.guidelinePdfMimeType ?? 'application/pdf';
+    guidelinePdfMetadata =
+      project.guidelinePdfSizeBytes > 0
+        ? `${mimeType} - ${formatFileSize(project.guidelinePdfSizeBytes)}`
+        : mimeType;
+  }
 
-    const { mimeType, base64Payload } = parseBase64FilePayload(
-      guidelinePdfBase64,
-      'application/pdf',
-    );
-    const sizeBytes = calculateBase64SizeBytes(base64Payload);
-
-    if (sizeBytes <= 0) {
-      return mimeType;
-    }
-
-    return `${mimeType} - ${formatFileSize(sizeBytes)}`;
-  }, [guidelinePdfBase64]);
-
-  const openGuidelinePdf = () => {
-    if (!project?.guidelinePdfBase64) {
+  const openGuidelinePdf = async () => {
+    if (!project?.guidelinePdfAvailable) {
       return;
     }
 
     try {
-      const { mimeType, base64Payload } = parseBase64FilePayload(
-        project.guidelinePdfBase64,
-        'application/pdf',
-      );
-
-      const buffer = decodeBase64ToBuffer(base64Payload);
-
-      const blobUrl = URL.createObjectURL(new Blob([buffer], { type: mimeType }));
-      globalThis.open(blobUrl, '_blank', 'noopener,noreferrer');
-
-      setTimeout(() => {
-        URL.revokeObjectURL(blobUrl);
-      }, 60_000);
-    } catch {
-      toast.error(t('project.detail.openGuidelinePdfError'));
+      const guidelinePdf = await getProjectGuidelinePdf(project.id);
+      openBlobInNewTab(guidelinePdf.blob);
+    } catch (openError) {
+      toast.error(getProjectGuidelinePdfErrorMessage(openError));
     }
   };
 
-  const downloadGuidelinePdf = () => {
-    if (!project?.guidelinePdfBase64) {
+  const downloadGuidelinePdf = async () => {
+    if (!project?.guidelinePdfAvailable) {
       return;
     }
 
     try {
-      const { mimeType, base64Payload } = parseBase64FilePayload(
-        project.guidelinePdfBase64,
-        'application/pdf',
-      );
-      const buffer = decodeBase64ToBuffer(base64Payload);
-      const blob = new Blob([buffer], { type: mimeType });
-
-      triggerBlobDownload(blob, 'guideline.pdf');
-    } catch {
-      toast.error(t('project.detail.openGuidelinePdfError'));
+      const guidelinePdf = await getProjectGuidelinePdf(project.id);
+      triggerBlobDownload(guidelinePdf.blob, getDownloadFileName(guidelinePdf, 'guideline.pdf'));
+    } catch (downloadError) {
+      toast.error(getProjectGuidelinePdfErrorMessage(downloadError));
     }
   };
 
@@ -159,12 +146,7 @@ export function useProjectDetailPage(): ProjectDetailPageState {
 
     try {
       const file = await getProjectDatasetItemContent(project.id, datasetItemId);
-      const blobUrl = URL.createObjectURL(file.blob);
-      globalThis.open(blobUrl, '_blank', 'noopener,noreferrer');
-
-      setTimeout(() => {
-        URL.revokeObjectURL(blobUrl);
-      }, 60_000);
+      openBlobInNewTab(file.blob);
     } catch (openError) {
       toast.error(getProjectDatasetItemContentErrorMessage(openError));
     }
@@ -178,8 +160,10 @@ export function useProjectDetailPage(): ProjectDetailPageState {
     try {
       const file = await getProjectDatasetItemContent(project.id, datasetItemId);
       const normalizedFallbackFileName = fallbackFileName.trim();
-      const downloadFileName =
-        file.fileName?.trim() || normalizedFallbackFileName || `dataset-item-${datasetItemId}`;
+      const downloadFileName = getDownloadFileName(
+        file,
+        normalizedFallbackFileName || `dataset-item-${datasetItemId}`,
+      );
 
       triggerBlobDownload(file.blob, downloadFileName);
     } catch (downloadError) {
@@ -188,14 +172,16 @@ export function useProjectDetailPage(): ProjectDetailPageState {
   };
 
   const downloadAnnotationResultsCsv = async () => {
-    if (project?.participantRole !== 'CREATOR') {
+    if (!project?.canExportAnnotations) {
       return;
     }
 
     try {
       const exportFile = await exportProjectAnnotationResultsCsv(project.id);
-      const downloadFileName =
-        exportFile.fileName?.trim() || `project-${project.id}-annotations.csv`;
+      const downloadFileName = getDownloadFileName(
+        exportFile,
+        `project-${project.id}-annotations.csv`,
+      );
 
       triggerBlobDownload(exportFile.blob, downloadFileName);
     } catch (exportError) {
@@ -204,7 +190,7 @@ export function useProjectDetailPage(): ProjectDetailPageState {
   };
 
   const toggleArchivedState = async () => {
-    if (!project || project.participantRole !== 'CREATOR') {
+    if (!project || !project.canArchiveProject) {
       return;
     }
 

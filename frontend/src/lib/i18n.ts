@@ -67,4 +67,13 @@ void i18n
     },
   });
 
+type LanguageSource = Readonly<{
+  language?: string;
+  resolvedLanguage?: string;
+}>;
+
+export function getResolvedLanguage(languageSource: LanguageSource = i18n): string {
+  return languageSource.resolvedLanguage ?? languageSource.language ?? 'en';
+}
+
 export default i18n;
