@@ -1,7 +1,7 @@
 package es.udc.fic.corpuslab.modules.auth.controllers;
 
-import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
@@ -16,11 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginResponseDto;
-import es.udc.fic.corpuslab.modules.auth.dtos.UserProfileResponseDto;
-import es.udc.fic.corpuslab.modules.auth.dtos.UserUpdateProfileRequestDto;
-import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterRequestDto;
-import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLogoutResponseDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.UserProfileResponseDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterRequestDto;
+import es.udc.fic.corpuslab.modules.auth.dtos.UserUpdateProfileRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.ForgotPasswordRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.ForgotPasswordResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.OAuthExchangeRequestDto;
@@ -37,22 +36,28 @@ public class AuthController {
     private final AuthService authService;
     private final AuthRateLimiter authRateLimiter;
     private final MessageSource messageSource;
+    private final ClientIpResolver clientIpResolver;
 
-    public AuthController(AuthService authService, AuthRateLimiter authRateLimiter, MessageSource messageSource) {
+    public AuthController(
+            AuthService authService,
+            AuthRateLimiter authRateLimiter,
+            MessageSource messageSource,
+            ClientIpResolver clientIpResolver) {
         this.authService = authService;
         this.authRateLimiter = authRateLimiter;
         this.messageSource = messageSource;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
-    public UserRegisterResponseDto signup(@Valid @RequestBody UserRegisterRequestDto request) {
+    public UserLoginResponseDto signup(@Valid @RequestBody UserRegisterRequestDto request) {
         return authService.signup(request);
     }
 
     @PostMapping("/login")
     public UserLoginResponseDto login(@Valid @RequestBody UserLoginRequestDto request, HttpServletRequest httpRequest) {
-        authRateLimiter.checkLogin(request.email(), ClientIpResolver.resolve(httpRequest));
+        authRateLimiter.checkLogin(request.email(), clientIpResolver.resolve(httpRequest));
         UserLoginResponseDto response = authService.login(request);
         authRateLimiter.clearSuccessfulLogin(request.email());
         return response;
@@ -84,7 +89,7 @@ public class AuthController {
     public ForgotPasswordResponseDto forgotPassword(
             @Valid @RequestBody ForgotPasswordRequestDto request,
             HttpServletRequest httpRequest) {
-        authRateLimiter.checkForgotPassword(request.email(), ClientIpResolver.resolve(httpRequest));
+        authRateLimiter.checkForgotPassword(request.email(), clientIpResolver.resolve(httpRequest));
         authService.requestPasswordReset(request.email());
         String message = messageSource.getMessage(
                 "auth.info.reset.link.sent",
@@ -97,7 +102,7 @@ public class AuthController {
     public ResetPasswordResponseDto resetPassword(
             @Valid @RequestBody ResetPasswordRequestDto request,
             HttpServletRequest httpRequest) {
-        authRateLimiter.checkResetPassword(request.token(), ClientIpResolver.resolve(httpRequest));
+        authRateLimiter.checkResetPassword(request.token(), clientIpResolver.resolve(httpRequest));
         authService.resetPassword(request.token(), request.newPassword());
         authRateLimiter.clearSuccessfulResetPassword(request.token());
         String message = messageSource.getMessage(

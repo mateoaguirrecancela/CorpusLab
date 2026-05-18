@@ -52,8 +52,7 @@ public class EmailWorker {
     @Scheduled(fixedDelayString = "${app.email.worker-delay-ms:1000}")
     public void processNextEmailJobs() {
         try {
-            processBatch(redisStreams.readPending(EmailQueue.STREAM_KEY, EmailQueue.GROUP, CONSUMER_NAME, 5));
-            processBatch(redisStreams.readNew(EmailQueue.STREAM_KEY, EmailQueue.GROUP, CONSUMER_NAME, 5));
+            processBatch(redisStreams.readPendingThenNew(EmailQueue.STREAM_KEY, EmailQueue.GROUP, CONSUMER_NAME, 5));
         } catch (RuntimeException ex) {
             logger.error("Email worker could not read from Redis stream {}", EmailQueue.STREAM_KEY, ex);
         }

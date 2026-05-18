@@ -20,7 +20,7 @@ public class NotificationEvents {
         emitter.onCompletion(() -> remove(userId, emitter));
         emitter.onTimeout(() -> remove(userId, emitter));
         emitter.onError(ignored -> remove(userId, emitter));
-        send(userId, emitter);
+        send(userId, emitter, "ready", "connected");
         return emitter;
     }
 
@@ -31,13 +31,13 @@ public class NotificationEvents {
         }
 
         for (SseEmitter emitter : emitters) {
-            send(userId, emitter);
+            send(userId, emitter, "notification", "changed");
         }
     }
 
-    private void send(Long userId, SseEmitter emitter) {
+    private void send(Long userId, SseEmitter emitter, String eventName, String data) {
         try {
-            emitter.send(SseEmitter.event().name("notification").data("changed"));
+            emitter.send(SseEmitter.event().name(eventName).data(data));
         } catch (IOException | IllegalStateException ex) {
             remove(userId, emitter);
         }

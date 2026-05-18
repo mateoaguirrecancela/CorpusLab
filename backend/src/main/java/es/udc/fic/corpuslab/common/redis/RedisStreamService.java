@@ -41,7 +41,7 @@ public class RedisStreamService {
             String group,
             String consumerName,
             long count) {
-        if (!Boolean.TRUE.equals(redisTemplate.hasKey(streamKey))) {
+        if (!prepareStreamGroup(streamKey, group)) {
             return List.of();
         }
 
@@ -59,6 +59,10 @@ public class RedisStreamService {
             String group,
             String consumerName,
             long count) {
+        if (!prepareStreamGroup(streamKey, group)) {
+            return List.of();
+        }
+
         return redisTemplate.opsForStream().read(
                 Consumer.from(group, consumerName),
                 StreamReadOptions.empty().count(count),
@@ -70,6 +74,10 @@ public class RedisStreamService {
             String group,
             String consumerName,
             long count) {
+        if (!prepareStreamGroup(streamKey, group)) {
+            return List.of();
+        }
+
         return redisTemplate.opsForStream().read(
                 Consumer.from(group, consumerName),
                 StreamReadOptions.empty().count(count),
@@ -88,6 +96,14 @@ public class RedisStreamService {
                 throw ex;
             }
         }
+    }
+
+    private boolean prepareStreamGroup(String streamKey, String group) {
+        if (!Boolean.TRUE.equals(redisTemplate.hasKey(streamKey))) {
+            return false;
+        }
+        ensureConsumerGroup(streamKey, group);
+        return true;
     }
 
     private boolean isBusyGroup(Throwable ex) {

@@ -27,7 +27,7 @@ import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.repositories.OAuthAccountRepository;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.auth.services.OAuthLoginCodeService;
-import es.udc.fic.corpuslab.modules.auth.utils.EmailNormalizer;
+import es.udc.fic.corpuslab.common.utils.EmailNormalizer;
 
 @Component
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {

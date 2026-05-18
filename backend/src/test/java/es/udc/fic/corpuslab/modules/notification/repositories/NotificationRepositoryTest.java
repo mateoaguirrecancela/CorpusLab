@@ -18,6 +18,7 @@ import jakarta.persistence.EntityManager;
 import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
+import es.udc.fic.corpuslab.modules.notification.dtos.NotificationDto;
 import es.udc.fic.corpuslab.modules.notification.entities.Notification;
 import es.udc.fic.corpuslab.modules.notification.enums.NotificationType;
 
@@ -35,7 +36,7 @@ class NotificationRepositoryTest {
         private EntityManager entityManager;
 
         @Test
-        void findByRecipientUserIdOrderByCreatedAtDescShouldReturnLatestFirstWithLimit() {
+        void findDtosByRecipientUserIdOrderByCreatedAtDescShouldReturnLatestFirstWithLimit() {
                 User recipient = userRepository
                                 .save(UserTestBuilder.validUser().withEmail("recipient@example.com").build());
                 User actor = userRepository.save(UserTestBuilder.validUser().withEmail("actor@example.com").build());
@@ -50,13 +51,14 @@ class NotificationRepositoryTest {
                                 NotificationType.RESEARCH_GROUP_INVITATION_RECEIVED,
                                 Instant.parse("2026-04-04T10:00:00Z"), null);
 
-                List<Notification> notifications = notificationRepository
-                                .findByRecipientUserIdOrderByCreatedAtDesc(recipient.getId(), PageRequest.of(0, 2));
+                List<NotificationDto> notifications = notificationRepository
+                                .findDtosByRecipientUserIdOrderByCreatedAtDesc(recipient.getId(),
+                                                PageRequest.of(0, 2));
 
                 assertThat(notifications).hasSize(2);
-                assertThat(notifications.get(0).getId()).isEqualTo(latest.getId());
-                assertThat(notifications.get(1).getId()).isEqualTo(middle.getId());
-                assertThat(notifications).extracting(Notification::getId).doesNotContain(oldest.getId());
+                assertThat(notifications.get(0).id()).isEqualTo(latest.getId());
+                assertThat(notifications.get(1).id()).isEqualTo(middle.getId());
+                assertThat(notifications).extracting(NotificationDto::id).doesNotContain(oldest.getId());
         }
 
         @Test

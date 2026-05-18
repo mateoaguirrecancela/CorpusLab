@@ -1,0 +1,11 @@
+package es.udc.fic.corpuslab.modules.project.core.dtos;
+
+import java.time.Instant;
+
+public record ProjectSummaryDto(
+        Long id,
+        Long researchGroupId,
+        String name,
+        String description,
+        Instant createdAt) {
+}

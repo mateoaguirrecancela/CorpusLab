@@ -3,7 +3,6 @@ package es.udc.fic.corpuslab.common.utils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -11,7 +10,7 @@ import org.apache.tika.Tika;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import es.udc.fic.corpuslab.modules.project.exceptions.InvalidProjectDatasetException;
+import es.udc.fic.corpuslab.modules.project.shared.exceptions.InvalidProjectDatasetException;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -28,7 +27,7 @@ public final class FileSecurityUtil {
             "txt", "pdf", "csv", "json", "png", "jpg", "jpeg", "gif", "doc", "docx", "xls", "xlsx");
 
     // CSV Injection characters
-    private static final List<String> CSV_INJECTION_CHARS = Arrays.asList("=", "+", "-", "@");
+    private static final List<String> CSV_INJECTION_CHARS = List.of("=", "+", "-", "@");
 
     private FileSecurityUtil() {
     }
@@ -110,61 +109,19 @@ public final class FileSecurityUtil {
      */
     public static byte[] sanitizeCsv(byte[] content) {
         String csv = new String(content, StandardCharsets.UTF_8);
-        String[] lines = csv.split("\\r?\\n", -1);
-        StringBuilder sanitized = new StringBuilder();
-
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-            sanitized.append(sanitizeCsvLine(line));
-            if (i < lines.length - 1) {
-                sanitized.append("\n");
-            }
+        if (csv.isBlank()) {
+            return content;
         }
 
-        return sanitized.toString().getBytes(StandardCharsets.UTF_8);
-    }
+        try {
+            List<List<String>> sanitizedRecords = CsvUtils.parseRecords(csv).stream()
+                    .map(record -> record.stream().map(FileSecurityUtil::sanitizeCell).toList())
+                    .toList();
 
-    private static String sanitizeCsvLine(String line) {
-        if (line == null || line.isBlank())
-            return line;
-
-        List<String> cells = parseCsvColumns(line);
-        for (int i = 0; i < cells.size(); i++) {
-            cells.set(i, sanitizeCell(cells.get(i)));
+            return CsvUtils.printRecords(sanitizedRecords).getBytes(StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException ex) {
+            throw new InvalidProjectDatasetException("Invalid CSV content");
         }
-        return joinCsvColumns(cells);
-    }
-
-    private static List<String> parseCsvColumns(String line) {
-        List<String> values = new java.util.ArrayList<>();
-        StringBuilder currentValue = new StringBuilder();
-        boolean insideQuotes = false;
-
-        for (int index = 0; index < line.length(); index++) {
-            char currentChar = line.charAt(index);
-            if (currentChar == '"') {
-                if (insideQuotes && index + 1 < line.length() && line.charAt(index + 1) == '"') {
-                    currentValue.append('"');
-                    index++;
-                } else {
-                    insideQuotes = !insideQuotes;
-                }
-                currentValue.append('"'); // Keep quotes for sanitization
-                continue;
-            }
-            if (currentChar == ',' && !insideQuotes) {
-                values.add(currentValue.toString());
-                currentValue = new StringBuilder();
-                continue;
-            }
-            currentValue.append(currentChar);
-        }
-        values.add(currentValue.toString());
-        return values;
-    }
-
-    private static String joinCsvColumns(List<String> columns) {
-        return String.join(",", columns);
     }
 
     private static String sanitizeCell(String cell) {
@@ -172,16 +129,8 @@ public final class FileSecurityUtil {
             return cell;
 
         String checkValue = cell.trim();
-        // If it's quoted, look at the first character inside the quotes
-        if (checkValue.startsWith("\"") && checkValue.length() > 1) {
-            checkValue = checkValue.substring(1).trim();
-        }
 
         if (CSV_INJECTION_CHARS.stream().anyMatch(checkValue::startsWith)) {
-            // Prepend single quote
-            if (cell.startsWith("\"")) {
-                return "\"' " + cell.substring(1);
-            }
             return "'" + cell;
         }
         return cell;

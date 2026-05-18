@@ -1,7 +1,7 @@
 package es.udc.fic.corpuslab.modules.project.fixtures;
 
-import es.udc.fic.corpuslab.modules.project.entities.Project;
-import es.udc.fic.corpuslab.modules.project.enums.ProjectType;
+import es.udc.fic.corpuslab.modules.project.shared.entities.Project;
+import es.udc.fic.corpuslab.modules.project.shared.enums.ProjectType;
 import es.udc.fic.corpuslab.modules.researchgroup.entities.ResearchGroup;
 
 public class ProjectTestBuilder {

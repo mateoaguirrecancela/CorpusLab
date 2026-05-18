@@ -26,7 +26,6 @@ import es.udc.fic.corpuslab.modules.auth.dtos.UserLoginResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserProfileResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserUpdateProfileRequestDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterRequestDto;
-import es.udc.fic.corpuslab.modules.auth.dtos.UserRegisterResponseDto;
 import es.udc.fic.corpuslab.modules.auth.dtos.UserLogoutResponseDto;
 import es.udc.fic.corpuslab.modules.auth.entities.PasswordResetToken;
 import es.udc.fic.corpuslab.modules.auth.entities.User;
@@ -101,8 +100,9 @@ class AuthServiceTest {
             User user = invocation.getArgument(0);
             return savedWithIdAndCreatedAt(user, 42L, createdAt);
         });
+        when(jwtTokenService.generateToken("new.user@example.com")).thenReturn("jwt-token");
 
-        UserRegisterResponseDto response = authService.signup(request);
+        UserLoginResponseDto response = authService.signup(request);
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
@@ -119,7 +119,7 @@ class AuthServiceTest {
         assertThat(response.email()).isEqualTo("new.user@example.com");
         assertThat(response.firstName()).isEqualTo("New");
         assertThat(response.lastName()).isEqualTo("User");
-        assertThat(response.createdAt()).isEqualTo(createdAt);
+        assertThat(response.token()).isEqualTo("jwt-token");
     }
 
     @Test

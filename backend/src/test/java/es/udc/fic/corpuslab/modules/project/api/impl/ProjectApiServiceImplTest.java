@@ -12,10 +12,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
-import es.udc.fic.corpuslab.modules.project.repositories.AnnotationRepository;
-import es.udc.fic.corpuslab.modules.project.repositories.DatasetItemRepository;
-import es.udc.fic.corpuslab.modules.project.repositories.ProjectParticipantRepository;
-import es.udc.fic.corpuslab.modules.project.repositories.ProjectRepository;
+import es.udc.fic.corpuslab.modules.project.shared.repositories.AnnotationRepository;
+import es.udc.fic.corpuslab.modules.project.shared.repositories.DatasetItemRepository;
+import es.udc.fic.corpuslab.modules.project.shared.repositories.ProjectParticipantRepository;
+import es.udc.fic.corpuslab.modules.project.shared.repositories.ProjectRepository;
+import es.udc.fic.corpuslab.modules.project.participant.ProjectParticipantService;
 
 @ExtendWith(MockitoExtension.class)
 class ProjectApiServiceImplTest {
@@ -25,6 +26,7 @@ class ProjectApiServiceImplTest {
     @Mock private DatasetItemRepository datasetItemRepository;
     @Mock private AnnotationRepository annotationRepository;
     @Mock private NotificationService notificationService;
+    @Mock private ProjectParticipantService projectParticipantService;
 
     private ProjectApiServiceImpl projectApiService;
 
@@ -35,7 +37,8 @@ class ProjectApiServiceImplTest {
                 projectParticipantRepository,
                 datasetItemRepository,
                 annotationRepository,
-                notificationService);
+                notificationService,
+                projectParticipantService);
     }
 
     @Test
@@ -64,5 +67,12 @@ class ProjectApiServiceImplTest {
         inOrder.verify(datasetItemRepository).deleteByProjectResearchGroupId(7L);
         inOrder.verify(projectParticipantRepository).deleteByProjectResearchGroupId(7L);
         inOrder.verify(projectRepository).deleteByResearchGroupId(7L);
+    }
+
+    @Test
+    void removeParticipantFromAllGroupProjectsShouldDelegateToParticipantService() {
+        projectApiService.removeParticipantFromAllGroupProjects(7L, 3L);
+
+        verify(projectParticipantService).removeParticipantFromAllGroupProjects(7L, 3L);
     }
 }

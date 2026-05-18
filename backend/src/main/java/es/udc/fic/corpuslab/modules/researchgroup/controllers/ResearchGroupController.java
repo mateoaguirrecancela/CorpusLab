@@ -105,8 +105,7 @@ public class ResearchGroupController {
                 authentication.getName(),
                 id,
                 request.email(),
-                request.role(),
-                request.expiresAt());
+                request.role());
     }
 
     @GetMapping("/my-invitations")

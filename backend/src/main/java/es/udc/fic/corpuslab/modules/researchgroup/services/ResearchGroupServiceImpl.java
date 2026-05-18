@@ -1,8 +1,9 @@
 package es.udc.fic.corpuslab.modules.researchgroup.services;
 
 import java.time.Instant;
-import java.util.Locale;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -11,13 +12,12 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import es.udc.fic.corpuslab.common.utils.EmailNormalizer;
 import es.udc.fic.corpuslab.modules.auth.api.AuthApiService;
 import es.udc.fic.corpuslab.modules.auth.api.dtos.UserInfo;
-import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
 import es.udc.fic.corpuslab.modules.project.api.ProjectApiService;
-import es.udc.fic.corpuslab.modules.project.services.ProjectParticipantService;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.CreateResearchGroupRequestDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupInvitationDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupDetailDto;
@@ -41,7 +41,6 @@ import es.udc.fic.corpuslab.modules.researchgroup.exceptions.ResearchGroupNotFou
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupInvitationRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupMemberRepository;
 import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupRepository;
-import jakarta.persistence.EntityManager;
 
 @Service
 public class ResearchGroupServiceImpl implements ResearchGroupService {
@@ -53,11 +52,11 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
     private final ResearchGroupMemberRepository memberRepository;
     private final ResearchGroupInvitationRepository invitationRepository;
     private final ProjectApiService projectApiService;
-    private final ProjectParticipantService projectParticipantService;
     private final NotificationService notificationService;
     private final EmailService emailService;
-    private final EntityManager entityManager;
+    private final ResearchGroupEntityReferenceService entityReferenceService;
     private final String frontendBaseUrl;
+    private final long invitationExpirationDays;
 
     public ResearchGroupServiceImpl(
             AuthApiService authApiService,
@@ -65,21 +64,21 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
             ResearchGroupMemberRepository memberRepository,
             ResearchGroupInvitationRepository invitationRepository,
             ProjectApiService projectApiService,
-            ProjectParticipantService projectParticipantService,
             NotificationService notificationService,
             EmailService emailService,
-            EntityManager entityManager,
-            @Value("${app.frontend.base-url:http://localhost:5173}") String frontendBaseUrl) {
+            ResearchGroupEntityReferenceService entityReferenceService,
+            @Value("${app.frontend.base-url:http://localhost:5173}") String frontendBaseUrl,
+            @Value("${app.research-group.invitation-expiration-days:7}") long invitationExpirationDays) {
         this.authApiService = authApiService;
         this.researchGroupRepository = researchGroupRepository;
         this.memberRepository = memberRepository;
         this.invitationRepository = invitationRepository;
         this.projectApiService = projectApiService;
-        this.projectParticipantService = projectParticipantService;
         this.notificationService = notificationService;
         this.emailService = emailService;
-        this.entityManager = entityManager;
+        this.entityReferenceService = entityReferenceService;
         this.frontendBaseUrl = frontendBaseUrl;
+        this.invitationExpirationDays = Math.max(1L, invitationExpirationDays);
     }
 
     @Override
@@ -97,25 +96,16 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
 
         ResearchGroup group = new ResearchGroup();
         group.setName(request.name().trim());
-        group.setDescription(
-                request.description() != null && !request.description().isBlank()
-                        ? request.description().trim()
-                        : null);
+        group.setDescription(normalizeNullableText(request.description()));
         group = researchGroupRepository.save(group);
 
         ResearchGroupMember ownerMember = new ResearchGroupMember();
-        ownerMember.setUser(getUserReference(userInfo.userId()));
+        entityReferenceService.attachUser(ownerMember, userInfo.userId());
         ownerMember.setResearchGroup(group);
         ownerMember.setRole(ResearchGroupMemberRole.OWNER);
         memberRepository.save(ownerMember);
 
-        return new ResearchGroupSummaryDto(
-                group.getId(),
-                group.getName(),
-                group.getDescription(),
-                ResearchGroupMemberRole.OWNER,
-                1L,
-                group.getCreatedAt());
+        return toSummaryDto(group, ResearchGroupMemberRole.OWNER, 1L);
     }
 
     @Override
@@ -126,24 +116,12 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
         ResearchGroup group = researchGroupRepository.findById(groupId)
                 .orElseThrow(() -> new ResearchGroupNotFoundException(groupId));
 
-        List<ResearchGroupMemberDto> members = memberRepository.findMembersByGroupId(groupId);
-        boolean isMember = members.stream().anyMatch(m -> m.userId().equals(userInfo.userId()));
+        ResearchGroupMember currentMember = memberRepository
+                .findActiveMemberByGroupIdAndUserId(groupId, userInfo.userId())
+                .orElseThrow(() -> new AccessDeniedException(
+                        "User is not a member of this research group"));
 
-        if (!isMember) {
-            throw new AccessDeniedException("User is not a member of this research group");
-        }
-
-        long activeProjects = projectApiService.countProjectsByResearchGroupId(groupId);
-
-        return new ResearchGroupDetailDto(
-                group.getId(),
-                group.getName(),
-                group.getDescription(),
-                group.getInvitationCode(),
-                members.size(),
-                activeProjects,
-                group.getCreatedAt(),
-                members);
+        return toDetailDto(group, currentMember);
     }
 
     @Override
@@ -167,24 +145,10 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
         }
 
         group.setName(request.name().trim());
-        group.setDescription(
-                request.description() != null && !request.description().isBlank()
-                        ? request.description().trim()
-                        : null);
+        group.setDescription(normalizeNullableText(request.description()));
         researchGroupRepository.save(group);
 
-        List<ResearchGroupMemberDto> members = memberRepository.findMembersByGroupId(groupId);
-        long activeProjects = projectApiService.countProjectsByResearchGroupId(groupId);
-
-        return new ResearchGroupDetailDto(
-                group.getId(),
-                group.getName(),
-                group.getDescription(),
-                group.getInvitationCode(),
-                members.size(),
-                activeProjects,
-                group.getCreatedAt(),
-                members);
+        return toDetailDto(group, requesterMembership);
     }
 
     @Override
@@ -210,10 +174,9 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
             String authenticatedEmail,
             Long groupId,
             String invitedEmail,
-            ResearchGroupMemberRole role,
-            Instant expiresAt) {
+            ResearchGroupMemberRole role) {
         UserInfo inviterInfo = authApiService.findUserByEmail(authenticatedEmail);
-        String normalizedInvitedEmail = invitedEmail.trim().toLowerCase(Locale.ROOT);
+        String normalizedInvitedEmail = EmailNormalizer.canonicalizeGoogleEmail(invitedEmail);
 
         if (role == ResearchGroupMemberRole.OWNER) {
             throw new InvalidResearchGroupInvitationRoleException(role);
@@ -250,12 +213,14 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
 
         ResearchGroupInvitation invitation = new ResearchGroupInvitation();
         invitation.setResearchGroup(group);
-        invitation.setInviterUser(getUserReference(inviterInfo.userId()));
-        invitation.setInvitedUser(invitedUserInfo != null ? getUserReference(invitedUserInfo.userId()) : null);
+        entityReferenceService.attachInviterUser(invitation, inviterInfo.userId());
+        if (invitedUserInfo != null) {
+            entityReferenceService.attachInvitedUser(invitation, invitedUserInfo.userId());
+        }
         invitation.setInvitedEmail(normalizedInvitedEmail);
         invitation.setRole(role);
         invitation.setStatus(ResearchGroupInvitationStatus.PENDING);
-        invitation.setExpiresAt(expiresAt);
+        invitation.setExpiresAt(Instant.now().plus(invitationExpirationDays, ChronoUnit.DAYS));
         invitation = saveInvitationWithUniqueToken(invitation);
 
         if (invitedUserInfo != null) {
@@ -322,15 +287,15 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
 
         ResearchGroupMember member = new ResearchGroupMember();
         member.setResearchGroup(group);
-        member.setUser(getUserReference(userInfo.userId()));
+        entityReferenceService.attachUser(member, userInfo.userId());
         member.setRole(invitation.getRole());
         memberRepository.save(member);
 
-        invitation.setInvitedUser(getUserReference(userInfo.userId()));
+        entityReferenceService.attachInvitedUser(invitation, userInfo.userId());
         invitation.setStatus(ResearchGroupInvitationStatus.ACCEPTED);
         invitationRepository.save(invitation);
 
-        User inviterUser = invitation.getInviterUser();
+        var inviterUser = invitation.getInviterUser();
         if (inviterUser != null && !inviterUser.getId().equals(userInfo.userId())) {
             notificationService.createResearchGroupInvitationAcceptedNotification(
                     inviterUser.getId(),
@@ -341,13 +306,7 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
 
         long memberCount = memberRepository.countByResearchGroupIdAndDeletedAtIsNull(group.getId());
 
-        return new ResearchGroupSummaryDto(
-                group.getId(),
-                group.getName(),
-                group.getDescription(),
-                invitation.getRole(),
-                memberCount,
-                group.getCreatedAt());
+        return toSummaryDto(group, invitation.getRole(), memberCount);
     }
 
     @Override
@@ -385,20 +344,9 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
         targetMember.setRole(role);
         ResearchGroupMember saved = memberRepository.save(targetMember);
 
-        // Use the member repository's JPQL query which already counts project participations
-        List<ResearchGroupMemberDto> members = memberRepository.findMembersByGroupId(groupId);
-        ResearchGroupMemberDto updatedMember = members.stream()
-                .filter(m -> m.userId().equals(saved.getUser().getId()))
-                .findFirst()
-                .orElse(new ResearchGroupMemberDto(
-                        saved.getUser().getId(),
-                        saved.getUser().getFirstName(),
-                        saved.getUser().getLastName(),
-                        saved.getUser().getEmail(),
-                        saved.getRole(),
-                        0));
-
-        return updatedMember;
+        return memberRepository
+                .findMemberDtoByGroupIdAndUserId(groupId, saved.getUser().getId())
+                .orElseThrow(() -> new ResearchGroupMemberNotFoundException(groupId, memberUserId));
     }
 
     @Override
@@ -418,7 +366,7 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
         targetMember.setDeletedAt(Instant.now());
         memberRepository.save(targetMember);
 
-        projectParticipantService.removeParticipantFromAllGroupProjects(groupId, memberUserId);
+        projectApiService.removeParticipantFromAllGroupProjects(groupId, memberUserId);
     }
 
     @Override
@@ -436,21 +384,15 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
 
         ResearchGroupMember member = new ResearchGroupMember();
         member.setResearchGroup(group);
-        member.setUser(getUserReference(userInfo.userId()));
+        entityReferenceService.attachUser(member, userInfo.userId());
         member.setRole(ResearchGroupMemberRole.ANNOTATOR);
         memberRepository.save(member);
 
-        resolvePendingInvitationsAfterJoinByCode(group.getId(), userInfo.email(), getUserReference(userInfo.userId()));
+        resolvePendingInvitationsAfterJoinByCode(group.getId(), userInfo.email(), userInfo.userId());
 
         long memberCount = memberRepository.countByResearchGroupIdAndDeletedAtIsNull(group.getId());
 
-        return new ResearchGroupSummaryDto(
-                group.getId(),
-                group.getName(),
-                group.getDescription(),
-                ResearchGroupMemberRole.ANNOTATOR,
-                memberCount,
-                group.getCreatedAt());
+        return toSummaryDto(group, ResearchGroupMemberRole.ANNOTATOR, memberCount);
     }
 
     private ResearchGroupInvitation saveInvitationWithUniqueToken(ResearchGroupInvitation invitation) {
@@ -472,13 +414,49 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
         throw new IllegalStateException("Unable to generate a unique invitation token");
     }
 
+    private ResearchGroupDetailDto toDetailDto(ResearchGroup group, ResearchGroupMember currentMember) {
+        List<ResearchGroupMemberDto> members = memberRepository.findMembersByGroupId(group.getId());
+        long activeProjects = projectApiService.countProjectsByResearchGroupId(group.getId());
+        ResearchGroupMemberRole currentRole = currentMember.getRole();
+        boolean isOwner = currentRole == ResearchGroupMemberRole.OWNER;
+
+        return new ResearchGroupDetailDto(
+                group.getId(),
+                group.getName(),
+                group.getDescription(),
+                group.getInvitationCode(),
+                members.size(),
+                activeProjects,
+                group.getCreatedAt(),
+                members,
+                isOwner,
+                isOwner || currentRole == ResearchGroupMemberRole.ADMIN);
+    }
+
+    private static String normalizeNullableText(String value) {
+        return value != null && !value.isBlank() ? value.trim() : null;
+    }
+
+    private static ResearchGroupSummaryDto toSummaryDto(
+            ResearchGroup group,
+            ResearchGroupMemberRole role,
+            long memberCount) {
+        return new ResearchGroupSummaryDto(
+                group.getId(),
+                group.getName(),
+                group.getDescription(),
+                role,
+                memberCount,
+                group.getCreatedAt());
+    }
+
     private ResearchGroupInvitation findActivePendingInvitationForUser(Long invitationId, String normalizedEmail) {
         return invitationRepository
                 .findActivePendingInvitationByIdAndInvitedEmail(invitationId, normalizedEmail, Instant.now())
                 .orElseThrow(() -> new ResearchGroupInvitationNotFoundException(invitationId));
     }
 
-    private void resolvePendingInvitationsAfterJoinByCode(Long groupId, String normalizedEmail, User userRef) {
+    private void resolvePendingInvitationsAfterJoinByCode(Long groupId, String normalizedEmail, Long userId) {
         List<ResearchGroupInvitation> pendingInvitations = invitationRepository
                 .findActivePendingInvitationsByGroupIdAndInvitedEmail(groupId, normalizedEmail, Instant.now());
 
@@ -487,7 +465,7 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
         }
 
         pendingInvitations.forEach(invitation -> {
-            invitation.setInvitedUser(userRef);
+            entityReferenceService.attachInvitedUser(invitation, userId);
             invitation.setStatus(ResearchGroupInvitationStatus.ACCEPTED);
         });
 
@@ -509,10 +487,4 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
         }
     }
 
-    /**
-     * Creates a JPA proxy reference for User without loading the entity.
-     */
-    private User getUserReference(Long userId) {
-        return entityManager.getReference(User.class, userId);
-    }
 }

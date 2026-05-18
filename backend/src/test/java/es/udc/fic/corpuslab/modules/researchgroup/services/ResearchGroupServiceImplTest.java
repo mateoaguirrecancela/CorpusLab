@@ -4,10 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,8 +29,6 @@ import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.notification.services.EmailService;
 import es.udc.fic.corpuslab.modules.notification.services.NotificationService;
 import es.udc.fic.corpuslab.modules.project.api.ProjectApiService;
-import es.udc.fic.corpuslab.modules.project.services.ProjectParticipantService;
-import jakarta.persistence.EntityManager;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupDetailDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupInvitationDto;
 import es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto;
@@ -56,6 +56,8 @@ import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupRepo
 @ExtendWith(MockitoExtension.class)
 class ResearchGroupServiceImplTest {
 
+        private static final long INVITATION_EXPIRATION_DAYS = 10L;
+
         @Mock
         private AuthApiService authApiService;
 
@@ -72,16 +74,13 @@ class ResearchGroupServiceImplTest {
         private ProjectApiService projectApiService;
 
         @Mock
-        private ProjectParticipantService projectParticipantService;
-
-        @Mock
         private EmailService emailService;
 
         @Mock
         private NotificationService notificationService;
 
         @Mock
-        private EntityManager entityManager;
+        private ResearchGroupEntityReferenceService entityReferenceService;
 
         private ResearchGroupService researchGroupService;
 
@@ -93,11 +92,11 @@ class ResearchGroupServiceImplTest {
                                 memberRepository,
                                 invitationRepository,
                                 projectApiService,
-                                projectParticipantService,
                                 notificationService,
                                 emailService,
-                                entityManager,
-                                "http://localhost:5173");
+                                entityReferenceService,
+                                "http://localhost:5173",
+                                INVITATION_EXPIRATION_DAYS);
         }
 
         @Test
@@ -121,6 +120,12 @@ class ResearchGroupServiceImplTest {
 
                 when(authApiService.findUserByEmail("member@example.com")).thenReturn(new UserInfo(10L, "member@example.com", "Elena", "Alvarez"));
                 when(researchGroupRepository.findById(99L)).thenReturn(Optional.of(group));
+                when(memberRepository.findActiveMemberByGroupIdAndUserId(99L, 10L))
+                                .thenReturn(Optional.of(ResearchGroupMemberTestBuilder.validMember()
+                                                .withUser(requester)
+                                                .withResearchGroup(group)
+                                                .withRole(ResearchGroupMemberRole.OWNER)
+                                                .build()));
                 when(memberRepository.findMembersByGroupId(99L)).thenReturn(List.of(owner));
 
                 ResearchGroupDetailDto detail = researchGroupService.getResearchGroupDetail("member@example.com", 99L);
@@ -324,8 +329,6 @@ class ResearchGroupServiceImplTest {
                                 .withRole(ResearchGroupMemberRole.ADMIN)
                                 .build();
 
-                Instant expiresAt = Instant.parse("2026-04-10T12:00:00Z");
-
                 when(authApiService.findUserByEmail("admin@example.com")).thenReturn(new UserInfo(1L, "admin@example.com", "Admin", "User"));
                 when(researchGroupRepository.findById(10L)).thenReturn(Optional.of(group));
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 1L))
@@ -345,16 +348,17 @@ class ResearchGroupServiceImplTest {
                         return invitation;
                 });
 
+                Instant earliestExpiresAt = Instant.now().plus(INVITATION_EXPIRATION_DAYS, ChronoUnit.DAYS);
                 ResearchGroupInvitationDto result = researchGroupService.inviteResearcherByEmail(
                                 "admin@example.com",
                                 10L,
                                 "invitee@example.com",
-                                ResearchGroupMemberRole.ADMIN,
-                                expiresAt);
+                                ResearchGroupMemberRole.ADMIN);
+                Instant latestExpiresAt = Instant.now().plus(INVITATION_EXPIRATION_DAYS, ChronoUnit.DAYS);
 
                 assertThat(result.id()).isEqualTo(100L);
                 assertThat(result.role()).isEqualTo(ResearchGroupMemberRole.ADMIN);
-                assertThat(result.expiresAt()).isEqualTo(expiresAt);
+                assertThat(result.expiresAt()).isBetween(earliestExpiresAt, latestExpiresAt);
                 verify(emailService).sendResearchGroupInvitationToExistingUser(
                                 eq("invitee@example.com"),
                                 eq("NLP Group"),
@@ -368,8 +372,7 @@ class ResearchGroupServiceImplTest {
                                 "owner@example.com",
                                 10L,
                                 "invitee@example.com",
-                                ResearchGroupMemberRole.OWNER,
-                                Instant.parse("2026-04-10T12:00:00Z")))
+                                ResearchGroupMemberRole.OWNER))
                                 .isInstanceOf(InvalidResearchGroupInvitationRoleException.class);
         }
 
@@ -402,8 +405,7 @@ class ResearchGroupServiceImplTest {
                                 "admin@example.com",
                                 10L,
                                 "invitee@example.com",
-                                ResearchGroupMemberRole.ANNOTATOR,
-                                Instant.parse("2026-04-10T12:00:00Z")))
+                                ResearchGroupMemberRole.ANNOTATOR))
                                 .isInstanceOf(ResearchGroupInvitationAlreadyExistsException.class);
         }
 
@@ -430,8 +432,7 @@ class ResearchGroupServiceImplTest {
                                 "owner@example.com",
                                 10L,
                                 "existing@example.com",
-                                ResearchGroupMemberRole.ANNOTATOR,
-                                Instant.parse("2026-04-10T12:00:00Z")))
+                                ResearchGroupMemberRole.ANNOTATOR))
                                 .isInstanceOf(ResearchGroupMemberAlreadyExistsException.class);
         }
 
@@ -506,7 +507,11 @@ class ResearchGroupServiceImplTest {
                                 any(Instant.class)))
                                 .thenReturn(List.of(pendingInvitation));
                 when(memberRepository.countByResearchGroupIdAndDeletedAtIsNull(44L)).thenReturn(2L);
-                when(entityManager.getReference(User.class, 21L)).thenReturn(user);
+                doAnswer(invocation -> {
+                        ResearchGroupInvitation invitation = invocation.getArgument(0);
+                        invitation.setInvitedUser(user);
+                        return null;
+                }).when(entityReferenceService).attachInvitedUser(any(ResearchGroupInvitation.class), eq(21L));
 
                 researchGroupService.joinResearchGroupByCode("joiner@example.com", "JOINCODE12345");
 
@@ -589,6 +594,14 @@ class ResearchGroupServiceImplTest {
                                 .thenReturn(Optional.of(targetMembership));
                 when(memberRepository.save(any(ResearchGroupMember.class)))
                                 .thenAnswer(invocation -> invocation.getArgument(0));
+                when(memberRepository.findMemberDtoByGroupIdAndUserId(10L, 2L))
+                                .thenReturn(Optional.of(new ResearchGroupMemberDto(
+                                                2L,
+                                                "Member",
+                                                "User",
+                                                "member@example.com",
+                                                ResearchGroupMemberRole.ADMIN,
+                                                0L)));
 
                 ResearchGroupMemberDto result = researchGroupService.updateMemberRole(
                                 "owner@example.com", 10L, 2L, ResearchGroupMemberRole.ADMIN);
@@ -728,6 +741,7 @@ class ResearchGroupServiceImplTest {
 
                 assertThat(targetMembership.getDeletedAt()).isNotNull();
                 verify(memberRepository).save(targetMembership);
+                verify(projectApiService).removeParticipantFromAllGroupProjects(10L, 2L);
         }
 
         @Test
@@ -911,7 +925,16 @@ class ResearchGroupServiceImplTest {
                 when(memberRepository.findActiveMemberByGroupIdAndUserId(10L, 50L)).thenReturn(Optional.empty());
                 when(memberRepository.countByResearchGroupIdAndDeletedAtIsNull(10L)).thenReturn(2L);
 
-                when(entityManager.getReference(User.class, 50L)).thenReturn(user);
+                doAnswer(invocation -> {
+                        ResearchGroupInvitation invitationToAccept = invocation.getArgument(0);
+                        invitationToAccept.setInvitedUser(user);
+                        return null;
+                }).when(entityReferenceService).attachInvitedUser(any(ResearchGroupInvitation.class), eq(50L));
+                doAnswer(invocation -> {
+                        ResearchGroupMember member = invocation.getArgument(0);
+                        member.setUser(user);
+                        return null;
+                }).when(entityReferenceService).attachUser(any(ResearchGroupMember.class), eq(50L));
 
                 ResearchGroupSummaryDto result = researchGroupService.acceptMyInvitation("invitee@example.com", 100L);
 
