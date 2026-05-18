@@ -16,6 +16,7 @@ import { PublicOnly, RequireSession } from '@/routes/guards';
 import ProjectsPage from '@/modules/project/pages/ProjectsPage';
 import ProjectDetailPage from '@/modules/project/pages/ProjectDetailPage';
 import ProjectAnnotationPage from '@/modules/project/pages/ProjectAnnotationPage';
+import NotFoundPage from '@/common/pages/NotFoundPage';
 
 export const router = createBrowserRouter([
   {
@@ -100,7 +101,15 @@ export const router = createBrowserRouter([
             path: 'profile',
             element: <ProfilePage />,
           },
+          {
+            path: '*',
+            element: <NotFoundPage embedded />,
+          },
         ],
+      },
+      {
+        path: '*',
+        element: <NotFoundPage />,
       },
     ],
   },

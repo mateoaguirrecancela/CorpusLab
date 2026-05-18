@@ -329,7 +329,17 @@
         "unassigned": "No group"
       },
       "loadingMembers": "Loading team investigators...",
-      "noAssignableMembers": "There are no additional investigators available to assign."
+      "noAssignableMembers": "There are no additional investigators available to assign.",
+      "validation": {
+        "annotationTargetColumnRequired": "Select the column to annotate.",
+        "descriptionMax": "Description cannot exceed 2048 characters.",
+        "groupRequired": "Select a research group.",
+        "guidelineRequired": "Write a guideline or upload a PDF.",
+        "labelColorRequired": "Select a color for each NER label.",
+        "labelsRequired": "Add at least one label.",
+        "nameMax": "Name cannot exceed 256 characters.",
+        "nameRequired": "Name is required."
+      }
     },
     "edit": {
       "title": "Edit Project",
@@ -361,6 +371,8 @@
       "annotationSaveFailed": "Could not save the annotation. Please try again.",
       "annotationExportFailed": "Could not export annotation CSV. Please try again.",
       "metricsLoadFailed": "Could not load project metrics. Please try again.",
+      "assignmentContextLoadFailed": "Could not load assignable investigators. Please try again.",
+      "guidelinePdfLoadFailed": "Could not load the guideline PDF. Please try again.",
       "sourceContentLoadFailed": "Could not load the document content. Please try again."
     }
   }

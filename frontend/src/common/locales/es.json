@@ -21,6 +21,13 @@
     },
     "loading": {
       "profile": "Cargando perfil..."
+    },
+    "notFound": {
+      "documentTitle": "Pagina no encontrada | CorpusLab",
+      "code": "Error 404",
+      "name": "Pagina no encontrada",
+      "primaryAction": "Volver al inicio",
+      "imageAlt": "Ilustracion de pagina no encontrada"
     }
   }
 }

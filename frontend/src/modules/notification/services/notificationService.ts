@@ -1,42 +1,27 @@
 import { api } from '@/lib/api';
-import i18n from '@/lib/i18n';
+import { extractTranslatedApiErrorMessage } from '@/lib/apiErrors';
+import i18n, { getResolvedLanguage } from '@/lib/i18n';
 import { getSessionToken } from '@/modules/auth/services/sessionService';
 import {
   type NotificationItem,
   type NotificationListResponse,
 } from '@/modules/notification/types/notification';
-
-type NotificationDto = {
-  id: number;
-  type: NotificationItem['type'];
-  read: boolean;
-  createdAt: string;
-  actorFullName: string | null;
-  researchGroupId: number | null;
-  researchGroupName: string | null;
-  invitationId: number | null;
-  projectId: number | null;
-  projectName: string | null;
-};
-
-type NotificationListResponseDto = {
-  notifications: NotificationDto[];
-  unreadCount: number;
-};
+import {
+  buildNotificationStreamHeaders,
+  hasNotificationChangeEvent,
+  splitNotificationStreamBuffer,
+} from '@/modules/notification/utils/notificationStream';
 
 export async function getMyNotifications(limit = 12): Promise<NotificationListResponse> {
-  const response = await api.get<NotificationListResponseDto>('/notifications', {
+  const response = await api.get<NotificationListResponse>('/notifications', {
     params: { limit },
   });
 
-  return {
-    notifications: response.data.notifications,
-    unreadCount: response.data.unreadCount,
-  };
+  return response.data;
 }
 
 export async function markNotificationAsRead(notificationId: number): Promise<NotificationItem> {
-  const response = await api.post<NotificationDto>(`/notifications/${notificationId}/read`);
+  const response = await api.post<NotificationItem>(`/notifications/${notificationId}/read`);
   return response.data;
 }
 
@@ -47,16 +32,12 @@ export async function markAllNotificationsAsRead(): Promise<void> {
 export function subscribeToNotificationEvents(onChange: () => void): () => void {
   const abortController = new AbortController();
   const token = getSessionToken();
-  const language = i18n.resolvedLanguage ?? i18n.language ?? 'en';
+  const language = getResolvedLanguage(i18n);
 
   void (async () => {
     try {
       const response = await fetch('/api/notifications/stream', {
-        headers: {
-          Accept: 'text/event-stream',
-          'Accept-Language': language,
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: buildNotificationStreamHeaders(token, language),
         signal: abortController.signal,
       });
 
@@ -64,54 +45,49 @@ export function subscribeToNotificationEvents(onChange: () => void): () => void 
         return;
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (!abortController.signal.aborted) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split('\n\n');
-        buffer = events.pop() ?? '';
-
-        for (const rawEvent of events) {
-          if (rawEvent.includes('event:notification') || rawEvent.includes('data:changed')) {
-            onChange();
-          }
-        }
-      }
-    } catch (error) {
-      if (!abortController.signal.aborted) {
-        console.debug('Notification stream closed', error);
-      }
+      await readNotificationEventStream(response.body, abortController.signal, onChange);
+    } catch {
+      // The stream is best-effort; polling/react-query invalidation remains the recovery path.
     }
   })();
 
   return () => abortController.abort();
 }
 
-function extractApiErrorMessage(error: unknown, fallbackKey: string): string {
-  if (typeof error === 'object' && error !== null && 'response' in error) {
-    const response = (error as { response?: { data?: { message?: string; error?: string } } })
-      .response;
-    return response?.data?.message ?? response?.data?.error ?? i18n.t(fallbackKey);
-  }
+async function readNotificationEventStream(
+  stream: ReadableStream<Uint8Array>,
+  signal: AbortSignal,
+  onChange: () => void,
+): Promise<void> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
 
-  return i18n.t(fallbackKey);
+  while (!signal.aborted) {
+    const { done, value } = await reader.read();
+
+    if (done) {
+      return;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const { events, remainingBuffer } = splitNotificationStreamBuffer(buffer);
+    buffer = remainingBuffer;
+
+    if (hasNotificationChangeEvent(events)) {
+      onChange();
+    }
+  }
 }
 
 export function getNotificationsErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'notification.errors.loadFailed');
+  return extractTranslatedApiErrorMessage(error, 'notification.errors.loadFailed');
 }
 
 export function getMarkNotificationReadErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'notification.errors.markReadFailed');
+  return extractTranslatedApiErrorMessage(error, 'notification.errors.markReadFailed');
 }
 
 export function getMarkAllNotificationsReadErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, 'notification.errors.markAllReadFailed');
+  return extractTranslatedApiErrorMessage(error, 'notification.errors.markAllReadFailed');
 }

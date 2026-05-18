@@ -26,6 +26,20 @@ export type ProjectParticipantAssignment = {
   iaaGroup: ProjectParticipantAssignmentGroup;
 };
 
+export type ProjectAssignableMember = {
+  userId: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+};
+
+export type ProjectAssignmentContext = {
+  researchGroupId: number;
+  currentUserId: number;
+  members: ProjectAssignableMember[];
+  defaultAssignments: ProjectParticipantAssignment[];
+};
+
 export type ProjectDetailParticipant = {
   userId: number;
   firstName: string;
@@ -136,7 +150,7 @@ export type ConfigureProjectSetupPayload = {
   projectType: ProjectType;
   labels: ProjectSetupLabel[];
   guidelineText?: string;
-  guidelinePdfBase64?: string;
+  guidelinePdfFile?: File;
   annotationTargetColumn?: string;
 };
 
@@ -145,7 +159,6 @@ export type ProjectSetupResponse = {
   projectType: ProjectType;
   labels: ProjectSetupLabel[];
   guidelineText: string | null;
-  guidelinePdfBase64: string | null;
   annotationTargetColumn: string | null;
   setupCompleted: boolean;
 };
@@ -168,9 +181,14 @@ export type ProjectDetail = {
   datasetItems: DatasetItem[];
   labels: ProjectSetupLabel[];
   guidelineText: string | null;
-  guidelinePdfBase64: string | null;
+  guidelinePdfAvailable: boolean;
+  guidelinePdfMimeType: string | null;
+  guidelinePdfSizeBytes: number;
   annotationTargetColumn: string | null;
   datasetItemsCount: number;
+  canManageProject: boolean;
+  canArchiveProject: boolean;
+  canExportAnnotations: boolean;
   archived: boolean;
   createdAt: string;
 };

@@ -10,6 +10,11 @@
       "female": "Muller",
       "other": "Outro"
     },
+    "validation": {
+      "cityMax": "A cidade non pode superar 128 caracteres.",
+      "emailMax": "O correo non pode superar 254 caracteres.",
+      "nameMax": "O nome non pode superar 128 caracteres."
+    },
     "login": {
       "title": "Iniciar Sesión",
       "email": "Correo electrónico",

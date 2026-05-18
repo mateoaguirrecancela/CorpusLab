@@ -1,13 +1,12 @@
+import { type ProfileResponse } from '@/modules/auth/types/profile';
+
 export type LoginFormState = {
   email: string;
   password: string;
 };
 
-export type LoginResponse = {
+export type LoginResponse = ProfileResponse & {
   id: number;
-  email: string;
-  firstName: string;
-  lastName: string;
   token: string;
 };
 

@@ -1,4 +1,5 @@
 import { type ProjectParticipantRole, type ProjectType } from '@/modules/project/types/project';
+import { isCsvFile as isCsvFileByNameAndMimeType } from '@/modules/project/utils/projectFileUtils';
 
 export function projectTypeI18nKey(type: ProjectType): string {
   const map: Record<ProjectType, string> = {
@@ -43,8 +44,5 @@ export function formatFileSize(bytes: number): string {
 }
 
 export function isCsvFile(mimeType: string, fileName: string): boolean {
-  const normalizedMimeType = mimeType.toLowerCase();
-  const normalizedFileName = fileName.toLowerCase();
-
-  return normalizedMimeType.includes('csv') || normalizedFileName.endsWith('.csv');
+  return isCsvFileByNameAndMimeType(fileName, mimeType);
 }

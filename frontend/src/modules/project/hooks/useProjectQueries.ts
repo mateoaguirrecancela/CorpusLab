@@ -9,6 +9,7 @@ import {
   getAssignedProjectsByGroup,
   getProjectParticipantAnnotationWorkspace,
   getProjectAnnotationWorkspace,
+  getProjectAssignmentContext,
   getMyAssignedProjects,
   getProjectDetail,
   getProjectMetrics,
@@ -26,6 +27,7 @@ import {
   type ProjectDetail,
   type UpdateProjectPayload,
 } from '@/modules/project/types/project';
+import { isPositiveId } from '@/modules/project/utils/projectFormUtils';
 import {
   RESEARCH_GROUPS_QUERY_KEY,
   researchGroupDetailQueryKey,
@@ -229,6 +231,10 @@ export function assignedProjectsByGroupListQueryKey(groupId: number, showArchive
   ] as const;
 }
 
+export function projectAssignmentContextQueryKey(groupId: number) {
+  return ['projects', 'assignment-context', groupId] as const;
+}
+
 export function projectDetailQueryKey(projectId: number) {
   return ['projects', 'detail', projectId] as const;
 }
@@ -264,7 +270,7 @@ export function useAssignedProjectsByGroupQuery(groupId: number, showArchived = 
       }),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => (lastPage.last ? undefined : lastPage.number + 1),
-    enabled: Number.isFinite(groupId) && groupId > 0,
+    enabled: isPositiveId(groupId),
   });
 }
 
@@ -272,7 +278,15 @@ export function useProjectDetailQuery(projectId: number) {
   return useQuery({
     queryKey: projectDetailQueryKey(projectId),
     queryFn: () => getProjectDetail(projectId),
-    enabled: Number.isFinite(projectId) && projectId > 0,
+    enabled: isPositiveId(projectId),
+  });
+}
+
+export function useProjectAssignmentContextQuery(groupId: number) {
+  return useQuery({
+    queryKey: projectAssignmentContextQueryKey(groupId),
+    queryFn: () => getProjectAssignmentContext(groupId),
+    enabled: isPositiveId(groupId),
   });
 }
 
@@ -284,7 +298,7 @@ export function useProjectMetricsQuery(projectId: number, options?: ProjectMetri
   return useQuery({
     queryKey: projectMetricsQueryKey(projectId),
     queryFn: () => getProjectMetrics(projectId),
-    enabled: (options?.enabled ?? true) && Number.isFinite(projectId) && projectId > 0,
+    enabled: (options?.enabled ?? true) && isPositiveId(projectId),
   });
 }
 
@@ -326,7 +340,7 @@ export function useProjectAnnotationWorkspaceQuery(
   return useQuery({
     queryKey: projectAnnotationWorkspaceQueryKey(projectId, offset, limit),
     queryFn: () => getProjectAnnotationWorkspace(projectId, offset, limit),
-    enabled: (options?.enabled ?? true) && Number.isFinite(projectId) && projectId > 0,
+    enabled: (options?.enabled ?? true) && isPositiveId(projectId),
   });
 }
 
@@ -347,11 +361,7 @@ export function useProjectParticipantAnnotationWorkspaceQuery(
     queryFn: () =>
       getProjectParticipantAnnotationWorkspace(projectId, participantUserId, offset, limit),
     enabled:
-      (options?.enabled ?? true) &&
-      Number.isFinite(projectId) &&
-      projectId > 0 &&
-      Number.isFinite(participantUserId) &&
-      participantUserId > 0,
+      (options?.enabled ?? true) && isPositiveId(projectId) && isPositiveId(participantUserId),
   });
 }
 

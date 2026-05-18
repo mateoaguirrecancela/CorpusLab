@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { getCountryLabelByCode } from '@/lib/countries';
+import { getResolvedLanguage } from '@/lib/i18n';
 import { type ProfileResponse } from '@/modules/auth/types/profile';
 import {
   formatProfileBirth,
@@ -25,13 +26,13 @@ function ProfileRow({ label, value }: ProfileRowProps) {
 }
 
 type ProfileDetailsViewProps = Readonly<{
-  language: string;
   profile: ProfileResponse;
   onEdit: () => void;
 }>;
 
-export function ProfileDetailsView({ language, profile, onEdit }: ProfileDetailsViewProps) {
-  const { t } = useTranslation();
+export function ProfileDetailsView({ profile, onEdit }: ProfileDetailsViewProps) {
+  const { i18n, t } = useTranslation();
+  const language = getResolvedLanguage(i18n);
 
   return (
     <div>
@@ -48,7 +49,10 @@ export function ProfileDetailsView({ language, profile, onEdit }: ProfileDetails
           label={t('home.profile.birthDate')}
           value={formatProfileBirth(profile.birth, language)}
         />
-        <ProfileRow label={t('home.profile.gender')} value={formatProfileGender(profile.gender)} />
+        <ProfileRow
+          label={t('home.profile.gender')}
+          value={formatProfileGender(profile.gender, t)}
+        />
         <ProfileRow
           label={t('home.profile.country')}
           value={getCountryLabelByCode(profile.countryCode, language)}

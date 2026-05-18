@@ -28,6 +28,15 @@
       "ADMIN": "Admin",
       "ANNOTATOR": "Annotator"
     },
+    "validation": {
+      "descriptionMax": "Description cannot exceed 2048 characters.",
+      "emailMax": "Email cannot exceed 254 characters.",
+      "emailRequired": "Email is required.",
+      "invitationCodeMax": "Invitation code cannot exceed 64 characters.",
+      "invitationCodeRequired": "Enter an invitation code.",
+      "nameMax": "Name cannot exceed 256 characters.",
+      "nameRequired": "Name is required."
+    },
     "create": {
       "title": "New Research Group",
       "nameLabel": "Name",

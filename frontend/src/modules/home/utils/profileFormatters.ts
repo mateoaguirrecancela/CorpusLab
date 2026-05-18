@@ -1,3 +1,12 @@
+import { type TFunction } from 'i18next';
+import { formatDate } from '@/lib/dateFormatters';
+
+const PROFILE_GENDER_LABEL_KEYS: Record<string, string> = {
+  FEMALE: 'auth.gender.female',
+  MALE: 'auth.gender.male',
+  OTHER: 'auth.gender.other',
+};
+
 export function formatProfileValue(value: string | null): string {
   if (value === null) {
     return '-';
@@ -7,13 +16,13 @@ export function formatProfileValue(value: string | null): string {
   return trimmed.length > 0 ? trimmed : '-';
 }
 
-export function formatProfileGender(value: string | null): string {
+export function formatProfileGender(value: string | null, t: TFunction): string {
   if (!value) {
     return '-';
   }
 
-  const normalized = value.toLowerCase();
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  const labelKey = PROFILE_GENDER_LABEL_KEYS[value];
+  return labelKey ? t(labelKey) : formatProfileValue(value);
 }
 
 export function formatProfileBirth(value: string | null, language: string): string {
@@ -21,14 +30,10 @@ export function formatProfileBirth(value: string | null, language: string): stri
     return '-';
   }
 
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat(language, {
+  return formatDate(value, language, {
     day: '2-digit',
+    fallback: value,
     month: 'long',
     year: 'numeric',
-  }).format(parsedDate);
+  });
 }

@@ -1,10 +1,17 @@
 import { type TFunction } from 'i18next';
 import { toast } from 'sonner';
+import {
+  getFileDuplicateKey,
+  getFileExtension,
+  isCsvDatasetFile,
+} from '@/modules/project/utils/projectFileUtils';
 
 const MAX_FILE_SIZE_MB = 10;
 const MAX_TOTAL_SIZE_MB = 50;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const MAX_TOTAL_SIZE_BYTES = MAX_TOTAL_SIZE_MB * 1024 * 1024;
 
-const BANNED_EXTENSIONS = [
+const BANNED_EXTENSIONS = new Set([
   'exe',
   'bat',
   'cmd',
@@ -19,11 +26,7 @@ const BANNED_EXTENSIONS = [
   'war',
   'ear',
   'bin',
-];
-
-function getFileDuplicateKey(file: File): string {
-  return `${file.name.trim().toLowerCase()}::${file.size}`;
-}
+]);
 
 type ValidateProjectFilesParams = Readonly<{
   currentFiles: File[];
@@ -31,21 +34,31 @@ type ValidateProjectFilesParams = Readonly<{
   t: TFunction;
 }>;
 
+function sumFileSizes(files: readonly File[]): number {
+  let totalSize = 0;
+
+  for (const file of files) {
+    totalSize += file.size;
+  }
+
+  return totalSize;
+}
+
 export function validateProjectFiles({
   currentFiles,
   incomingFiles,
   t,
 }: ValidateProjectFilesParams): File[] | null {
   for (const file of incomingFiles) {
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+    if (file.size > MAX_FILE_SIZE_BYTES) {
       toast.error(
         t('project.create.fileSizeError', { fileName: file.name, limit: MAX_FILE_SIZE_MB }),
       );
       return null;
     }
 
-    const extension = file.name.split('.').pop()?.toLowerCase();
-    if (extension && BANNED_EXTENSIONS.includes(extension)) {
+    const extension = getFileExtension(file.name);
+    if (extension && BANNED_EXTENSIONS.has(extension)) {
       toast.error(t('project.create.forbiddenExtensionError', { extension }));
       return null;
     }
@@ -65,16 +78,14 @@ export function validateProjectFiles({
   }
 
   const candidateFiles = [...currentFiles, ...incomingFiles];
-  const totalSize = candidateFiles.reduce((sum, file) => sum + file.size, 0);
+  const totalSize = sumFileSizes(candidateFiles);
 
-  if (totalSize > MAX_TOTAL_SIZE_MB * 1024 * 1024) {
+  if (totalSize > MAX_TOTAL_SIZE_BYTES) {
     toast.error(t('project.create.totalSizeError', { limit: MAX_TOTAL_SIZE_MB }));
     return null;
   }
 
-  const containsCsv = candidateFiles.some(
-    (file) => file.name.toLowerCase().endsWith('.csv') || file.type.toLowerCase().includes('csv'),
-  );
+  const containsCsv = candidateFiles.some(isCsvDatasetFile);
 
   if (containsCsv && candidateFiles.length > 1) {
     toast.error(t('project.create.csvSingleFileError'));

@@ -23,7 +23,11 @@
       "cityPlaceholder": "Your city",
       "searchCountry": "Search country",
       "requiredFields": "Please complete all required fields and use a birth date for someone at least 16 years old.",
-      "updated": "Profile updated successfully."
+      "updated": "Profile updated successfully.",
+      "validation": {
+        "cityMax": "City cannot exceed 128 characters.",
+        "nameMax": "Name cannot exceed 128 characters."
+      }
     }
   }
 }

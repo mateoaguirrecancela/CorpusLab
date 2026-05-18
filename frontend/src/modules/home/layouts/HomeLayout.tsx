@@ -1,19 +1,16 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet } from 'react-router';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { AppHeader } from '@/components/layout/AppHeader';
+import { useHomeUIStore } from '@/modules/home/stores/useHomeUIStore';
 
 export default function HomeLayout() {
   const { t } = useTranslation();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const { closeSidebar, isSidebarCollapsed, toggleSidebar } = useHomeUIStore();
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader
-        isSidebarCollapsed={isSidebarCollapsed}
-        onToggleSidebar={() => setIsSidebarCollapsed((current) => !current)}
-      />
+      <AppHeader isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={toggleSidebar} />
 
       <AppSidebar isCollapsed={isSidebarCollapsed} />
 
@@ -21,7 +18,7 @@ export default function HomeLayout() {
         <button
           aria-label={t('common.aria.closeSidebar')}
           className="fixed inset-0 top-[72px] z-20 bg-overlay-scrim md:hidden"
-          onClick={() => setIsSidebarCollapsed(true)}
+          onClick={closeSidebar}
           type="button"
         />
       )}

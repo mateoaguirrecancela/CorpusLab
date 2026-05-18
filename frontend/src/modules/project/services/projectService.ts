@@ -1,3 +1,4 @@
+import { type AxiosResponse } from 'axios';
 import { api } from '@/lib/api';
 import { extractApiErrorMessage } from '@/lib/apiErrors';
 import i18n from '@/lib/i18n';
@@ -6,6 +7,7 @@ import {
   type AssignProjectParticipantsPayload,
   type ConfigureProjectSetupPayload,
   type CreateProjectPayload,
+  type ProjectAssignmentContext,
   type ProjectAssignedSummary,
   type ProjectAnnotationWorkspace,
   type ProjectDatasetItemContent,
@@ -22,6 +24,7 @@ import {
   type UploadDatasetJobResponse,
   type UploadDatasetResponse,
 } from '@/modules/project/types/project';
+import { optionalTrimmedText, toProjectPayload } from '@/modules/project/utils/projectFormUtils';
 
 const DATASET_UPLOAD_TIMEOUT_MS = 15 * 60 * 1000;
 
@@ -29,14 +32,9 @@ export async function createProject(
   researchGroupId: number,
   payload: CreateProjectPayload,
 ): Promise<ProjectSummary> {
-  const body = {
-    name: payload.name.trim(),
-    description: payload.description?.trim() || undefined,
-  };
-
   const response = await api.post<ProjectSummary>(
     `/research-groups/${researchGroupId}/projects`,
-    body,
+    toProjectPayload(payload),
   );
   return response.data;
 }
@@ -46,9 +44,8 @@ export async function updateProject(
   projectId: number,
   payload: UpdateProjectPayload,
 ): Promise<ProjectDetail> {
-  const body = {
-    name: payload.name.trim(),
-    description: payload.description?.trim() || undefined,
+  const body: UpdateProjectPayload = {
+    ...toProjectPayload(payload),
     participantUserIds: payload.participantUserIds,
     participantAssignments: payload.participantAssignments,
   };
@@ -64,10 +61,7 @@ export async function deleteProject(groupId: number, projectId: number): Promise
   await api.delete(`/research-groups/${groupId}/projects/${projectId}`);
 }
 
-export async function cleanupIncompleteProject(
-  groupId: number,
-  projectId: number,
-): Promise<void> {
+export async function cleanupIncompleteProject(groupId: number, projectId: number): Promise<void> {
   await api.delete(`/research-groups/${groupId}/projects/${projectId}/wizard-cleanup`);
 }
 
@@ -79,26 +73,6 @@ export async function archiveProject(projectId: number): Promise<ProjectDetail> 
 export async function unarchiveProject(projectId: number): Promise<ProjectDetail> {
   const response = await api.put<ProjectDetail>(`/projects/${projectId}/unarchive`);
   return response.data;
-}
-
-export function getCreateProjectErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('project.errors.createFailed'));
-}
-
-export function getUpdateProjectErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('project.errors.updateFailed'));
-}
-
-export function getDeleteProjectErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('project.errors.deleteFailed'));
-}
-
-export function getArchiveProjectErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('project.errors.archiveFailed'));
-}
-
-export function getUnarchiveProjectErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('project.errors.unarchiveFailed'));
 }
 
 export async function uploadProjectDataset(
@@ -206,33 +180,35 @@ function parseDatasetUploadEvent(rawEvent: string): UploadDatasetEvent | null {
   return JSON.parse(data) as UploadDatasetEvent;
 }
 
-export function getUploadDatasetErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('project.errors.datasetUploadFailed'));
-}
-
 export async function configureProjectSetup(
   groupId: number,
   projectId: number,
   payload: ConfigureProjectSetupPayload,
 ): Promise<ProjectSetupResponse> {
-  const body = {
+  const request = {
     projectType: payload.projectType,
     labels: payload.labels,
-    guidelineText: payload.guidelineText?.trim() || undefined,
-    guidelinePdfBase64: payload.guidelinePdfBase64?.trim() || undefined,
-    annotationTargetColumn: payload.annotationTargetColumn?.trim() || undefined,
+    guidelineText: optionalTrimmedText(payload.guidelineText),
+    annotationTargetColumn: optionalTrimmedText(payload.annotationTargetColumn),
   };
+  const formData = new FormData();
+  formData.append('request', new Blob([JSON.stringify(request)], { type: 'application/json' }));
+
+  if (payload.guidelinePdfFile) {
+    formData.append('guidelinePdfFile', payload.guidelinePdfFile);
+  }
 
   const response = await api.put<ProjectSetupResponse>(
     `/research-groups/${groupId}/projects/${projectId}/setup`,
-    body,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
   );
 
   return response.data;
-}
-
-export function getProjectSetupErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('project.errors.setupFailed'));
 }
 
 export async function assignProjectParticipants(
@@ -243,8 +219,13 @@ export async function assignProjectParticipants(
   await api.post(`/research-groups/${groupId}/projects/${projectId}/participants`, payload);
 }
 
-export function getAssignParticipantsErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('project.errors.assignmentFailed'));
+export async function getProjectAssignmentContext(
+  groupId: number,
+): Promise<ProjectAssignmentContext> {
+  const response = await api.get<ProjectAssignmentContext>(
+    `/research-groups/${groupId}/projects/assignment-context`,
+  );
+  return response.data;
 }
 
 type ProjectListParams = {
@@ -280,6 +261,16 @@ export async function getMyAssignedProjects({
 export async function getProjectDetail(projectId: number): Promise<ProjectDetail> {
   const response = await api.get<ProjectDetail>(`/projects/${projectId}`);
   return response.data;
+}
+
+export async function getProjectGuidelinePdf(
+  projectId: number,
+): Promise<ProjectDatasetItemContent> {
+  const response = await api.get<ArrayBuffer>(`/projects/${projectId}/guideline-pdf`, {
+    responseType: 'arraybuffer',
+  });
+
+  return toDatasetItemContent(response, 'application/pdf');
 }
 
 export async function getProjectMetrics(projectId: number): Promise<ProjectMetric[]> {
@@ -392,19 +383,7 @@ export async function getProjectDatasetItemContent(
     },
   );
 
-  const mimeTypeHeader = response.headers['content-type'];
-  const mimeType =
-    typeof mimeTypeHeader === 'string' && mimeTypeHeader.length > 0
-      ? mimeTypeHeader
-      : 'application/octet-stream';
-
-  const fileName = parseFileNameFromContentDisposition(response.headers['content-disposition']);
-
-  return {
-    blob: new Blob([response.data], { type: mimeType }),
-    mimeType,
-    fileName,
-  };
+  return toDatasetItemContent(response, 'application/octet-stream');
 }
 
 export async function exportProjectAnnotationResultsCsv(
@@ -414,45 +393,72 @@ export async function exportProjectAnnotationResultsCsv(
     responseType: 'arraybuffer',
   });
 
-  const mimeTypeHeader = response.headers['content-type'];
-  const mimeType =
-    typeof mimeTypeHeader === 'string' && mimeTypeHeader.length > 0
-      ? mimeTypeHeader
-      : 'text/csv;charset=UTF-8';
+  return toDatasetItemContent(response, 'text/csv;charset=UTF-8');
+}
 
-  const fileName = parseFileNameFromContentDisposition(response.headers['content-disposition']);
+function getResponseHeader(
+  response: AxiosResponse<ArrayBuffer>,
+  headerName: string,
+): string | undefined {
+  const headerValue = response.headers[headerName];
+  return typeof headerValue === 'string' && headerValue.length > 0 ? headerValue : undefined;
+}
+
+function toDatasetItemContent(
+  response: AxiosResponse<ArrayBuffer>,
+  fallbackMimeType: string,
+): ProjectDatasetItemContent {
+  const mimeType = getResponseHeader(response, 'content-type') ?? fallbackMimeType;
 
   return {
     blob: new Blob([response.data], { type: mimeType }),
     mimeType,
-    fileName,
+    fileName: parseFileNameFromContentDisposition(
+      getResponseHeader(response, 'content-disposition'),
+    ),
   };
 }
 
-export function getProjectsLoadErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('project.errors.loadFailed'));
+function projectErrorMessage(translationKey: string) {
+  return (error: unknown): string => extractApiErrorMessage(error, i18n.t(translationKey));
 }
 
-export function getProjectDetailLoadErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('project.errors.detailLoadFailed'));
-}
-
-export function getProjectMetricsLoadErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('project.errors.metricsLoadFailed'));
-}
-
-export function getProjectAnnotationLoadErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('project.errors.annotationLoadFailed'));
-}
-
-export function getProjectAnnotationSaveErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('project.errors.annotationSaveFailed'));
-}
-
-export function getProjectAnnotationExportErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('project.errors.annotationExportFailed'));
-}
-
-export function getProjectDatasetItemContentErrorMessage(error: unknown): string {
-  return extractApiErrorMessage(error, i18n.t('project.errors.sourceContentLoadFailed'));
-}
+export const getCreateProjectErrorMessage = projectErrorMessage('project.errors.createFailed');
+export const getUpdateProjectErrorMessage = projectErrorMessage('project.errors.updateFailed');
+export const getDeleteProjectErrorMessage = projectErrorMessage('project.errors.deleteFailed');
+export const getArchiveProjectErrorMessage = projectErrorMessage('project.errors.archiveFailed');
+export const getUnarchiveProjectErrorMessage = projectErrorMessage(
+  'project.errors.unarchiveFailed',
+);
+export const getUploadDatasetErrorMessage = projectErrorMessage(
+  'project.errors.datasetUploadFailed',
+);
+export const getProjectSetupErrorMessage = projectErrorMessage('project.errors.setupFailed');
+export const getAssignParticipantsErrorMessage = projectErrorMessage(
+  'project.errors.assignmentFailed',
+);
+export const getProjectsLoadErrorMessage = projectErrorMessage('project.errors.loadFailed');
+export const getProjectDetailLoadErrorMessage = projectErrorMessage(
+  'project.errors.detailLoadFailed',
+);
+export const getProjectAssignmentContextErrorMessage = projectErrorMessage(
+  'project.errors.assignmentContextLoadFailed',
+);
+export const getProjectGuidelinePdfErrorMessage = projectErrorMessage(
+  'project.errors.guidelinePdfLoadFailed',
+);
+export const getProjectMetricsLoadErrorMessage = projectErrorMessage(
+  'project.errors.metricsLoadFailed',
+);
+export const getProjectAnnotationLoadErrorMessage = projectErrorMessage(
+  'project.errors.annotationLoadFailed',
+);
+export const getProjectAnnotationSaveErrorMessage = projectErrorMessage(
+  'project.errors.annotationSaveFailed',
+);
+export const getProjectAnnotationExportErrorMessage = projectErrorMessage(
+  'project.errors.annotationExportFailed',
+);
+export const getProjectDatasetItemContentErrorMessage = projectErrorMessage(
+  'project.errors.sourceContentLoadFailed',
+);

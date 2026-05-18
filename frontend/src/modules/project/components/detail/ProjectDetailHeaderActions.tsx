@@ -57,7 +57,7 @@ export function ProjectDetailHeaderActions({
             {t('project.detail.openAnnotationWorkspace')}
           </Link>
 
-          {project.participantRole === 'CREATOR' && (
+          {project.canManageProject && (
             <>
               <Popover open={projectActionsOpen} onOpenChange={onProjectActionsOpenChange}>
                 <PopoverTrigger
@@ -116,12 +116,10 @@ export function ProjectDetailHeaderActions({
                 groupId={project.researchGroupId}
                 initialDescription={project.description}
                 initialName={project.name}
-                initialParticipantAssignments={project.participants
-                  .filter((participant) => participant.role === 'PARTICIPANT')
-                  .map((participant) => ({
-                    userId: participant.userId,
-                    iaaGroup: participant.iaaGroup ?? 'GROUP_A',
-                  }))}
+                initialParticipantAssignments={project.participants.map((participant) => ({
+                  userId: participant.userId,
+                  iaaGroup: participant.iaaGroup ?? 'GROUP_A',
+                }))}
                 onDeleted={() => navigate(`/home/research-groups/${project.researchGroupId}`)}
                 onOpenChange={onEditProjectOpenChange}
                 open={editProjectOpen}

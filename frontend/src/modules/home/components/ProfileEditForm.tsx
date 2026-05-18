@@ -1,80 +1,153 @@
 import { CalendarDays, Globe, MapPin, UserRound } from 'lucide-react';
-import { useMemo } from 'react';
+import { type ComponentProps, type ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { buildCountryOptions } from '@/lib/countries';
+import { getResolvedLanguage } from '@/lib/i18n';
 import { CountryCombobox } from '@/modules/auth/components/CountryCombobox';
-import { getCountryOptions, getGenderOptions } from '@/modules/auth/constants/signup';
 import { type ProfileFormState } from '@/modules/auth/types/profile';
-import { isAtLeast16YearsOld } from '@/modules/auth/utils/validation';
+import { getProfileGenderOptions } from '@/modules/home/utils/profileOptions';
+
+type ProfileFieldChangeHandler = <K extends keyof ProfileFormState>(
+  field: K,
+  value: ProfileFormState[K],
+) => void;
 
 type ProfileEditFormProps = Readonly<{
   canSave: boolean;
+  fieldErrors?: Partial<Record<keyof ProfileFormState, string>>;
   form: ProfileFormState;
   isSaving: boolean;
-  language: string;
   onCancel: () => void;
   onSave: () => void;
-  onFieldChange: <K extends keyof ProfileFormState>(field: K, value: ProfileFormState[K]) => void;
+  onFieldChange: ProfileFieldChangeHandler;
 }>;
+
+type ProfileInputFieldProps = Readonly<{
+  field: keyof ProfileFormState;
+  form: ProfileFormState;
+  icon: ReactNode;
+  label: string;
+  message?: string;
+  inputType?: ComponentProps<'input'>['type'];
+  placeholder?: string;
+  onFieldChange: ProfileFieldChangeHandler;
+}>;
+
+type ProfileEditActionsProps = Readonly<{
+  canSave: boolean;
+  isSaving: boolean;
+  onCancel: () => void;
+  onSave: () => void;
+}>;
+
+function ProfileInputField({
+  field,
+  form,
+  icon,
+  inputType,
+  label,
+  message,
+  placeholder,
+  onFieldChange,
+}: ProfileInputFieldProps) {
+  return (
+    <FormFieldControl
+      controlClassName="bg-surface-base"
+      icon={icon}
+      id={field}
+      inputProps={{
+        autoComplete: 'off',
+        placeholder,
+      }}
+      inputType={inputType}
+      label={label}
+      message={message}
+      onValueChange={(value) => onFieldChange(field, value)}
+      required
+      value={form[field]}
+    />
+  );
+}
+
+function ProfileEditActions({ canSave, isSaving, onCancel, onSave }: ProfileEditActionsProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="mt-5 flex flex-wrap justify-center gap-3">
+      <Button
+        className="h-10 min-w-32 cursor-pointer rounded-md border border-border bg-surface-base text-sm font-semibold text-foreground transition-colors hover:bg-accent"
+        onClick={onCancel}
+        type="button"
+      >
+        {t('common.actions.cancel')}
+      </Button>
+      <Button
+        className="h-10 min-w-32 cursor-pointer rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-muted"
+        disabled={!canSave}
+        onClick={onSave}
+        type="button"
+      >
+        {isSaving ? (
+          <span className="inline-flex items-center gap-2">
+            <Spinner aria-hidden className="size-4" />
+            {t('common.actions.saving')}
+          </span>
+        ) : (
+          t('common.actions.saveChanges')
+        )}
+      </Button>
+    </div>
+  );
+}
 
 export function ProfileEditForm({
   canSave,
+  fieldErrors = {},
   form,
   isSaving,
-  language,
   onCancel,
   onSave,
   onFieldChange,
 }: ProfileEditFormProps) {
-  const { t } = useTranslation();
-  const genderOptions = getGenderOptions(t);
-  const countryOptions = useMemo(() => getCountryOptions(language), [language]);
-  const isUnderage = form.birth.length > 0 && !isAtLeast16YearsOld(form.birth);
+  const { i18n, t } = useTranslation();
+  const language = getResolvedLanguage(i18n);
+  const genderOptions = getProfileGenderOptions(t);
+  const countryOptions = useMemo(() => buildCountryOptions(language), [language]);
 
   return (
     <div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <FormFieldControl
-          controlClassName="bg-surface-base"
+        <ProfileInputField
+          field="firstName"
+          form={form}
           icon={<UserRound className="size-4" />}
-          id="firstName"
-          inputProps={{
-            autoComplete: 'off',
-            placeholder: t('home.profile.firstNamePlaceholder'),
-          }}
           label={t('home.profile.firstName')}
-          onValueChange={(value) => onFieldChange('firstName', value)}
-          required
-          value={form.firstName}
+          message={fieldErrors.firstName}
+          placeholder={t('home.profile.firstNamePlaceholder')}
+          onFieldChange={onFieldChange}
         />
 
-        <FormFieldControl
-          controlClassName="bg-surface-base"
+        <ProfileInputField
+          field="lastName"
+          form={form}
           icon={<UserRound className="size-4" />}
-          id="lastName"
-          inputProps={{
-            autoComplete: 'off',
-            placeholder: t('home.profile.lastNamePlaceholder'),
-          }}
           label={t('home.profile.lastName')}
-          onValueChange={(value) => onFieldChange('lastName', value)}
-          required
-          value={form.lastName}
+          message={fieldErrors.lastName}
+          placeholder={t('home.profile.lastNamePlaceholder')}
+          onFieldChange={onFieldChange}
         />
 
-        <FormFieldControl
-          controlClassName="bg-surface-base"
+        <ProfileInputField
+          field="birth"
+          form={form}
           icon={<CalendarDays className="size-4" />}
-          id="birth"
-          inputProps={{ autoComplete: 'off' }}
           inputType="date"
           label={t('home.profile.birthDate')}
-          message={isUnderage ? t('auth.signup.underAge') : undefined}
-          onValueChange={(value) => onFieldChange('birth', value)}
-          required
-          value={form.birth}
+          message={fieldErrors.birth}
+          onFieldChange={onFieldChange}
         />
 
         <FormFieldControl
@@ -82,6 +155,7 @@ export function ProfileEditForm({
           icon={<UserRound className="size-4" />}
           id="gender"
           label={t('home.profile.gender')}
+          message={fieldErrors.gender}
           onValueChange={(value) => onFieldChange('gender', value)}
           options={genderOptions}
           required
@@ -93,6 +167,7 @@ export function ProfileEditForm({
           icon={<Globe className="size-4" />}
           id="countryCode"
           label={t('home.profile.country')}
+          message={fieldErrors.countryCode}
           renderControl={({ id }) => (
             <CountryCombobox
               id={id}
@@ -105,45 +180,23 @@ export function ProfileEditForm({
           required
         />
 
-        <FormFieldControl
-          controlClassName="bg-surface-base"
+        <ProfileInputField
+          field="city"
+          form={form}
           icon={<MapPin className="size-4" />}
-          id="city"
-          inputProps={{
-            autoComplete: 'off',
-            placeholder: t('home.profile.cityPlaceholder'),
-          }}
           label={t('home.profile.city')}
-          onValueChange={(value) => onFieldChange('city', value)}
-          required
-          value={form.city}
+          message={fieldErrors.city}
+          placeholder={t('home.profile.cityPlaceholder')}
+          onFieldChange={onFieldChange}
         />
       </div>
 
-      <div className="mt-5 flex flex-wrap justify-center gap-3">
-        <Button
-          className="h-10 min-w-32 rounded-md border border-border bg-surface-base text-sm font-semibold text-foreground transition-colors hover:bg-accent cursor-pointer"
-          onClick={onCancel}
-          type="button"
-        >
-          {t('common.actions.cancel')}
-        </Button>
-        <Button
-          className="h-10 min-w-32 rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-muted cursor-pointer"
-          disabled={!canSave}
-          onClick={onSave}
-          type="button"
-        >
-          {isSaving ? (
-            <span className="inline-flex items-center gap-2">
-              <Spinner aria-hidden className="size-4" />
-              {t('common.actions.saving')}
-            </span>
-          ) : (
-            t('common.actions.saveChanges')
-          )}
-        </Button>
-      </div>
+      <ProfileEditActions
+        canSave={canSave}
+        isSaving={isSaving}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
     </div>
   );
 }

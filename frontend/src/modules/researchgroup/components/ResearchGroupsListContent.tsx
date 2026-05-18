@@ -18,44 +18,42 @@ export function ResearchGroupsListContent({
 }: ResearchGroupsListContentProps) {
   const { t } = useTranslation();
 
+  if (isLoading) {
+    return (
+      <div className="mt-6 text-sm text-muted-foreground">
+        <span className="inline-flex items-center gap-2">
+          <Spinner aria-hidden className="size-4" />
+          {t('researchGroup.loading')}
+        </span>
+      </div>
+    );
+  }
+
+  if (errorMessage.length > 0) {
+    return null;
+  }
+
+  if (groups.length === 0) {
+    return <div className="mt-6 text-sm text-muted-foreground">{t('researchGroup.noGroups')}</div>;
+  }
+
   return (
-    <div className="mt-6">
-      {isLoading && (
-        <div className="text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-2">
-            <Spinner aria-hidden className="size-4" />
-            {t('researchGroup.loading')}
-          </span>
-        </div>
-      )}
-
-      {!isLoading && errorMessage.length === 0 && groups.length === 0 && (
-        <div className="text-sm text-muted-foreground">{t('researchGroup.noGroups')}</div>
-      )}
-
-      {!isLoading && groups.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {groups.map((group) => {
-            const roleLabel = t(`researchGroup.roles.${group.role}`);
-
-            return (
-              <EntitySummaryCard
-                actionLabel={t('researchGroup.enter')}
-                description={group.description}
-                footerMeta={{
-                  kind: 'members',
-                  text: t('researchGroup.memberCount', { count: group.memberCount }),
-                }}
-                key={group.id}
-                onAction={() => onOpenResearchGroup(group.id)}
-                roleLabel={roleLabel}
-                role={group.role}
-                title={group.name}
-              />
-            );
-          })}
-        </div>
-      )}
+    <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {groups.map((group) => (
+        <EntitySummaryCard
+          actionLabel={t('researchGroup.enter')}
+          description={group.description}
+          footerMeta={{
+            kind: 'members',
+            text: t('researchGroup.memberCount', { count: group.memberCount }),
+          }}
+          key={group.id}
+          onAction={() => onOpenResearchGroup(group.id)}
+          role={group.role}
+          roleLabel={t(`researchGroup.roles.${group.role}`)}
+          title={group.name}
+        />
+      ))}
     </div>
   );
 }

@@ -13,7 +13,10 @@ import {
   getRemoveMemberErrorMessage,
   getUpdateMemberRoleErrorMessage,
 } from '@/modules/researchgroup/services/researchGroupService';
-import { type ResearchGroupMember } from '@/modules/researchgroup/types/researchGroup';
+import {
+  type InvitableResearchGroupMemberRole,
+  type ResearchGroupMember,
+} from '@/modules/researchgroup/types/researchGroup';
 
 type ManageResearchGroupMemberDialogProps = {
   groupId: number;
@@ -37,13 +40,10 @@ export function ManageResearchGroupMemberDialog({
   const isRemovingMember = removeMemberMutation.isPending;
 
   const isBusy = isUpdatingRole || isRemovingMember;
-  const targetRole: 'ADMIN' | 'ANNOTATOR' = member.role === 'ADMIN' ? 'ANNOTATOR' : 'ADMIN';
+  const targetRole: InvitableResearchGroupMemberRole =
+    member.role === 'ADMIN' ? 'ANNOTATOR' : 'ADMIN';
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen);
-  };
-
-  const handleUpdateRole = async (nextRole: 'ADMIN' | 'ANNOTATOR') => {
+  const handleUpdateRole = async (nextRole: InvitableResearchGroupMemberRole) => {
     if (isBusy || member.role === nextRole) {
       return;
     }
@@ -76,7 +76,7 @@ export function ManageResearchGroupMemberDialog({
   };
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger render={trigger as React.JSX.Element} />
 
       <PopoverContent

@@ -1,8 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import { PageContainer } from '@/components/common/PageContainer';
 import { Spinner } from '@/components/ui/spinner';
+import { AnnotationCsvSourceContent } from '@/modules/project/components/annotation/AnnotationCsvSourceContent';
 import { AnnotationEditorSidebar } from '@/modules/project/components/annotation/AnnotationEditorSidebar';
 import { AnnotationFooterActions } from '@/modules/project/components/annotation/AnnotationFooterActions';
+import { AnnotationGuidelineContent } from '@/modules/project/components/annotation/AnnotationGuidelineContent';
 import { AnnotationGuidelinePanel } from '@/modules/project/components/annotation/AnnotationGuidelinePanel';
 import { AnnotationSourcePanel } from '@/modules/project/components/annotation/AnnotationSourcePanel';
 import { AnnotationWorkspaceHeader } from '@/modules/project/components/annotation/AnnotationWorkspaceHeader';
@@ -13,6 +15,7 @@ export default function ProjectAnnotationPage() {
   const {
     activeNerLabel,
     annotationProjectType,
+    annotationTargetColumn,
     annotationWorkspace,
     areStepActionsDisabled,
     canMoveNext,
@@ -21,11 +24,13 @@ export default function ProjectAnnotationPage() {
     classificationHeading,
     completionColors,
     completionPercentage,
-    csvSourceContent,
+    csvLabelColumnValues,
+    csvTargetColumnValue,
     currentDraft,
     currentGlobalStepIndex,
     currentStep,
-    guidelineContent,
+    guidelinePdfError,
+    guidelinePdfUrl,
     handleBackNavigation,
     handleFinishAction,
     handleNextAction,
@@ -107,12 +112,30 @@ export default function ProjectAnnotationPage() {
                   isCollapsed={isGuidelineCollapsed}
                   onToggleCollapsed={() => setIsGuidelineCollapsed((previous) => !previous)}
                 >
-                  {guidelineContent}
+                  <AnnotationGuidelineContent
+                    guidelinePdfAvailable={project?.guidelinePdfAvailable}
+                    guidelinePdfError={guidelinePdfError}
+                    guidelinePdfUrl={guidelinePdfUrl}
+                    guidelineText={project?.guidelineText}
+                  />
                 </AnnotationGuidelinePanel>
 
                 <AnnotationSourcePanel
                   annotationProjectType={annotationProjectType}
-                  csvSourceContent={csvSourceContent}
+                  csvSourceContent={
+                    <AnnotationCsvSourceContent
+                      annotationProjectType={annotationProjectType}
+                      annotationTargetColumn={annotationTargetColumn}
+                      csvLabelColumnValues={csvLabelColumnValues}
+                      csvTargetColumnValue={csvTargetColumnValue}
+                      currentStep={currentStep}
+                      isReviewMode={isReviewMode}
+                      nerLabelColorMap={nerLabelColorMap}
+                      nerSourceSelectionRef={nerSourceSelectionRef}
+                      nerTextSegments={nerTextSegments}
+                      onRemoveNerEntity={removeNerEntity}
+                    />
+                  }
                   currentGlobalStepIndex={currentGlobalStepIndex}
                   currentStep={currentStep}
                   isReviewMode={isReviewMode}

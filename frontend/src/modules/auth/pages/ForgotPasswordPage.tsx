@@ -5,14 +5,23 @@ import { useForgotPasswordForm } from '@/modules/auth/hooks/useForgotPasswordFor
 
 export default function ForgotPasswordPage() {
   const { t } = useTranslation();
-  const { form, canSubmit, isSubmitting, errorMessage, successMessage, updateField, handleSubmit } =
-    useForgotPasswordForm();
+  const {
+    form,
+    canSubmit,
+    fieldErrors,
+    isSubmitting,
+    errorMessage,
+    successMessage,
+    updateField,
+    handleSubmit,
+  } = useForgotPasswordForm();
 
   return (
     <AuthCard title={t('auth.forgotPassword.title')}>
       <ForgotPasswordForm
         canSubmit={canSubmit}
         errorMessage={errorMessage}
+        fieldErrors={fieldErrors}
         form={form}
         isSubmitting={isSubmitting}
         successMessage={successMessage}

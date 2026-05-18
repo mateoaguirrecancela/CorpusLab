@@ -325,7 +325,17 @@
         "unassigned": "Sen grupo"
       },
       "loadingMembers": "Cargando investigadores do equipo...",
-      "noAssignableMembers": "Non hai investigadores adicionais dispoñibles para asignar."
+      "noAssignableMembers": "Non hai investigadores adicionais dispoñibles para asignar.",
+      "validation": {
+        "annotationTargetColumnRequired": "Selecciona a columna a anotar.",
+        "descriptionMax": "A descricion non pode superar 2048 caracteres.",
+        "groupRequired": "Selecciona un grupo de investigacion.",
+        "guidelineRequired": "Escribe un guideline ou sube un PDF.",
+        "labelColorRequired": "Selecciona unha cor para cada etiqueta NER.",
+        "labelsRequired": "Engade polo menos unha etiqueta.",
+        "nameMax": "O nome non pode superar 256 caracteres.",
+        "nameRequired": "O nome e obrigatorio."
+      }
     },
     "edit": {
       "title": "Editar Proxecto",
@@ -357,6 +367,8 @@
       "annotationSaveFailed": "Non se puido gardar a anotacion. Téntao de novo.",
       "annotationExportFailed": "Non se puido exportar o CSV de anotacións. Téntao de novo.",
       "metricsLoadFailed": "Non se puideron cargar as metricas do proxecto. Tentao de novo.",
+      "assignmentContextLoadFailed": "Non se puideron cargar os investigadores asignables. Téntao de novo.",
+      "guidelinePdfLoadFailed": "Non se puido cargar o PDF do guideline. Téntao de novo.",
       "sourceContentLoadFailed": "Non se puido cargar o contido do documento. Téntao de novo."
     }
   }

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { ConfirmDestructiveDialog } from '@/components/common/ConfirmDestructiveDialog';
-import { FormFieldControl } from '@/components/common/FormFieldControl';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,15 +13,26 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Spinner } from '@/components/ui/spinner';
+import { DialogActionButton } from '@/modules/researchgroup/components/DialogActionButton';
+import { ResearchGroupFormFields } from '@/modules/researchgroup/components/ResearchGroupFormFields';
 import {
   useDeleteResearchGroupMutation,
   useUpdateResearchGroupMutation,
 } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
 import {
+  createResearchGroupFormSchema,
+  type ResearchGroupFormValues,
+} from '@/modules/researchgroup/schemas/researchGroupFormSchemas';
+import {
   getDeleteGroupErrorMessage,
   getUpdateGroupErrorMessage,
 } from '@/modules/researchgroup/services/researchGroupService';
+import {
+  buildResearchGroupFormValues,
+  canSubmitResearchGroupForm,
+  DIRTY_VALIDATED_FIELD_OPTIONS,
+  toResearchGroupPayload,
+} from '@/modules/researchgroup/utils/researchGroupForm';
 
 type EditResearchGroupDialogProps = {
   groupId: number;
@@ -42,46 +54,54 @@ export function EditResearchGroupDialog({
   const { t } = useTranslation();
   const updateGroupMutation = useUpdateResearchGroupMutation(groupId);
   const deleteGroupMutation = useDeleteResearchGroupMutation(groupId);
+  const researchGroupSchema = useMemo(() => createResearchGroupFormSchema(t), [t]);
+  const defaultFormValues = useMemo<ResearchGroupFormValues>(
+    () => buildResearchGroupFormValues(initialName, initialDescription),
+    [initialDescription, initialName],
+  );
+  const form = useForm<ResearchGroupFormValues>({
+    defaultValues: defaultFormValues,
+    mode: 'onChange',
+    resolver: zodResolver(researchGroupSchema),
+  });
+  const {
+    control,
+    formState: { errors, isValid },
+    handleSubmit,
+    reset,
+    setValue,
+  } = form;
   const [open, setOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [name, setName] = useState(initialName);
-  const [description, setDescription] = useState(initialDescription ?? '');
+  const name = useWatch({ control, name: 'name' });
+  const description = useWatch({ control, name: 'description' });
   const isSaving = updateGroupMutation.isPending;
   const isDeleting = deleteGroupMutation.isPending;
-
-  const hasChanges =
-    name.trim() !== initialName.trim() || description.trim() !== (initialDescription ?? '').trim();
-  const canSave = name.trim().length > 0 && hasChanges && !isSaving;
+  const values = { description, name };
+  const canSave = canSubmitResearchGroupForm({
+    initialValues: defaultFormValues,
+    isPending: isSaving,
+    isValid,
+    values,
+  });
 
   const resetForm = () => {
-    setName(initialName);
-    setDescription(initialDescription ?? '');
+    reset(defaultFormValues);
   };
 
-  useEffect(() => {
-    if (!open) {
-      resetForm();
-    }
-  }, [initialName, initialDescription, open]);
-
   const handleOpenChange = (nextOpen: boolean) => {
+    resetForm();
+
     if (!nextOpen) {
-      resetForm();
       setConfirmDeleteOpen(false);
     }
+
     setOpen(nextOpen);
   };
 
-  const handleSubmit = async () => {
-    if (!canSave) {
-      return;
-    }
-
+  const submitForm = async (values: ResearchGroupFormValues) => {
     try {
-      await updateGroupMutation.mutateAsync({
-        name: name.trim(),
-        description: description.trim() || undefined,
-      });
+      await updateGroupMutation.mutateAsync(toResearchGroupPayload(values));
       setOpen(false);
       resetForm();
       toast.success(t('common.actions.saveChanges'));
@@ -116,33 +136,21 @@ export function EditResearchGroupDialog({
             <DialogTitle>{t('researchGroup.edit.title')}</DialogTitle>
           </DialogHeader>
 
-          <div className="my-8 space-y-4">
-            <FormFieldControl
-              id="edit-group-name"
-              inputProps={{
-                autoFocus: true,
-                maxLength: 256,
-                placeholder: t('researchGroup.edit.namePlaceholder'),
-                required: true,
-              }}
-              label={t('researchGroup.edit.nameLabel')}
-              onValueChange={setName}
-              required
-              value={name}
-            />
-
-            <FormFieldControl
-              controlType="textarea"
-              id="edit-group-description"
-              label={t('researchGroup.edit.descriptionLabel')}
-              onValueChange={setDescription}
-              textareaProps={{
-                maxLength: 2048,
-                placeholder: t('researchGroup.edit.descriptionPlaceholder'),
-              }}
-              value={description}
-            />
-          </div>
+          <ResearchGroupFormFields
+            description={description}
+            descriptionId="edit-group-description"
+            descriptionLabel={t('researchGroup.edit.descriptionLabel')}
+            descriptionPlaceholder={t('researchGroup.edit.descriptionPlaceholder')}
+            errors={errors}
+            name={name}
+            nameId="edit-group-name"
+            nameLabel={t('researchGroup.edit.nameLabel')}
+            namePlaceholder={t('researchGroup.edit.namePlaceholder')}
+            onDescriptionChange={(nextDescription) =>
+              setValue('description', nextDescription, DIRTY_VALIDATED_FIELD_OPTIONS)
+            }
+            onNameChange={(nextName) => setValue('name', nextName, DIRTY_VALIDATED_FIELD_OPTIONS)}
+          />
 
           <DialogFooter>
             {showDeleteButton ? (
@@ -158,21 +166,14 @@ export function EditResearchGroupDialog({
                 {t('researchGroup.edit.delete')}
               </Button>
             ) : undefined}
-            <Button
-              className="h-10 min-w-32 rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-secondary cursor-pointer"
+            <DialogActionButton
               disabled={!canSave}
-              onClick={() => void handleSubmit()}
-              type="button"
-            >
-              {isSaving ? (
-                <span className="inline-flex items-center gap-2">
-                  <Spinner aria-hidden className="size-4" />
-                  {t('common.actions.saving')}
-                </span>
-              ) : (
-                t('researchGroup.edit.submit')
-              )}
-            </Button>
+              isPending={isSaving}
+              label={t('researchGroup.edit.submit')}
+              loadingLabel={t('common.actions.saving')}
+              minWidthClassName="min-w-32"
+              onClick={() => void handleSubmit(submitForm)()}
+            />
           </DialogFooter>
         </DialogContent>
       </Dialog>

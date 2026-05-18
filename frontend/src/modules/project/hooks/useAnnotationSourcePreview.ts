@@ -5,137 +5,68 @@ import {
 } from '@/modules/project/services/projectService';
 import { type AnnotationStep } from '@/modules/project/types/project';
 import {
-  formatTextSourceContent,
-  isCsvMimeType,
-  isInlineSourceMimeType,
-  isTextSourceMimeType,
+  createCachedSourcePreviewState,
+  createEmptySourcePreviewState,
+  createSourceCacheEntry,
+  createStepSourcePreviewState,
+  revokeSourceCache,
+  revokeSourceCacheEntry,
+  shouldFetchSourcePreview,
   type SourceCacheEntry,
-} from '@/modules/project/utils/annotationPageUtils';
-
-type SourcePreviewState = {
-  isSourceLoading: boolean;
-  sourceUrl: string | null;
-  sourceTextContent: string | null;
-  sourceMimeType: string;
-  sourceFileName: string | null;
-  sourceLoadError: string;
-};
+  type SourcePreviewState,
+} from '@/modules/project/utils/annotationSourcePreviewUtils';
 
 export function useAnnotationSourcePreview(
   currentStep: AnnotationStep | null,
   numericProjectId: number,
 ): SourcePreviewState {
-  const [isSourceLoading, setIsSourceLoading] = useState(false);
-  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
-  const [sourceTextContent, setSourceTextContent] = useState<string | null>(null);
-  const [sourceMimeType, setSourceMimeType] = useState('');
-  const [sourceFileName, setSourceFileName] = useState<string | null>(null);
-  const [sourceLoadError, setSourceLoadError] = useState('');
+  const [sourceState, setSourceState] = useState<SourcePreviewState>(createEmptySourcePreviewState);
   const sourceCacheRef = useRef<Map<number, SourceCacheEntry>>(new Map());
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSourceLoadError('');
-
     if (!currentStep) {
-      setSourceUrl(null);
-      setSourceTextContent(null);
-      setSourceMimeType('');
-      setSourceFileName(null);
-      setIsSourceLoading(false);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSourceState(createEmptySourcePreviewState());
       return;
     }
 
-    setSourceMimeType(currentStep.sourceMimeType);
-    setSourceFileName(currentStep.sourceName);
-
-    if (isCsvMimeType(currentStep.sourceMimeType)) {
-      setSourceUrl(null);
-      setSourceTextContent(null);
-      setIsSourceLoading(false);
-      return;
-    }
-
-    const shouldLoadBinarySource = isInlineSourceMimeType(currentStep.sourceMimeType);
-    const shouldLoadTextSource = isTextSourceMimeType(
-      currentStep.sourceMimeType,
-      currentStep.sourceName,
-    );
-
-    if (!shouldLoadBinarySource && !shouldLoadTextSource) {
-      setSourceUrl(null);
-      setSourceTextContent(null);
-      setIsSourceLoading(false);
+    if (!shouldFetchSourcePreview(currentStep)) {
+      setSourceState(createStepSourcePreviewState(currentStep));
       return;
     }
 
     const cachedSource = sourceCacheRef.current.get(currentStep.datasetItemId);
     if (cachedSource) {
-      setSourceUrl(cachedSource.url);
-      setSourceTextContent(cachedSource.textContent);
-      setSourceMimeType(cachedSource.mimeType);
-      setSourceFileName(cachedSource.fileName ?? currentStep.sourceName);
-      setIsSourceLoading(false);
+      setSourceState(createCachedSourcePreviewState(cachedSource, currentStep.sourceName));
       return;
     }
 
     let cancelled = false;
-    setSourceUrl(null);
-    setSourceTextContent(null);
-    setIsSourceLoading(true);
+    setSourceState(createStepSourcePreviewState(currentStep, { isSourceLoading: true }));
 
     getProjectDatasetItemContent(numericProjectId, currentStep.datasetItemId)
-      .then(async (content) => {
-        const resolvedMimeType = content.mimeType;
-        const resolvedFileName = content.fileName ?? currentStep.sourceName;
-        const shouldRenderAsText = isTextSourceMimeType(resolvedMimeType, resolvedFileName);
-
-        let nextSourceUrl: string | null = null;
-        let nextTextContent: string | null = null;
-
-        if (shouldRenderAsText) {
-          const rawTextContent = await content.blob.text();
-          nextTextContent = formatTextSourceContent(
-            resolvedMimeType,
-            resolvedFileName,
-            rawTextContent,
-          );
-        } else {
-          nextSourceUrl = URL.createObjectURL(content.blob);
-        }
+      .then((content) => createSourceCacheEntry(content, currentStep.sourceName))
+      .then((source) => {
+        const nextState = createCachedSourcePreviewState(source, currentStep.sourceName);
 
         if (cancelled) {
-          if (nextSourceUrl != null) {
-            URL.revokeObjectURL(nextSourceUrl);
-          }
+          revokeSourceCacheEntry(source);
           return;
         }
 
-        sourceCacheRef.current.set(currentStep.datasetItemId, {
-          url: nextSourceUrl,
-          textContent: nextTextContent,
-          mimeType: resolvedMimeType,
-          fileName: resolvedFileName,
-        });
-
-        setSourceUrl(nextSourceUrl);
-        setSourceTextContent(nextTextContent);
-        setSourceMimeType(resolvedMimeType);
-        setSourceFileName(resolvedFileName);
+        sourceCacheRef.current.set(currentStep.datasetItemId, source);
+        setSourceState(nextState);
       })
       .catch((error) => {
         if (cancelled) {
           return;
         }
 
-        setSourceUrl(null);
-        setSourceTextContent(null);
-        setSourceLoadError(getProjectDatasetItemContentErrorMessage(error));
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsSourceLoading(false);
-        }
+        setSourceState(
+          createStepSourcePreviewState(currentStep, {
+            sourceLoadError: getProjectDatasetItemContentErrorMessage(error),
+          }),
+        );
       });
 
     return () => {
@@ -147,21 +78,9 @@ export function useAnnotationSourcePreview(
     const sourceCache = sourceCacheRef.current;
 
     return () => {
-      sourceCache.forEach((source) => {
-        if (source.url != null) {
-          URL.revokeObjectURL(source.url);
-        }
-      });
-      sourceCache.clear();
+      revokeSourceCache(sourceCache);
     };
   }, []);
 
-  return {
-    isSourceLoading,
-    sourceUrl,
-    sourceTextContent,
-    sourceMimeType,
-    sourceFileName,
-    sourceLoadError,
-  };
+  return sourceState;
 }

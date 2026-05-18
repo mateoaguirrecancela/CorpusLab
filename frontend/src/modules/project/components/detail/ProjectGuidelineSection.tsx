@@ -6,8 +6,8 @@ import { type ProjectDetail } from '@/modules/project/types/project';
 type ProjectGuidelineSectionProps = Readonly<{
   guidelinePdfMetadata: string;
   project: ProjectDetail;
-  onDownloadGuidelinePdf: () => void;
-  onOpenGuidelinePdf: () => void;
+  onDownloadGuidelinePdf: () => Promise<void>;
+  onOpenGuidelinePdf: () => Promise<void>;
 }>;
 
 export function ProjectGuidelineSection({
@@ -33,7 +33,7 @@ export function ProjectGuidelineSection({
         </div>
       )}
 
-      {!project.guidelineText && project.guidelinePdfBase64 && (
+      {!project.guidelineText && project.guidelinePdfAvailable && (
         <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-surface-base p-4">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-lg bg-danger-soft text-danger-border">
@@ -51,7 +51,7 @@ export function ProjectGuidelineSection({
           <div className="flex shrink-0 items-center gap-2">
             <Button
               className="h-9 gap-1.5 rounded-md border border-border bg-transparent px-3 text-xs font-semibold text-foreground hover:bg-surface-soft hover:text-primary cursor-pointer"
-              onClick={onDownloadGuidelinePdf}
+              onClick={() => void onDownloadGuidelinePdf()}
               type="button"
             >
               <Download className="size-3.5" />
@@ -59,7 +59,7 @@ export function ProjectGuidelineSection({
             </Button>
             <Button
               className="h-9 gap-1.5 rounded-md border border-border bg-transparent px-3 text-xs font-semibold text-foreground hover:bg-surface-soft hover:text-primary cursor-pointer"
-              onClick={onOpenGuidelinePdf}
+              onClick={() => void onOpenGuidelinePdf()}
               type="button"
             >
               <ExternalLink className="size-3.5" />
@@ -69,7 +69,7 @@ export function ProjectGuidelineSection({
         </div>
       )}
 
-      {!project.guidelineText && !project.guidelinePdfBase64 && (
+      {!project.guidelineText && !project.guidelinePdfAvailable && (
         <p className="text-sm text-muted-foreground">{t('project.detail.noGuideline')}</p>
       )}
     </section>

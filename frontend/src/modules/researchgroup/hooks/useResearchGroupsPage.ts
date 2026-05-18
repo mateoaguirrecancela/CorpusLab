@@ -1,6 +1,5 @@
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { toast } from 'sonner';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import {
   useResearchGroupInvitationsQuery,
   useResearchGroupsQuery,
@@ -25,11 +24,10 @@ export function useResearchGroupsPage(): ResearchGroupsPageState {
   const { data: invitations = [] } = useResearchGroupInvitationsQuery();
   const errorMessage = isError ? getResearchGroupsErrorMessage(error) : '';
 
-  useEffect(() => {
-    if (errorMessage.length > 0) {
-      toast.error(errorMessage, { id: 'research-groups-load-error' });
-    }
-  }, [errorMessage]);
+  useToastMessages({
+    errorMessage,
+    errorToastId: 'research-groups-load-error',
+  });
 
   return {
     errorMessage,

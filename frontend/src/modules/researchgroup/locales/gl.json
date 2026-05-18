@@ -28,6 +28,15 @@
       "ADMIN": "Administrador",
       "ANNOTATOR": "Anotador"
     },
+    "validation": {
+      "descriptionMax": "A descricion non pode superar 2048 caracteres.",
+      "emailMax": "O email non pode superar 254 caracteres.",
+      "emailRequired": "O email e obrigatorio.",
+      "invitationCodeMax": "O codigo de invitacion non pode superar 64 caracteres.",
+      "invitationCodeRequired": "Introduce un codigo de invitacion.",
+      "nameMax": "O nome non pode superar 256 caracteres.",
+      "nameRequired": "O nome e obrigatorio."
+    },
     "create": {
       "title": "Novo Grupo de Investigación",
       "nameLabel": "Nome",

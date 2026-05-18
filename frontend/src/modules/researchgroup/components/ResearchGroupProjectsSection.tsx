@@ -20,6 +20,114 @@ type ResearchGroupProjectsSectionProps = Readonly<{
   onToggleArchivedProjects: () => void;
 }>;
 
+type ResearchGroupProjectsContentProps = Readonly<{
+  assignedProjects: ProjectAssignedSummary[];
+  hasNextProjectsPage: boolean;
+  isFetchingNextProjectsPage: boolean;
+  isLoadingProjects: boolean;
+  showArchivedProjects: boolean;
+  onLoadMoreProjects: () => void;
+  onOpenProject: (projectId: number) => void;
+}>;
+
+function ResearchGroupProjectsLoading() {
+  const { t } = useTranslation();
+
+  return (
+    <div className="rounded-md border border-border bg-surface-base px-4 py-6 text-sm text-muted-foreground">
+      <span className="inline-flex items-center gap-2">
+        <Spinner aria-hidden className="size-4" />
+        {t('project.list.loading')}
+      </span>
+    </div>
+  );
+}
+
+function ResearchGroupProjectsEmpty({
+  showArchivedProjects,
+}: Readonly<{ showArchivedProjects: boolean }>) {
+  const { t } = useTranslation();
+
+  return (
+    <p className="rounded-md border border-dashed border-border bg-surface-base px-4 py-5 text-sm text-muted-foreground">
+      {showArchivedProjects ? t('project.list.emptyArchived') : t('project.list.empty')}
+    </p>
+  );
+}
+
+function ResearchGroupProjectsGrid({
+  assignedProjects,
+  hasNextProjectsPage,
+  isFetchingNextProjectsPage,
+  onLoadMoreProjects,
+  onOpenProject,
+}: Omit<ResearchGroupProjectsContentProps, 'isLoadingProjects' | 'showArchivedProjects'>) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {assignedProjects.map((project) => (
+          <EntitySummaryCard
+            actionLabel={t('project.list.openProject')}
+            completionPercentage={project.completionPercentage}
+            description={project.description}
+            key={project.id}
+            onAction={() => onOpenProject(project.id)}
+            role={project.participantRole}
+            roleLabel={t(participantRoleI18nKey(project.participantRole))}
+            title={project.name}
+          />
+        ))}
+      </div>
+
+      {hasNextProjectsPage && (
+        <div className="mt-6 flex justify-center">
+          <button
+            className={TEXT_BUTTON_CLASS}
+            disabled={isFetchingNextProjectsPage}
+            onClick={onLoadMoreProjects}
+            type="button"
+          >
+            {isFetchingNextProjectsPage && <Spinner aria-hidden className="size-4" />}
+            {isFetchingNextProjectsPage
+              ? t('project.list.loadingMore')
+              : t('project.list.loadMore')}
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+function ResearchGroupProjectsContent({
+  assignedProjects,
+  hasNextProjectsPage,
+  isFetchingNextProjectsPage,
+  isLoadingProjects,
+  showArchivedProjects,
+  onLoadMoreProjects,
+  onOpenProject,
+}: ResearchGroupProjectsContentProps) {
+  if (isLoadingProjects) {
+    return <ResearchGroupProjectsLoading />;
+  }
+
+  if (assignedProjects.length === 0) {
+    return <ResearchGroupProjectsEmpty showArchivedProjects={showArchivedProjects} />;
+  }
+
+  return (
+    <ResearchGroupProjectsGrid
+      assignedProjects={assignedProjects}
+      hasNextProjectsPage={hasNextProjectsPage}
+      isFetchingNextProjectsPage={isFetchingNextProjectsPage}
+      onLoadMoreProjects={onLoadMoreProjects}
+      onOpenProject={onOpenProject}
+    />
+  );
+}
+
 export function ResearchGroupProjectsSection({
   assignedProjects,
   canCreateProjects,
@@ -65,59 +173,15 @@ export function ResearchGroupProjectsSection({
         </div>
       </div>
 
-      {isLoadingProjects && (
-        <div className="rounded-md border border-border bg-surface-base px-4 py-6 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-2">
-            <Spinner aria-hidden className="size-4" />
-            {t('project.list.loading')}
-          </span>
-        </div>
-      )}
-
-      {!isLoadingProjects && assignedProjects.length === 0 && (
-        <p className="rounded-md border border-dashed border-border bg-surface-base px-4 py-5 text-sm text-muted-foreground">
-          {showArchivedProjects ? t('project.list.emptyArchived') : t('project.list.empty')}
-        </p>
-      )}
-
-      {!isLoadingProjects && assignedProjects.length > 0 && (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {assignedProjects.map((project) => {
-              const roleLabel = t(participantRoleI18nKey(project.participantRole));
-
-              return (
-                <EntitySummaryCard
-                  actionLabel={t('project.list.openProject')}
-                  completionPercentage={project.completionPercentage}
-                  description={project.description}
-                  key={project.id}
-                  onAction={() => onOpenProject(project.id)}
-                  roleLabel={roleLabel}
-                  role={project.participantRole}
-                  title={project.name}
-                />
-              );
-            })}
-          </div>
-
-          {hasNextProjectsPage && (
-            <div className="mt-6 flex justify-center">
-              <button
-                className={TEXT_BUTTON_CLASS}
-                disabled={isFetchingNextProjectsPage}
-                onClick={onLoadMoreProjects}
-                type="button"
-              >
-                {isFetchingNextProjectsPage && <Spinner aria-hidden className="size-4" />}
-                {isFetchingNextProjectsPage
-                  ? t('project.list.loadingMore')
-                  : t('project.list.loadMore')}
-              </button>
-            </div>
-          )}
-        </>
-      )}
+      <ResearchGroupProjectsContent
+        assignedProjects={assignedProjects}
+        hasNextProjectsPage={hasNextProjectsPage}
+        isFetchingNextProjectsPage={isFetchingNextProjectsPage}
+        isLoadingProjects={isLoadingProjects}
+        showArchivedProjects={showArchivedProjects}
+        onLoadMoreProjects={onLoadMoreProjects}
+        onOpenProject={onOpenProject}
+      />
     </section>
   );
 }
