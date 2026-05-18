@@ -187,7 +187,8 @@
               }
             ]
           },
-          "unit": "percent"
+          "unit": "percent",
+          "noValue": "N/A"
         },
         "overrides": []
       },
@@ -221,7 +222,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "100 * sum(rate(corpuslab_dataset_upload_worker_jobs_total{result=~\"failed|invalid\", worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval])) / clamp_min(sum(rate(corpuslab_dataset_upload_worker_jobs_total{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval])), 0.001)",
+          "expr": "((100 * sum(rate(corpuslab_dataset_upload_worker_jobs_total{result=~\"failed|invalid\", worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval]))) / sum(rate(corpuslab_dataset_upload_worker_jobs_total{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval]))) and sum(rate(corpuslab_dataset_upload_worker_jobs_total{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval])) > 0",
           "legendFormat": "failure ratio",
           "range": true,
           "refId": "A"
@@ -309,7 +310,39 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
           "min": 0,
@@ -339,24 +372,24 @@
         "x": 0,
         "y": 4,
         "w": 12,
-        "h": 4
+        "h": 6
       },
       "id": 20,
       "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
+        "legend": {
           "calcs": [
-            "lastNotNull"
+            "lastNotNull",
+            "max"
           ],
-          "fields": "",
-          "values": false
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
         },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "targets": [
         {
@@ -366,13 +399,24 @@
           },
           "editorMode": "code",
           "expr": "avg(process_cpu_usage)",
-          "legendFormat": "CPU",
+          "legendFormat": "Process CPU",
           "range": true,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "avg(system_cpu_usage)",
+          "legendFormat": "System CPU",
+          "range": true,
+          "refId": "B"
         }
       ],
-      "title": "Process CPU Usage",
-      "type": "stat"
+      "title": "CPU Usage",
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -382,9 +426,43 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
+          "min": 0,
+          "max": null,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -410,24 +488,24 @@
         "x": 12,
         "y": 4,
         "w": 12,
-        "h": 4
+        "h": 6
       },
       "id": 21,
       "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
+        "legend": {
           "calcs": [
-            "lastNotNull"
+            "lastNotNull",
+            "max"
           ],
-          "fields": "",
-          "values": false
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
         },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "targets": [
         {
@@ -442,8 +520,8 @@
           "refId": "A"
         }
       ],
-      "title": "JVM Heap Used",
-      "type": "stat"
+      "title": "JVM Heap Memory",
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -869,7 +947,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(corpuslab_dataset_upload_worker_job_duration_seconds_sum{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval])) / clamp_min(sum(rate(corpuslab_dataset_upload_worker_job_duration_seconds_count{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval])), 0.001)",
+          "expr": "((sum(rate(corpuslab_dataset_upload_worker_job_duration_seconds_sum{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval]))) / sum(rate(corpuslab_dataset_upload_worker_job_duration_seconds_count{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval]))) and sum(rate(corpuslab_dataset_upload_worker_job_duration_seconds_count{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval])) > 0",
           "legendFormat": "average",
           "range": true,
           "refId": "A"
@@ -880,7 +958,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(max_over_time(corpuslab_dataset_upload_worker_job_duration_seconds_max{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval]))",
+          "expr": "max(max_over_time(corpuslab_dataset_upload_worker_job_duration_seconds_max{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval])) and sum(rate(corpuslab_dataset_upload_worker_job_duration_seconds_count{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval])) > 0",
           "legendFormat": "peak max_over_time",
           "range": true,
           "refId": "B"
@@ -1075,7 +1153,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (worker, stream) (rate(corpuslab_dataset_upload_worker_job_duration_seconds_sum{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval])) / clamp_min(sum by (worker, stream) (rate(corpuslab_dataset_upload_worker_job_duration_seconds_count{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval])), 0.001)",
+          "expr": "((sum by (worker, stream) (rate(corpuslab_dataset_upload_worker_job_duration_seconds_sum{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval]))) / sum by (worker, stream) (rate(corpuslab_dataset_upload_worker_job_duration_seconds_count{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval]))) and on(worker, stream) sum by (worker, stream) (rate(corpuslab_dataset_upload_worker_job_duration_seconds_count{worker=~\"$worker\", stream=~\"$stream\"}[$__rate_interval])) > 0",
           "format": "table",
           "instant": true,
           "legendFormat": "__auto",
@@ -1484,6 +1562,6 @@
   "timezone": "browser",
   "title": "Workers & Queues",
   "uid": "workers-queues",
-  "version": 8,
+  "version": 12,
   "weekStart": ""
 }
