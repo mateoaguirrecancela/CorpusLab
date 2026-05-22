@@ -21,21 +21,63 @@
         "title": "Aceptaron a tua invitación",
         "description": "{{actor}} aceptou a tua invitación a {{group}}"
       },
+      "RESEARCH_GROUP_INVITATION_DECLINED": {
+        "title": "Rexeitouse a tua invitación",
+        "description": "{{actor}} rexeitou a tua invitación a {{group}}"
+      },
+      "RESEARCH_GROUP_MEMBER_JOINED_BY_CODE": {
+        "title": "Un membro uniuse con código",
+        "description": "{{actor}} uniuse a {{group}} usando o código de invitación"
+      },
+      "RESEARCH_GROUP_MEMBER_ROLE_UPDATED": {
+        "title": "Cambiou o teu rol nun grupo",
+        "description": "{{actor}} actualizou o teu rol en {{group}}"
+      },
+      "RESEARCH_GROUP_MEMBER_REMOVED": {
+        "title": "Elimináronte dun grupo",
+        "description": "{{actor}} eliminoute de {{group}}"
+      },
       "PROJECT_PARTICIPANT_ASSIGNED": {
         "title": "Fuches asignado a un proxecto",
         "description": "{{actor}} asignoute ao proxecto {{project}}"
+      },
+      "PROJECT_PARTICIPANT_UNASSIGNED": {
+        "title": "Quitáronte dun proxecto",
+        "description": "{{actor}} quitoute do proxecto {{project}}"
+      },
+      "PROJECT_ARCHIVED": {
+        "title": "Arquivouse un proxecto",
+        "description": "{{actor}} arquivou o proxecto {{project}}"
+      },
+      "PROJECT_DELETED": {
+        "title": "Eliminouse un proxecto",
+        "description": "{{actor}} eliminou o proxecto {{project}}"
       },
       "PROJECT_ANNOTATION_COMPLETED": {
         "title": "Un investigador completou a anotacion",
         "description": "{{actor}} completou a anotacion do proxecto {{project}}"
       },
       "ANNOTATION_WARNING_MARKED": {
-        "title": "Aviso en anotacion",
-        "description": "{{actor}} marcou unha anotacion para revisar en {{project}}"
+        "title": "Alerta en anotacion",
+        "description": "{{actor}} marcou unha alerta na tua anotacion en {{project}}, arquivo {{file}}{{csvItemSuffix}}"
+      },
+      "ANNOTATION_WARNING_CLEARED": {
+        "title": "Alerta de anotacion desmarcada",
+        "description": "{{actor}} desmarcou unha alerta na tua anotacion en {{project}}, arquivo {{file}}{{csvItemSuffix}}"
+      },
+      "ANNOTATION_WARNING_RESOLVED": {
+        "title": "Alerta de anotacion resolta",
+        "description": "{{actor}} resolveu a alerta de anotacion en {{project}}, arquivo {{file}}{{csvItemSuffix}}"
       }
     },
     "unknownActor": "Alguén",
     "fallbackGroup": "un grupo",
-    "fallbackProject": "un proxecto"
+    "fallbackProject": "un proxecto",
+    "fallbackDatasetItem": "un arquivo do dataset",
+    "fallbackDatasetItemWithIndex": "#{{index}}",
+    "fallbackDatasetFile": "un arquivo do dataset",
+    "fallbackDatasetFileWithIndex": "arquivo #{{index}}",
+    "csvItemSuffix": " (item {{index}})",
+    "fallbackAnnotationStep": "un paso"
   }
 }

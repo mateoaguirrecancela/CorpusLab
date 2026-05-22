@@ -52,6 +52,19 @@ public interface ResearchGroupMemberRepository extends JpaRepository<ResearchGro
     List<Long> findActiveMemberUserIdsByGroupId(@Param("groupId") Long groupId);
 
     @Query("""
+            SELECT u.id
+            FROM ResearchGroupMember m
+            JOIN m.user u
+            WHERE m.researchGroup.id = :groupId
+              AND m.deletedAt IS NULL
+              AND m.role IN (
+                es.udc.fic.corpuslab.modules.researchgroup.enums.ResearchGroupMemberRole.OWNER,
+                es.udc.fic.corpuslab.modules.researchgroup.enums.ResearchGroupMemberRole.ADMIN
+              )
+            """)
+    List<Long> findActiveOwnerAndAdminUserIdsByGroupId(@Param("groupId") Long groupId);
+
+    @Query("""
             SELECT new es.udc.fic.corpuslab.modules.researchgroup.dtos.ResearchGroupMemberDto(
                 u.id,
                 u.firstName,

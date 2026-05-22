@@ -64,9 +64,18 @@ public class Project {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
+    @Column(name = "last_activity_at")
+    private Instant lastActivityAt;
+
     @PrePersist
     void onCreate() {
-        this.createdAt = Instant.now();
+        Instant now = Instant.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+        this.lastActivityAt = now;
         if (this.projectType == null) {
             this.projectType = ProjectType.TEXT_CLASSIFICATION_SIMPLE;
         }
@@ -146,5 +155,23 @@ public class Project {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public Instant getLastActivityAt() {
+        return lastActivityAt;
+    }
+
+    public void markUpdated() {
+        Instant now = Instant.now();
+        this.updatedAt = now;
+        this.lastActivityAt = now;
+    }
+
+    public void markActivity() {
+        this.lastActivityAt = Instant.now();
     }
 }

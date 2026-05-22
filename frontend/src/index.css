@@ -87,7 +87,7 @@
   --shadow-sidebar: 0 12px 30px -22px color-mix(in srgb, #0f172a 70%, transparent);
   --shadow-elevated-card: 0 20px 60px -45px color-mix(in srgb, #0f172a 75%, transparent);
   --shadow-primary-action: 0 8px 16px -10px color-mix(in srgb, #312e81 95%, transparent);
-  --shadow-card-hover: 0 10px 24px -16px color-mix(in srgb, #0f172a 40%, transparent);
+  --shadow-card-hover: 0 8px 16px -8px color-mix(in srgb, #0f172a 10%, transparent);
   --secondary: #475569;
   --secondary-foreground: #ffffff;
   --muted: #e5e9fb;
@@ -182,48 +182,4 @@
   html {
     @apply font-sans;
   }
-}
-
-@keyframes reveal-up {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.signup-card {
-  animation: reveal-up 500ms ease-out both;
-}
-
-.reveal {
-  animation: reveal-up 500ms ease-out 100ms both;
-}
-
-.stagger {
-  animation: reveal-up 440ms ease-out both;
-}
-
-.stagger:nth-of-type(1) {
-  animation-delay: 100ms;
-}
-
-.stagger:nth-of-type(2) {
-  animation-delay: 150ms;
-}
-
-.stagger:nth-of-type(3) {
-  animation-delay: 200ms;
-}
-
-.stagger:nth-of-type(4) {
-  animation-delay: 250ms;
-}
-
-.stagger:nth-of-type(5) {
-  animation-delay: 300ms;
 }

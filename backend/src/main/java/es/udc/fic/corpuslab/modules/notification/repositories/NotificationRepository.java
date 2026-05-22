@@ -31,7 +31,11 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
                             n.researchGroupName,
                             n.invitationId,
                             n.projectId,
-                            n.projectName
+                            n.projectName,
+                            n.datasetItemId,
+                            n.datasetItemIndex,
+                            n.datasetItemName,
+                            n.annotationStepIndex
                         )
                         from Notification n
                         left join n.actorUser actor
@@ -42,7 +46,46 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
                         @Param("recipientUserId") Long recipientUserId,
                         Pageable pageable);
 
+        @Query("""
+                        select new es.udc.fic.corpuslab.modules.notification.dtos.NotificationDto(
+                            n.id,
+                            n.type,
+                            case when n.readAt is not null then true else false end,
+                            n.createdAt,
+                            case
+                                when actor.id is null then null
+                                else trim(concat(actor.firstName, ' ', actor.lastName))
+                            end,
+                            n.researchGroupId,
+                            n.researchGroupName,
+                            n.invitationId,
+                            n.projectId,
+                            n.projectName,
+                            n.datasetItemId,
+                            n.datasetItemIndex,
+                            n.datasetItemName,
+                            n.annotationStepIndex
+                        )
+                        from Notification n
+                        left join n.actorUser actor
+                        where n.recipientUser.id = :recipientUserId
+                          and n.readAt is null
+                        order by n.createdAt desc
+                        """)
+        List<NotificationDto> findUnreadDtosByRecipientUserIdOrderByCreatedAtDesc(
+                        @Param("recipientUserId") Long recipientUserId,
+                        Pageable pageable);
+
         long countByRecipientUserIdAndReadAtIsNull(Long recipientUserId);
+
+        long countByRecipientUserIdAndTypeAndReadAtIsNull(
+                        Long recipientUserId,
+                        NotificationType type);
+
+        long countByRecipientUserIdAndTypeAndCreatedAtGreaterThanEqual(
+                        Long recipientUserId,
+                        NotificationType type,
+                        Instant createdAt);
 
         Optional<Notification> findByIdAndRecipientUserId(Long id, Long recipientUserId);
 

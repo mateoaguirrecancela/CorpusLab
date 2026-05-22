@@ -80,11 +80,13 @@ export function InviteResearchGroupMemberDialog({
     try {
       await navigator.clipboard.writeText(invitationCode);
       setHasCopiedCode(true);
+      toast.success(t('researchGroup.detail.codeCopied'));
       window.setTimeout(() => {
         setHasCopiedCode(false);
       }, 1500);
     } catch {
       setHasCopiedCode(false);
+      toast.error(t('researchGroup.detail.codeCopyFailed'));
     }
   };
 

@@ -120,6 +120,7 @@ public class ProjectSetupServiceImpl implements ProjectSetupService {
         guideline.setContent(guidelineText);
         guideline.setFileUrl(normalizedGuidelinePdfBase64);
 
+        project.markUpdated();
         projectRepository.save(project);
         projectMetricsCacheService.evictProjectReadCaches(projectId);
 

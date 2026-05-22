@@ -8,7 +8,70 @@
       "settings": "Settings"
     },
     "dashboard": {
-      "title": "Dashboard"
+      "title": "Dashboard",
+      "subtitle": "Your daily overview of active projects, annotations, and reviewer alerts.",
+      "actions": {
+        "viewProjects": "View projects",
+        "newProject": "New project"
+      },
+      "loading": {
+        "metrics": "Loading dashboard summary...",
+        "trends": "Loading annotation trends...",
+        "projects": "Loading projects...",
+        "activity": "Loading activity..."
+      },
+      "errors": {
+        "metricsLoadFailed": "We could not load the dashboard summary.",
+        "trendsLoadFailed": "We could not load annotation trends.",
+        "projectsLoadFailed": "We could not load dashboard projects."
+      },
+      "empty": {
+        "metrics": "There are no metrics to show yet.",
+        "trends": "No annotations in the last 7 days.",
+        "advancedProjects": "No projects with progress yet.",
+        "recentProjects": "No recent projects yet.",
+        "activity": "No recent activity."
+      },
+      "kpis": {
+        "activeProjects": {
+          "title": "Active projects",
+          "supportingText": "Across {{count}} research groups"
+        },
+        "annotationsToday": {
+          "title": "Annotations today",
+          "supportingText": "Completed by you today",
+          "trend": "more than yesterday",
+          "trendDown": "less than yesterday"
+        },
+        "pendingAnnotations": {
+          "title": "Pending annotations",
+          "supportingText": "Across {{count}} assigned projects",
+          "trend": "less than yesterday"
+        },
+        "openAlerts": {
+          "title": "Open alerts",
+          "supportingText": "Marked by reviewers",
+          "trend": "new since yesterday"
+        }
+      },
+      "trends": {
+        "title": "Weekly annotations",
+        "description": "Evolution of completed annotations during the last 7 days.",
+        "filterLabel": "Filter research group",
+        "allGroups": "All research groups"
+      },
+      "projects": {
+        "advancedTitle": "Most advanced projects",
+        "recentTitle": "Recent projects",
+        "open": "Open",
+        "viewAll": "View all",
+        "progress": "Progress",
+        "pendingAnnotations": "{{count}} pending"
+      },
+      "activity": {
+        "title": "Notifications",
+        "description": "The same relevant updates available from the header."
+      }
     },
     "profile": {
       "title": "My Profile",

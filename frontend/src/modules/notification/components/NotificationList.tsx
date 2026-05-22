@@ -37,7 +37,7 @@ function NotificationLoadingState() {
 function NotificationEmptyState() {
   const { t } = useTranslation();
 
-  return <p className="px-3 py-4 text-sm text-muted-foreground">{t('notification.empty')}</p>;
+  return <p className="py-4 text-sm text-muted-foreground">{t('notification.empty')}</p>;
 }
 
 function getNotificationCardClassName(isRead: boolean): string {

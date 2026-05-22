@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { invalidateQueryKeys } from '@/lib/queryInvalidation';
+import { DASHBOARD_QUERY_KEY } from '@/modules/home/services/dashboardService';
 import {
   assignProjectParticipants,
   archiveProject,
@@ -13,6 +14,7 @@ import {
   getMyAssignedProjects,
   getProjectDetail,
   getProjectMetrics,
+  resolveOwnProjectAnnotationWarning,
   saveProjectAnnotationStep,
   toggleProjectAnnotationWarning,
   unarchiveProject,
@@ -47,6 +49,7 @@ export function useProjectCreateMutation() {
     onSuccess: (_, variables) => {
       invalidateQueryKeys(queryClient, [
         myAssignedProjectsQueryKey(),
+        DASHBOARD_QUERY_KEY,
         assignedProjectsByGroupQueryKey(variables.groupId),
         researchGroupDetailQueryKey(variables.groupId),
         RESEARCH_GROUPS_QUERY_KEY,
@@ -70,6 +73,7 @@ export function useUpdateProjectMutation() {
     onSuccess: (_, variables) => {
       invalidateQueryKeys(queryClient, [
         myAssignedProjectsQueryKey(),
+        DASHBOARD_QUERY_KEY,
         assignedProjectsByGroupQueryKey(variables.groupId),
         projectDetailQueryKey(variables.projectId),
         researchGroupDetailQueryKey(variables.groupId),
@@ -93,6 +97,7 @@ export function useDeleteProjectMutation() {
     onSuccess: (_, variables) => {
       invalidateQueryKeys(queryClient, [
         myAssignedProjectsQueryKey(),
+        DASHBOARD_QUERY_KEY,
         assignedProjectsByGroupQueryKey(variables.groupId),
         projectDetailQueryKey(variables.projectId),
         researchGroupDetailQueryKey(variables.groupId),
@@ -114,6 +119,7 @@ export function useArchiveProjectMutation() {
     onSuccess: (project) => {
       invalidateQueryKeys(queryClient, [
         myAssignedProjectsQueryKey(),
+        DASHBOARD_QUERY_KEY,
         assignedProjectsByGroupQueryKey(project.researchGroupId),
         projectDetailQueryKey(project.id),
         researchGroupDetailQueryKey(project.researchGroupId),
@@ -131,6 +137,7 @@ export function useUnarchiveProjectMutation() {
     onSuccess: (project) => {
       invalidateQueryKeys(queryClient, [
         myAssignedProjectsQueryKey(),
+        DASHBOARD_QUERY_KEY,
         assignedProjectsByGroupQueryKey(project.researchGroupId),
         projectDetailQueryKey(project.id),
         researchGroupDetailQueryKey(project.researchGroupId),
@@ -155,6 +162,7 @@ export function useUploadProjectDatasetMutation() {
     onSuccess: (_, variables) => {
       invalidateQueryKeys(queryClient, [
         myAssignedProjectsQueryKey(),
+        DASHBOARD_QUERY_KEY,
         assignedProjectsByGroupQueryKey(variables.groupId),
         projectDetailQueryKey(variables.projectId),
         researchGroupDetailQueryKey(variables.groupId),
@@ -179,6 +187,7 @@ export function useConfigureProjectSetupMutation() {
     onSuccess: (_, variables) => {
       invalidateQueryKeys(queryClient, [
         myAssignedProjectsQueryKey(),
+        DASHBOARD_QUERY_KEY,
         assignedProjectsByGroupQueryKey(variables.groupId),
         projectDetailQueryKey(variables.projectId),
         researchGroupDetailQueryKey(variables.groupId),
@@ -203,6 +212,7 @@ export function useAssignProjectParticipantsMutation() {
     onSuccess: (_, variables) => {
       invalidateQueryKeys(queryClient, [
         myAssignedProjectsQueryKey(),
+        DASHBOARD_QUERY_KEY,
         assignedProjectsByGroupQueryKey(variables.groupId),
         projectDetailQueryKey(variables.projectId),
         researchGroupDetailQueryKey(variables.groupId),
@@ -427,6 +437,7 @@ export function useSaveProjectAnnotationStepMutation(offset: number, limit: numb
 
       invalidateQueryKeys(queryClient, [
         myAssignedProjectsQueryKey(),
+        DASHBOARD_QUERY_KEY,
         projectMetricsQueryKey(variables.projectId),
       ]);
     },
@@ -453,12 +464,38 @@ export function useToggleProjectAnnotationWarningMutation(offset: number, limit:
       toggleProjectAnnotationWarning(projectId, participantUserId, datasetItemId, stepIndex),
     onSuccess: (_, variables) => {
       invalidateQueryKeys(queryClient, [
+        DASHBOARD_QUERY_KEY,
         projectParticipantAnnotationWorkspaceQueryKey(
           variables.projectId,
           variables.participantUserId,
           offset,
           limit,
         ),
+      ]);
+    },
+  });
+}
+
+type ResolveOwnProjectAnnotationWarningMutationInput = {
+  projectId: number;
+  datasetItemId: number;
+  stepIndex: number;
+};
+
+export function useResolveOwnProjectAnnotationWarningMutation(offset: number, limit: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      datasetItemId,
+      stepIndex,
+    }: ResolveOwnProjectAnnotationWarningMutationInput) =>
+      resolveOwnProjectAnnotationWarning(projectId, datasetItemId, stepIndex),
+    onSuccess: (_, variables) => {
+      invalidateQueryKeys(queryClient, [
+        DASHBOARD_QUERY_KEY,
+        projectAnnotationWorkspaceQueryKey(variables.projectId, offset, limit),
       ]);
     },
   });

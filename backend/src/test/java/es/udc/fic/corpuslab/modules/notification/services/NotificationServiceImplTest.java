@@ -105,7 +105,7 @@ class NotificationServiceImplTest {
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
         verify(notificationRepository).findDtosByRecipientUserIdOrderByCreatedAtDesc(eq(11L), pageableCaptor.capture());
         assertThat(pageableCaptor.getValue().getPageNumber()).isZero();
-        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(20);
+        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(10);
     }
 
     @Test
@@ -121,6 +121,42 @@ class NotificationServiceImplTest {
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
         verify(notificationRepository).findDtosByRecipientUserIdOrderByCreatedAtDesc(eq(11L), pageableCaptor.capture());
         assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(50);
+    }
+
+    @Test
+    void findMyNotificationsShouldReturnAllUnreadWhenUnreadCountExceedsLimit() {
+        User recipient = UserTestBuilder.validUser().withEmail("reader@example.com").build();
+        setField(recipient, "id", 11L);
+
+        Notification firstUnread = new Notification();
+        firstUnread.setRecipientUser(recipient);
+        firstUnread.setType(NotificationType.ANNOTATION_WARNING_MARKED);
+        setField(firstUnread, "id", 100L);
+        setField(firstUnread, "createdAt", Instant.parse("2026-04-04T12:00:00Z"));
+
+        Notification secondUnread = new Notification();
+        secondUnread.setRecipientUser(recipient);
+        secondUnread.setType(NotificationType.ANNOTATION_WARNING_CLEARED);
+        setField(secondUnread, "id", 99L);
+        setField(secondUnread, "createdAt", Instant.parse("2026-04-04T11:00:00Z"));
+
+        when(authApiService.findUserByEmail("reader@example.com"))
+                .thenReturn(new UserInfo(11L, "reader@example.com", "Reader", "User"));
+        when(notificationRepository.countByRecipientUserIdAndReadAtIsNull(11L)).thenReturn(11L);
+        when(notificationRepository.findUnreadDtosByRecipientUserIdOrderByCreatedAtDesc(eq(11L), any(Pageable.class)))
+                .thenReturn(List.of(toDto(firstUnread), toDto(secondUnread)));
+
+        NotificationListResponseDto result = notificationService.findMyNotifications("reader@example.com", 10);
+
+        assertThat(result.unreadCount()).isEqualTo(11L);
+        assertThat(result.notifications()).extracting(NotificationDto::id).containsExactly(100L, 99L);
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(notificationRepository)
+                .findUnreadDtosByRecipientUserIdOrderByCreatedAtDesc(eq(11L), pageableCaptor.capture());
+        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(11);
+        verify(notificationRepository, never())
+                .findDtosByRecipientUserIdOrderByCreatedAtDesc(eq(11L), any(Pageable.class));
     }
 
     @Test
@@ -364,6 +400,10 @@ class NotificationServiceImplTest {
                 notification.getResearchGroupName(),
                 notification.getInvitationId(),
                 notification.getProjectId(),
-                notification.getProjectName());
+                notification.getProjectName(),
+                notification.getDatasetItemId(),
+                notification.getDatasetItemIndex(),
+                notification.getDatasetItemName(),
+                notification.getAnnotationStepIndex());
     }
 }

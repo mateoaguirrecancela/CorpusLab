@@ -61,6 +61,14 @@ public class Annotation {
     @Column(name = "warning", nullable = false)
     private boolean warning = false;
 
+    @ManyToOne
+    @JoinColumn(name = "warning_marked_by_user_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    private User warningMarkedByUser;
+
+    @Column(name = "warning_marked_at")
+    private Instant warningMarkedAt;
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
@@ -123,5 +131,21 @@ public class Annotation {
 
     public void setWarning(boolean warning) {
         this.warning = warning;
+    }
+
+    public User getWarningMarkedByUser() {
+        return warningMarkedByUser;
+    }
+
+    public void setWarningMarkedByUser(User warningMarkedByUser) {
+        this.warningMarkedByUser = warningMarkedByUser;
+    }
+
+    public Instant getWarningMarkedAt() {
+        return warningMarkedAt;
+    }
+
+    public void setWarningMarkedAt(Instant warningMarkedAt) {
+        this.warningMarkedAt = warningMarkedAt;
     }
 }

@@ -317,6 +317,16 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
         ResearchGroupInvitation invitation = findActivePendingInvitationForUser(invitationId, userInfo.email());
         invitation.setStatus(ResearchGroupInvitationStatus.DECLINED);
         invitationRepository.save(invitation);
+
+        var inviterUser = invitation.getInviterUser();
+        if (inviterUser != null && !inviterUser.getId().equals(userInfo.userId())) {
+            ResearchGroup group = invitation.getResearchGroup();
+            notificationService.createResearchGroupInvitationDeclinedNotification(
+                    inviterUser.getId(),
+                    userInfo.userId(),
+                    group.getId(),
+                    group.getName());
+        }
     }
 
     @Override
@@ -344,6 +354,15 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
         targetMember.setRole(role);
         ResearchGroupMember saved = memberRepository.save(targetMember);
 
+        if (!memberUserId.equals(requesterInfo.userId())) {
+            ResearchGroup group = targetMember.getResearchGroup();
+            notificationService.createResearchGroupMemberRoleUpdatedNotification(
+                    memberUserId,
+                    requesterInfo.userId(),
+                    group.getId(),
+                    group.getName());
+        }
+
         return memberRepository
                 .findMemberDtoByGroupIdAndUserId(groupId, saved.getUser().getId())
                 .orElseThrow(() -> new ResearchGroupMemberNotFoundException(groupId, memberUserId));
@@ -367,6 +386,15 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
         memberRepository.save(targetMember);
 
         projectApiService.removeParticipantFromAllGroupProjects(groupId, memberUserId);
+
+        if (!memberUserId.equals(requesterInfo.userId())) {
+            ResearchGroup group = targetMember.getResearchGroup();
+            notificationService.createResearchGroupMemberRemovedNotification(
+                    memberUserId,
+                    requesterInfo.userId(),
+                    group.getId(),
+                    group.getName());
+        }
     }
 
     @Override
@@ -389,10 +417,25 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
         memberRepository.save(member);
 
         resolvePendingInvitationsAfterJoinByCode(group.getId(), userInfo.email(), userInfo.userId());
+        notifyGroupManagersAboutJoinByCode(group, userInfo.userId());
 
         long memberCount = memberRepository.countByResearchGroupIdAndDeletedAtIsNull(group.getId());
 
         return toSummaryDto(group, ResearchGroupMemberRole.ANNOTATOR, memberCount);
+    }
+
+    private void notifyGroupManagersAboutJoinByCode(ResearchGroup group, Long joinedUserId) {
+        List<Long> managerUserIds = memberRepository.findActiveOwnerAndAdminUserIdsByGroupId(group.getId());
+        for (Long managerUserId : managerUserIds) {
+            if (managerUserId.equals(joinedUserId)) {
+                continue;
+            }
+            notificationService.createResearchGroupMemberJoinedByCodeNotification(
+                    managerUserId,
+                    joinedUserId,
+                    group.getId(),
+                    group.getName());
+        }
     }
 
     private ResearchGroupInvitation saveInvitationWithUniqueToken(ResearchGroupInvitation invitation) {

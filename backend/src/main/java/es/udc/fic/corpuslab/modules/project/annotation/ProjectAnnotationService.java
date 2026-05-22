@@ -18,4 +18,7 @@ public interface ProjectAnnotationService {
     SaveProjectAnnotationStepResponseDto toggleAnnotationWarning(String authenticatedEmail, Long projectId,
             Long participantUserId, Long datasetItemId, Integer stepIndex);
 
+    SaveProjectAnnotationStepResponseDto resolveOwnAnnotationWarning(String authenticatedEmail, Long projectId,
+            Long datasetItemId, Integer stepIndex);
+
 }

@@ -260,6 +260,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         project.setName(request.name().trim());
         project.setDescription(StringUtils.trimToNull(request.description()));
+        project.markUpdated();
         projectRepository.save(project);
 
         if (request.participantAssignments() != null && !request.participantAssignments().isEmpty()) {
@@ -292,7 +293,25 @@ public class ProjectServiceImpl implements ProjectService {
             throw new AccessDeniedException("Only project creators can delete projects");
         }
 
+        List<Long> participantUserIdsToNotify = projectParticipantRepository
+                .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(projectId)
+                .stream()
+                .map(projectParticipant -> projectParticipant.getUser().getId())
+                .filter(userId -> !userId.equals(requesterInfo.userId()))
+                .toList();
+        Long deletedProjectId = project.getId();
+        String deletedProjectName = project.getName();
+        Long deletedProjectGroupId = project.getResearchGroup().getId();
+        String deletedProjectGroupName = project.getResearchGroup().getName();
+
         deleteProjectData(projectId, project);
+        notifyProjectDeletedParticipants(
+                participantUserIdsToNotify,
+                requesterInfo.userId(),
+                deletedProjectId,
+                deletedProjectName,
+                deletedProjectGroupId,
+                deletedProjectGroupName);
     }
 
     @Override
@@ -401,10 +420,52 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         Project project = requesterParticipant.getProject();
+        boolean wasArchived = project.isArchived();
         project.setArchived(archived);
+        project.markUpdated();
         projectRepository.save(project);
 
+        if (!wasArchived && archived) {
+            notifyProjectArchivedParticipants(project, requesterInfo.userId());
+        }
+
         return getAssignedProjectDetail(authenticatedEmail, projectId);
+    }
+
+    private void notifyProjectArchivedParticipants(Project project, Long actorUserId) {
+        List<ProjectParticipant> participants = projectParticipantRepository
+                .findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(project.getId());
+        for (ProjectParticipant participant : participants) {
+            Long recipientUserId = participant.getUser().getId();
+            if (recipientUserId.equals(actorUserId)) {
+                continue;
+            }
+            notificationService.createProjectArchivedNotification(
+                    recipientUserId,
+                    actorUserId,
+                    project.getId(),
+                    project.getName(),
+                    project.getResearchGroup().getId(),
+                    project.getResearchGroup().getName());
+        }
+    }
+
+    private void notifyProjectDeletedParticipants(
+            List<Long> recipientUserIds,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName) {
+        for (Long recipientUserId : recipientUserIds) {
+            notificationService.createProjectDeletedNotification(
+                    recipientUserId,
+                    actorUserId,
+                    projectId,
+                    projectName,
+                    researchGroupId,
+                    researchGroupName);
+        }
     }
 
     private int sanitizePage(int page) {

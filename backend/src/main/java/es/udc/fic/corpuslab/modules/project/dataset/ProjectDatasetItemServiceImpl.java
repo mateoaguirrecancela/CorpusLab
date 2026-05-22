@@ -109,6 +109,7 @@ public class ProjectDatasetItemServiceImpl implements ProjectDatasetItemService 
 
         List<DatasetItem> savedItems = datasetItemRepository.saveAll(createdItems);
         List<DatasetItemDto> itemDtos = savedItems.stream().map(this::toDatasetItemDto).toList();
+        project.markUpdated();
         projectMetricsCacheService.evictProjectReadCaches(projectId);
 
         return new UploadProjectDatasetResponseDto(projectId, itemDtos.size(), itemDtos);

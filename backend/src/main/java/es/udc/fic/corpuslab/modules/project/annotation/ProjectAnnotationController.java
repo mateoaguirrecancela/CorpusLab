@@ -64,6 +64,9 @@ public class ProjectAnnotationController {
     public record ToggleAnnotationWarningRequest(Long datasetItemId, Integer stepIndex) {
     }
 
+    public record ResolveAnnotationWarningRequest(Long datasetItemId, Integer stepIndex) {
+    }
+
     @PutMapping("/{projectId}/annotations/participants/{participantUserId}/steps/warning")
     @ResponseStatus(HttpStatus.OK)
     public SaveProjectAnnotationStepResponseDto toggleAnnotationWarning(
@@ -75,6 +78,19 @@ public class ProjectAnnotationController {
                 authentication.getName(),
                 projectId,
                 participantUserId,
+                request.datasetItemId(),
+                request.stepIndex());
+    }
+
+    @PutMapping("/{projectId}/annotations/steps/warning-resolution")
+    @ResponseStatus(HttpStatus.OK)
+    public SaveProjectAnnotationStepResponseDto resolveOwnAnnotationWarning(
+            Authentication authentication,
+            @PathVariable Long projectId,
+            @Valid @RequestBody ResolveAnnotationWarningRequest request) {
+        return projectAnnotationService.resolveOwnAnnotationWarning(
+                authentication.getName(),
+                projectId,
                 request.datasetItemId(),
                 request.stepIndex());
     }

@@ -29,7 +29,7 @@ public class NotificationController {
     @GetMapping
     public NotificationListResponseDto myNotifications(
             Authentication authentication,
-            @RequestParam(defaultValue = "20") int limit) {
+            @RequestParam(defaultValue = "10") int limit) {
         return notificationService.findMyNotifications(authentication.getName(), limit);
     }
 

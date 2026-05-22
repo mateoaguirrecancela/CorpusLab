@@ -75,7 +75,7 @@
     "oauth": {
       "providerFallback": "OAuth",
       "title": "Inicio con {{provider}}",
-      "completing": "Completando autenticacion...",
+      "completing": "Completando autenticación...",
       "errors": {
         "default": "No se pudo completar el inicio con OAuth. Intentalo de nuevo.",
         "missingEmail": "El proveedor OAuth no devolvio un correo electronico. Usa otra cuenta.",
