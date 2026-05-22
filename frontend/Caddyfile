@@ -1,0 +1,27 @@
+{$DOMAIN_NAME} {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy backend:8080
+	}
+
+	handle /oauth2/authorization/* {
+		reverse_proxy backend:8080
+	}
+
+	handle /login/oauth2/* {
+		reverse_proxy backend:8080
+	}
+
+	redir /grafana /grafana/
+
+	handle /grafana/* {
+		reverse_proxy grafana:3000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
