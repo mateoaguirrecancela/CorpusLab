@@ -93,8 +93,8 @@
         "login": "Error inesperado al iniciar sesión. Intentalo de nuevo.",
         "signup": "Error inesperado al crear la cuenta. Intentalo de nuevo.",
         "logout": "Error inesperado al cerrar sesión. Intentalo de nuevo.",
-        "forgotPassword": "Error inesperado al solicitar recuperación de contraseña. Intentalo de nuevo.",
-        "resetPassword": "Error inesperado al restablecer la contraseña. Intentalo de nuevo.",
+        "accountRecovery": "Error inesperado al solicitar recuperación de contraseña. Intentalo de nuevo.",
+        "credentialUpdate": "Error inesperado al restablecer la contraseña. Intentalo de nuevo.",
         "profile": "Error inesperado al cargar tu perfil. Intentalo de nuevo.",
         "updateProfile": "Error inesperado al actualizar tu perfil. Intentalo de nuevo."
       }

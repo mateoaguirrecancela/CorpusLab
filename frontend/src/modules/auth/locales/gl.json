@@ -93,8 +93,8 @@
         "login": "Erro inesperado ao iniciar sesión. Intentalo de novo.",
         "signup": "Erro inesperado ao crear a conta. Intentalo de novo.",
         "logout": "Erro inesperado ao pechar sesión. Intentalo de novo.",
-        "forgotPassword": "Erro inesperado ao solicitar recuperación de contrasinal. Intentalo de novo.",
-        "resetPassword": "Erro inesperado ao restablecer o contrasinal. Intentalo de novo.",
+        "accountRecovery": "Erro inesperado ao solicitar recuperación de contrasinal. Intentalo de novo.",
+        "credentialUpdate": "Erro inesperado ao restablecer o contrasinal. Intentalo de novo.",
         "profile": "Erro inesperado ao cargar o teu perfil. Intentalo de novo.",
         "updateProfile": "Erro inesperado ao actualizar o teu perfil. Intentalo de novo."
       }

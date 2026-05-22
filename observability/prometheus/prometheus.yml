@@ -8,8 +8,6 @@ scrape_configs:
     scheme: "http"
     static_configs:
       - targets:
-          # Backend started from the host/IDE. If it is containerized later, use its Docker service name here, for example:
-          # - "backend:8080".
-          - "host.docker.internal:8080"
+          - "backend:8080"
         labels:
-          namespace: "local"
+          namespace: "docker"

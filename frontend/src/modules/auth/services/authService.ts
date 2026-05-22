@@ -25,15 +25,12 @@ import {
   toSignupPayload,
 } from '@/modules/auth/utils/authPayloads';
 
-const OAUTH_BACKEND_BASE_URL =
-  (import.meta.env.VITE_BACKEND_URL as string | undefined)?.replace(/\/$/, '') ??
-  'http://localhost:8080';
 const AUTH_ERROR_KEYS = {
-  forgotPassword: 'auth.errors.unexpected.forgotPassword',
+  accountRecovery: 'auth.errors.unexpected.accountRecovery',
+  credentialUpdate: 'auth.errors.unexpected.credentialUpdate',
   login: 'auth.errors.unexpected.login',
   logout: 'auth.errors.unexpected.logout',
   profile: 'auth.errors.unexpected.profile',
-  resetPassword: 'auth.errors.unexpected.resetPassword',
   signup: 'auth.errors.unexpected.signup',
   updateProfile: 'auth.errors.unexpected.updateProfile',
 } as const;
@@ -106,11 +103,11 @@ export function getLogoutErrorMessage(error: unknown): string {
 }
 
 export function getForgotPasswordErrorMessage(error: unknown): string {
-  return getAuthErrorMessage(error, 'forgotPassword');
+  return getAuthErrorMessage(error, 'accountRecovery');
 }
 
 export function getResetPasswordErrorMessage(error: unknown): string {
-  return getAuthErrorMessage(error, 'resetPassword');
+  return getAuthErrorMessage(error, 'credentialUpdate');
 }
 
 export function getProfileErrorMessage(error: unknown): string {
@@ -122,7 +119,7 @@ export function getUpdateProfileErrorMessage(error: unknown): string {
 }
 
 export function getOAuthAuthorizationUrl(provider: OAuthProvider): string {
-  return `${OAUTH_BACKEND_BASE_URL}/oauth2/authorization/${provider}`;
+  return `/oauth2/authorization/${provider}`;
 }
 
 export function redirectToOAuthAuthorization(provider: OAuthProvider): void {

@@ -93,8 +93,8 @@
         "login": "Unexpected error during log in. Please try again.",
         "signup": "Unexpected error during sign up. Please try again.",
         "logout": "Unexpected error during sign out. Please try again.",
-        "forgotPassword": "Unexpected error requesting a password reset. Please try again.",
-        "resetPassword": "Unexpected error resetting your password. Please try again.",
+        "accountRecovery": "Unexpected error requesting a password reset. Please try again.",
+        "credentialUpdate": "Unexpected error resetting your password. Please try again.",
         "profile": "Unexpected error loading your profile. Please try again.",
         "updateProfile": "Unexpected error updating your profile. Please try again."
       }
