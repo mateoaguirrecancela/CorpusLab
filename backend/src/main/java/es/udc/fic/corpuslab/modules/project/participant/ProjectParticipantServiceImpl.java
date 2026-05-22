@@ -1,12 +1,13 @@
 package es.udc.fic.corpuslab.modules.project.participant;
 
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Comparator;
+import java.util.Objects;
 import java.util.Set;
-import java.util.LinkedHashSet;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -212,13 +213,17 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
                 .findFirst()
                 .orElse(null);
         Long creatorUserId = creatorParticipant != null ? creatorParticipant.getUser().getId() : requesterUserId;
+        boolean participantsChanged = false;
 
         if (overwriteIaaGroups && creatorParticipant != null) {
             ProjectParticipantIaaGroup requestedCreatorGroup = requestedGroupsByUserId.get(creatorUserId);
             ProjectParticipantIaaGroup nextCreatorGroup = iaaGroupAssignmentPolicy.defaultCreatorGroup(
                     requestedCreatorGroup);
-            creatorParticipant.setIaaGroup(nextCreatorGroup);
-            projectParticipantRepository.save(creatorParticipant);
+            if (!Objects.equals(creatorParticipant.getIaaGroup(), nextCreatorGroup)) {
+                creatorParticipant.setIaaGroup(nextCreatorGroup);
+                projectParticipantRepository.save(creatorParticipant);
+                participantsChanged = true;
+            }
         }
 
         List<Long> filteredIds = requestedIds.stream()
@@ -255,19 +260,33 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
                 .toList();
 
         if (!participantsToRemove.isEmpty()) {
+            for (ProjectParticipant participantToRemove : participantsToRemove) {
+                notificationService.createProjectParticipantUnassignedNotification(
+                        participantToRemove.getUser().getId(),
+                        requesterUserId,
+                        project.getId(),
+                        project.getName(),
+                        project.getResearchGroup().getId(),
+                        project.getResearchGroup().getName());
+            }
             projectParticipantRepository.deleteAll(participantsToRemove);
+            participantsChanged = true;
         }
 
         if (overwriteIaaGroups) {
             List<ProjectParticipant> participantsToUpdate = filteredIds.stream()
                     .map(existingParticipantsByUserId::get)
                     .filter(participant -> participant != null)
+                    .filter(participant -> !Objects.equals(
+                            participant.getIaaGroup(),
+                            filteredGroupsByUserId.get(participant.getUser().getId())))
                     .peek(participant -> participant.setIaaGroup(
                             filteredGroupsByUserId.get(participant.getUser().getId())))
                     .toList();
 
             if (!participantsToUpdate.isEmpty()) {
                 projectParticipantRepository.saveAll(participantsToUpdate);
+                participantsChanged = true;
             }
         }
 
@@ -276,6 +295,9 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
                 .collect(Collectors.toSet());
 
         if (newParticipantIds.isEmpty()) {
+            if (participantsChanged) {
+                project.markUpdated();
+            }
             projectMetricsCacheService.evictProjectReadCaches(projectId);
             return;
         }
@@ -295,6 +317,7 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
         }).toList();
 
         projectParticipantRepository.saveAll(participants);
+        participantsChanged = true;
 
         UserInfo requesterInfo = authApiService.findUserById(requesterUserId);
         String assignerFullName = requesterInfo.fullName();
@@ -316,6 +339,9 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
                     project.getName(),
                     assignerFullName,
                     projectUrl);
+        }
+        if (participantsChanged) {
+            project.markUpdated();
         }
         projectMetricsCacheService.evictProjectReadCaches(projectId);
     }
@@ -370,6 +396,7 @@ public class ProjectParticipantServiceImpl implements ProjectParticipantService 
                     .ifPresent(participant -> {
                         removeStoredAnnotationsForUsers(project.getId(), Set.of(userId));
                         projectParticipantRepository.delete(participant);
+                        project.markUpdated();
                         projectMetricsCacheService.evictProjectReadCaches(project.getId());
                     });
         }

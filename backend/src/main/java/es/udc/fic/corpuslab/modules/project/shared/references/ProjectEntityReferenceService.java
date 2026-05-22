@@ -29,4 +29,8 @@ public class ProjectEntityReferenceService {
     public void attachUser(Annotation annotation, Long userId) {
         annotation.setUser(entityManager.getReference(User.class, userId));
     }
+
+    public void attachWarningMarkedByUser(Annotation annotation, Long userId) {
+        annotation.setWarningMarkedByUser(entityManager.getReference(User.class, userId));
+    }
 }

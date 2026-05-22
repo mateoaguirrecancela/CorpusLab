@@ -25,7 +25,7 @@ import jakarta.persistence.EntityManager;
 @Service
 public class NotificationServiceImpl implements NotificationService {
 
-    private static final int DEFAULT_LIMIT = 20;
+    private static final int DEFAULT_LIMIT = 10;
     private static final int MAX_LIMIT = 50;
 
     private final AuthApiService authApiService;
@@ -57,11 +57,15 @@ public class NotificationServiceImpl implements NotificationService {
     public NotificationListResponseDto findMyNotifications(String authenticatedEmail, int limit) {
         UserInfo recipientInfo = authApiService.findUserByEmail(authenticatedEmail);
         int sanitizedLimit = sanitizeLimit(limit);
-
-        List<NotificationDto> notifications = notificationRepository
-                .findDtosByRecipientUserIdOrderByCreatedAtDesc(recipientInfo.userId(), PageRequest.of(0, sanitizedLimit));
-
         long unreadCount = notificationRepository.countByRecipientUserIdAndReadAtIsNull(recipientInfo.userId());
+
+        List<NotificationDto> notifications = unreadCount > sanitizedLimit
+                ? notificationRepository.findUnreadDtosByRecipientUserIdOrderByCreatedAtDesc(
+                        recipientInfo.userId(),
+                        PageRequest.of(0, toPageSize(unreadCount)))
+                : notificationRepository.findDtosByRecipientUserIdOrderByCreatedAtDesc(
+                        recipientInfo.userId(),
+                        PageRequest.of(0, sanitizedLimit));
 
         return new NotificationListResponseDto(notifications, unreadCount);
     }
@@ -120,6 +124,10 @@ public class NotificationServiceImpl implements NotificationService {
                 researchGroupName,
                 invitationId,
                 null,
+                null,
+                null,
+                null,
+                null,
                 null);
     }
 
@@ -136,6 +144,98 @@ public class NotificationServiceImpl implements NotificationService {
                 actorUserId,
                 researchGroupId,
                 researchGroupName,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+    }
+
+    @Override
+    @Transactional
+    public void createResearchGroupInvitationDeclinedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName) {
+        createNotification(
+                NotificationType.RESEARCH_GROUP_INVITATION_DECLINED,
+                recipientUserId,
+                actorUserId,
+                researchGroupId,
+                researchGroupName,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+    }
+
+    @Override
+    @Transactional
+    public void createResearchGroupMemberJoinedByCodeNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName) {
+        createNotification(
+                NotificationType.RESEARCH_GROUP_MEMBER_JOINED_BY_CODE,
+                recipientUserId,
+                actorUserId,
+                researchGroupId,
+                researchGroupName,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+    }
+
+    @Override
+    @Transactional
+    public void createResearchGroupMemberRoleUpdatedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName) {
+        createNotification(
+                NotificationType.RESEARCH_GROUP_MEMBER_ROLE_UPDATED,
+                recipientUserId,
+                actorUserId,
+                researchGroupId,
+                researchGroupName,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+    }
+
+    @Override
+    @Transactional
+    public void createResearchGroupMemberRemovedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName) {
+        createNotification(
+                NotificationType.RESEARCH_GROUP_MEMBER_REMOVED,
+                recipientUserId,
+                actorUserId,
+                researchGroupId,
+                researchGroupName,
+                null,
+                null,
+                null,
+                null,
                 null,
                 null,
                 null);
@@ -158,7 +258,83 @@ public class NotificationServiceImpl implements NotificationService {
                 researchGroupName,
                 null,
                 projectId,
-                projectName);
+                projectName,
+                null,
+                null,
+                null,
+                null);
+    }
+
+    @Override
+    @Transactional
+    public void createProjectParticipantUnassignedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName) {
+        createNotification(
+                NotificationType.PROJECT_PARTICIPANT_UNASSIGNED,
+                recipientUserId,
+                actorUserId,
+                researchGroupId,
+                researchGroupName,
+                null,
+                projectId,
+                projectName,
+                null,
+                null,
+                null,
+                null);
+    }
+
+    @Override
+    @Transactional
+    public void createProjectArchivedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName) {
+        createNotification(
+                NotificationType.PROJECT_ARCHIVED,
+                recipientUserId,
+                actorUserId,
+                researchGroupId,
+                researchGroupName,
+                null,
+                projectId,
+                projectName,
+                null,
+                null,
+                null,
+                null);
+    }
+
+    @Override
+    @Transactional
+    public void createProjectDeletedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName) {
+        createNotification(
+                NotificationType.PROJECT_DELETED,
+                recipientUserId,
+                actorUserId,
+                researchGroupId,
+                researchGroupName,
+                null,
+                projectId,
+                projectName,
+                null,
+                null,
+                null,
+                null);
     }
 
     @Override
@@ -186,7 +362,11 @@ public class NotificationServiceImpl implements NotificationService {
                 researchGroupName,
                 null,
                 projectId,
-                projectName);
+                projectName,
+                null,
+                null,
+                null,
+                null);
     }
 
     @Override
@@ -197,7 +377,11 @@ public class NotificationServiceImpl implements NotificationService {
             Long projectId,
             String projectName,
             Long researchGroupId,
-            String researchGroupName) {
+            String researchGroupName,
+            Long datasetItemId,
+            Integer datasetItemIndex,
+            String datasetItemName,
+            Integer annotationStepIndex) {
         createNotification(
                 NotificationType.ANNOTATION_WARNING_MARKED,
                 recipientUserId,
@@ -206,7 +390,67 @@ public class NotificationServiceImpl implements NotificationService {
                 researchGroupName,
                 null,
                 projectId,
-                projectName);
+                projectName,
+                datasetItemId,
+                datasetItemIndex,
+                datasetItemName,
+                annotationStepIndex);
+    }
+
+    @Override
+    @Transactional
+    public void createProjectAnnotationWarningResolvedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName,
+            Long datasetItemId,
+            Integer datasetItemIndex,
+            String datasetItemName,
+            Integer annotationStepIndex) {
+        createNotification(
+                NotificationType.ANNOTATION_WARNING_RESOLVED,
+                recipientUserId,
+                actorUserId,
+                researchGroupId,
+                researchGroupName,
+                null,
+                projectId,
+                projectName,
+                datasetItemId,
+                datasetItemIndex,
+                datasetItemName,
+                annotationStepIndex);
+    }
+
+    @Override
+    @Transactional
+    public void createProjectAnnotationWarningClearedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName,
+            Long datasetItemId,
+            Integer datasetItemIndex,
+            String datasetItemName,
+            Integer annotationStepIndex) {
+        createNotification(
+                NotificationType.ANNOTATION_WARNING_CLEARED,
+                recipientUserId,
+                actorUserId,
+                researchGroupId,
+                researchGroupName,
+                null,
+                projectId,
+                projectName,
+                datasetItemId,
+                datasetItemIndex,
+                datasetItemName,
+                annotationStepIndex);
     }
 
     @Override
@@ -241,7 +485,11 @@ public class NotificationServiceImpl implements NotificationService {
                 notification.getResearchGroupName(),
                 notification.getInvitationId(),
                 notification.getProjectId(),
-                notification.getProjectName());
+                notification.getProjectName(),
+                notification.getDatasetItemId(),
+                notification.getDatasetItemIndex(),
+                notification.getDatasetItemName(),
+                notification.getAnnotationStepIndex());
     }
 
     private void createNotification(
@@ -252,7 +500,11 @@ public class NotificationServiceImpl implements NotificationService {
             String researchGroupName,
             Long invitationId,
             Long projectId,
-            String projectName) {
+            String projectName,
+            Long datasetItemId,
+            Integer datasetItemIndex,
+            String datasetItemName,
+            Integer annotationStepIndex) {
         Notification notification = new Notification();
         notification.setRecipientUser(getUserReference(recipientUserId));
         notification.setActorUser(actorUserId == null ? null : getUserReference(actorUserId));
@@ -262,6 +514,10 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setInvitationId(invitationId);
         notification.setProjectId(projectId);
         notification.setProjectName(projectName);
+        notification.setDatasetItemId(datasetItemId);
+        notification.setDatasetItemIndex(datasetItemIndex);
+        notification.setDatasetItemName(datasetItemName);
+        notification.setAnnotationStepIndex(annotationStepIndex);
 
         notificationRepository.save(notification);
         publishNotificationChange(recipientUserId);
@@ -297,6 +553,10 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         return Math.min(limit, MAX_LIMIT);
+    }
+
+    private int toPageSize(long value) {
+        return value > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
     }
 
     /**

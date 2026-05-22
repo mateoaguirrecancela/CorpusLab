@@ -31,7 +31,55 @@ public interface NotificationService {
             Long researchGroupId,
             String researchGroupName);
 
+    void createResearchGroupInvitationDeclinedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createResearchGroupMemberJoinedByCodeNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createResearchGroupMemberRoleUpdatedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createResearchGroupMemberRemovedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName);
+
     void createProjectParticipantAssignedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createProjectParticipantUnassignedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createProjectArchivedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createProjectDeletedNotification(
             Long recipientUserId,
             Long actorUserId,
             Long projectId,
@@ -53,7 +101,35 @@ public interface NotificationService {
             Long projectId,
             String projectName,
             Long researchGroupId,
-            String researchGroupName);
+            String researchGroupName,
+            Long datasetItemId,
+            Integer datasetItemIndex,
+            String datasetItemName,
+            Integer annotationStepIndex);
+
+    void createProjectAnnotationWarningResolvedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName,
+            Long datasetItemId,
+            Integer datasetItemIndex,
+            String datasetItemName,
+            Integer annotationStepIndex);
+
+    void createProjectAnnotationWarningClearedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName,
+            Long datasetItemId,
+            Integer datasetItemIndex,
+            String datasetItemName,
+            Integer annotationStepIndex);
 
     void deleteNotificationsByProjectId(Long projectId);
 

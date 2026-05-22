@@ -238,13 +238,19 @@ class ProjectAssignParticipantsIntegrationTest extends AbstractIntegrationTest {
                                 .isEqualTo(1L);
 
                 List<Notification> notifications = notificationRepository.findAll();
-                assertThat(notifications).hasSize(2);
+                assertThat(notifications).hasSize(3);
                 assertThat(notifications)
                                 .extracting(Notification::getType)
-                                .containsOnly(NotificationType.PROJECT_PARTICIPANT_ASSIGNED);
+                                .containsExactlyInAnyOrder(
+                                                NotificationType.PROJECT_PARTICIPANT_ASSIGNED,
+                                                NotificationType.PROJECT_PARTICIPANT_ASSIGNED,
+                                                NotificationType.PROJECT_PARTICIPANT_UNASSIGNED);
                 assertThat(notifications)
                                 .extracting(notification -> notification.getRecipientUser().getId())
-                                .containsExactlyInAnyOrder(newParticipantA.getId(), newParticipantB.getId());
+                                .containsExactlyInAnyOrder(
+                                                newParticipantA.getId(),
+                                                newParticipantB.getId(),
+                                                oldParticipant.getId());
                 assertThat(notifications)
                                 .extracting(Notification::getProjectId)
                                 .containsOnly(project.getId());

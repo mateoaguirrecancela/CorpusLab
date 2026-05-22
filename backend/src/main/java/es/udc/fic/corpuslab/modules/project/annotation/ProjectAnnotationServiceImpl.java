@@ -1,5 +1,6 @@
 package es.udc.fic.corpuslab.modules.project.annotation;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,6 +40,8 @@ import es.udc.fic.corpuslab.modules.project.shared.utils.ProjectDatasetUtils;
 
 @Service
 public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
+
+    private static final int DATASET_ITEM_NOTIFICATION_NAME_MAX_LENGTH = 512;
 
     private final ProjectParticipantRepository projectParticipantRepository;
     private final DatasetItemRepository datasetItemRepository;
@@ -172,6 +175,7 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
         if (completionBeforeSave < 100 && completionAfterSave == 100) {
             notifyProjectOwnersOnAnnotationCompletion(participant.getProject(), participants, userInfo);
         }
+        participant.getProject().markActivity();
         projectMetricsCacheService.evictProjectReadCaches(projectId);
 
         return new SaveProjectAnnotationStepResponseDto(
@@ -206,20 +210,47 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
         List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
 
         Annotation annotation = annotationRepository
-                .findByDatasetItemIdAndUserIdAndStepIndex(datasetItemId, participantUserId, stepIndex)
+                .findByDatasetItemIdAndDatasetItemProjectIdAndUserIdAndStepIndex(
+                        datasetItemId,
+                        projectId,
+                        participantUserId,
+                        stepIndex)
                 .orElseThrow(() -> new InvalidProjectDatasetException("Annotation not found for this step"));
 
         boolean newWarningStatus = !annotation.isWarning();
         annotation.setWarning(newWarningStatus);
+        if (newWarningStatus) {
+            entityReferenceService.attachWarningMarkedByUser(annotation, requesterInfo.userId());
+            annotation.setWarningMarkedAt(Instant.now());
+        } else {
+            annotation.setWarningMarkedByUser(null);
+            annotation.setWarningMarkedAt(null);
+        }
         annotationRepository.save(annotation);
 
+        DatasetItem datasetItem = annotation.getDatasetItem();
         if (newWarningStatus) {
             notificationService.createProjectAnnotationWarningNotification(
-                    participantUserId, requesterInfo.userId(),
+                    targetParticipant.getUser().getId(), requesterInfo.userId(),
                     projectId, requesterParticipant.getProject().getName(),
                     requesterParticipant.getProject().getResearchGroup().getId(),
-                    requesterParticipant.getProject().getResearchGroup().getName());
+                    requesterParticipant.getProject().getResearchGroup().getName(),
+                    datasetItem.getId(),
+                    datasetItem.getItemIndex(),
+                    buildDatasetItemNotificationName(datasetItem),
+                    stepIndex);
+        } else {
+            notificationService.createProjectAnnotationWarningClearedNotification(
+                    targetParticipant.getUser().getId(), requesterInfo.userId(),
+                    projectId, requesterParticipant.getProject().getName(),
+                    requesterParticipant.getProject().getResearchGroup().getId(),
+                    requesterParticipant.getProject().getResearchGroup().getName(),
+                    datasetItem.getId(),
+                    datasetItem.getItemIndex(),
+                    buildDatasetItemNotificationName(datasetItem),
+                    stepIndex);
         }
+        requesterParticipant.getProject().markActivity();
         projectMetricsCacheService.evictProjectReadCaches(projectId);
 
         ProjectProgressSnapshot progressSnapshot = projectProgressCalculator
@@ -232,6 +263,71 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                 progressSnapshot.completedStepsForUser(participantUserId),
                 progressSnapshot.totalSteps(),
                 progressSnapshot.completionPercentageForUser(participantUserId),
+                progressSnapshot.projectCompletionPercentage());
+    }
+
+    @Override
+    @Transactional
+    public SaveProjectAnnotationStepResponseDto resolveOwnAnnotationWarning(String authenticatedEmail, Long projectId,
+            Long datasetItemId, Integer stepIndex) {
+        UserInfo userInfo = authApiService.findUserByEmail(authenticatedEmail);
+
+        ProjectParticipant participant = projectParticipantRepository
+                .findByProjectIdAndUserId(projectId, userInfo.userId())
+                .orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        Annotation annotation = annotationRepository
+                .findByDatasetItemIdAndDatasetItemProjectIdAndUserIdAndStepIndex(
+                        datasetItemId,
+                        projectId,
+                        userInfo.userId(),
+                        stepIndex)
+                .orElseThrow(() -> new InvalidProjectDatasetException("Annotation not found for this step"));
+
+        if (!annotation.isWarning()) {
+            throw new InvalidProjectDatasetException("Annotation warning is not active");
+        }
+
+        Long warningOwnerUserId = annotation.getWarningMarkedByUser() == null
+                ? null
+                : annotation.getWarningMarkedByUser().getId();
+        DatasetItem datasetItem = annotation.getDatasetItem();
+
+        annotation.setWarning(false);
+        annotation.setWarningMarkedByUser(null);
+        annotation.setWarningMarkedAt(null);
+        annotationRepository.save(annotation);
+
+        if (warningOwnerUserId != null && !warningOwnerUserId.equals(userInfo.userId())) {
+            notificationService.createProjectAnnotationWarningResolvedNotification(
+                    warningOwnerUserId,
+                    userInfo.userId(),
+                    projectId,
+                    participant.getProject().getName(),
+                    participant.getProject().getResearchGroup().getId(),
+                    participant.getProject().getResearchGroup().getName(),
+                    datasetItem.getId(),
+                    datasetItem.getItemIndex(),
+                    buildDatasetItemNotificationName(datasetItem),
+                    stepIndex);
+        }
+
+        participant.getProject().markActivity();
+        projectMetricsCacheService.evictProjectReadCaches(projectId);
+
+        List<ProjectParticipant> participants = projectParticipantRepository
+                .findByProjectIdWithUserAndProject(projectId);
+        List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
+        ProjectProgressSnapshot progressSnapshot = projectProgressCalculator
+                .buildProjectProgressSnapshotForDatasetItems(projectId, participants, datasetItems);
+
+        return new SaveProjectAnnotationStepResponseDto(
+                projectId,
+                datasetItemId,
+                stepIndex,
+                progressSnapshot.completedStepsForUser(userInfo.userId()),
+                progressSnapshot.totalSteps(),
+                progressSnapshot.completionPercentageForUser(userInfo.userId()),
                 progressSnapshot.projectCompletionPercentage());
     }
 
@@ -384,6 +480,27 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
             return annotationPayload;
         }
         return rawMap.get(ProjectConstants.ANNOTATION_WRAPPED_VALUE_KEY);
+    }
+
+    private String buildDatasetItemNotificationName(DatasetItem datasetItem) {
+        String fileName = ProjectDatasetUtils.valueAsString(
+                datasetItem.getContent().get(ProjectConstants.CONTENT_KEY_FILE_NAME)).trim();
+
+        if (!fileName.isBlank()) {
+            return truncateDatasetItemNotificationName(fileName);
+        }
+
+        Integer itemIndex = datasetItem.getItemIndex();
+        int displayIndex = itemIndex == null ? 1 : itemIndex + 1;
+        return "Dataset item #" + displayIndex;
+    }
+
+    private String truncateDatasetItemNotificationName(String value) {
+        if (value.length() <= DATASET_ITEM_NOTIFICATION_NAME_MAX_LENGTH) {
+            return value;
+        }
+
+        return value.substring(0, DATASET_ITEM_NOTIFICATION_NAME_MAX_LENGTH - 3) + "...";
     }
 
     private void notifyProjectOwnersOnAnnotationCompletion(Project project, List<ProjectParticipant> participants,

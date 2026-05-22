@@ -14,5 +14,9 @@ public record NotificationDto(
         String researchGroupName,
         Long invitationId,
         Long projectId,
-        String projectName) {
+        String projectName,
+        Long datasetItemId,
+        Integer datasetItemIndex,
+        String datasetItemName,
+        Integer annotationStepIndex) {
 }

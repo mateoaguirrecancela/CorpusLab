@@ -55,6 +55,18 @@ public class Notification {
     @Column(name = "project_name", length = 255)
     private String projectName;
 
+    @Column(name = "dataset_item_id")
+    private Long datasetItemId;
+
+    @Column(name = "dataset_item_index")
+    private Integer datasetItemIndex;
+
+    @Column(name = "dataset_item_name", length = 512)
+    private String datasetItemName;
+
+    @Column(name = "annotation_step_index")
+    private Integer annotationStepIndex;
+
     @Column(name = "read_at")
     private Instant readAt;
 
@@ -132,6 +144,38 @@ public class Notification {
 
     public void setProjectName(String projectName) {
         this.projectName = projectName;
+    }
+
+    public Long getDatasetItemId() {
+        return datasetItemId;
+    }
+
+    public void setDatasetItemId(Long datasetItemId) {
+        this.datasetItemId = datasetItemId;
+    }
+
+    public Integer getDatasetItemIndex() {
+        return datasetItemIndex;
+    }
+
+    public void setDatasetItemIndex(Integer datasetItemIndex) {
+        this.datasetItemIndex = datasetItemIndex;
+    }
+
+    public String getDatasetItemName() {
+        return datasetItemName;
+    }
+
+    public void setDatasetItemName(String datasetItemName) {
+        this.datasetItemName = datasetItemName;
+    }
+
+    public Integer getAnnotationStepIndex() {
+        return annotationStepIndex;
+    }
+
+    public void setAnnotationStepIndex(Integer annotationStepIndex) {
+        this.annotationStepIndex = annotationStepIndex;
     }
 
     public Instant getReadAt() {

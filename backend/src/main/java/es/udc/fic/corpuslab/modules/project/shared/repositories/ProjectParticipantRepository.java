@@ -75,5 +75,15 @@ public interface ProjectParticipantRepository extends JpaRepository<ProjectParti
             Long userId,
             Pageable pageable);
 
+    @Query("""
+            select pp from ProjectParticipant pp
+            join fetch pp.project p
+            join fetch p.researchGroup
+            where pp.user.id = :userId
+              and p.archived = false
+            order by coalesce(p.lastActivityAt, p.updatedAt, p.createdAt) desc
+            """)
+    List<ProjectParticipant> findActiveByUserIdWithProjectAndResearchGroup(@Param("userId") Long userId);
+
     Optional<ProjectParticipant> findByProjectIdAndUserId(Long projectId, Long userId);
 }
