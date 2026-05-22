@@ -21,9 +21,37 @@
         "title": "Your invitation was accepted",
         "description": "{{actor}} accepted your invitation to {{group}}"
       },
+      "RESEARCH_GROUP_INVITATION_DECLINED": {
+        "title": "Your invitation was declined",
+        "description": "{{actor}} declined your invitation to {{group}}"
+      },
+      "RESEARCH_GROUP_MEMBER_JOINED_BY_CODE": {
+        "title": "A member joined by code",
+        "description": "{{actor}} joined {{group}} using the invitation code"
+      },
+      "RESEARCH_GROUP_MEMBER_ROLE_UPDATED": {
+        "title": "Your group role changed",
+        "description": "{{actor}} updated your role in {{group}}"
+      },
+      "RESEARCH_GROUP_MEMBER_REMOVED": {
+        "title": "You were removed from a group",
+        "description": "{{actor}} removed you from {{group}}"
+      },
       "PROJECT_PARTICIPANT_ASSIGNED": {
         "title": "You were assigned to a project",
         "description": "{{actor}} assigned you to the project {{project}}"
+      },
+      "PROJECT_PARTICIPANT_UNASSIGNED": {
+        "title": "You were removed from a project",
+        "description": "{{actor}} removed you from the project {{project}}"
+      },
+      "PROJECT_ARCHIVED": {
+        "title": "A project was archived",
+        "description": "{{actor}} archived the project {{project}}"
+      },
+      "PROJECT_DELETED": {
+        "title": "A project was deleted",
+        "description": "{{actor}} deleted the project {{project}}"
       },
       "PROJECT_ANNOTATION_COMPLETED": {
         "title": "A researcher completed annotation",
@@ -31,11 +59,25 @@
       },
       "ANNOTATION_WARNING_MARKED": {
         "title": "Annotation warning",
-        "description": "{{actor}} marked an annotation for review in {{project}}"
+        "description": "{{actor}} marked an alert on your annotation in {{project}}, file {{file}}{{csvItemSuffix}}"
+      },
+      "ANNOTATION_WARNING_CLEARED": {
+        "title": "Annotation alert cleared",
+        "description": "{{actor}} cleared an alert on your annotation in {{project}}, file {{file}}{{csvItemSuffix}}"
+      },
+      "ANNOTATION_WARNING_RESOLVED": {
+        "title": "Annotation warning resolved",
+        "description": "{{actor}} resolved the annotation alert in {{project}}, file {{file}}{{csvItemSuffix}}"
       }
     },
     "unknownActor": "Someone",
     "fallbackGroup": "a group",
-    "fallbackProject": "a project"
+    "fallbackProject": "a project",
+    "fallbackDatasetItem": "a dataset item",
+    "fallbackDatasetItemWithIndex": "#{{index}}",
+    "fallbackDatasetFile": "a dataset file",
+    "fallbackDatasetFileWithIndex": "file #{{index}}",
+    "csvItemSuffix": " (item {{index}})",
+    "fallbackAnnotationStep": "a step"
   }
 }

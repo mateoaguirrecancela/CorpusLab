@@ -8,6 +8,7 @@ import {
   useProjectAnnotationWorkspaceQuery,
   useProjectDetailQuery,
   useProjectParticipantAnnotationWorkspaceQuery,
+  useResolveOwnProjectAnnotationWarningMutation,
   useSaveProjectAnnotationStepMutation,
   useToggleProjectAnnotationWarningMutation,
 } from '@/modules/project/hooks/useProjectQueries';
@@ -135,6 +136,10 @@ export function useProjectAnnotationPage() {
     annotationOffset,
     ANNOTATION_PAGE_SIZE,
   );
+  const resolveOwnProjectAnnotationWarningMutation = useResolveOwnProjectAnnotationWarningMutation(
+    annotationOffset,
+    ANNOTATION_PAGE_SIZE,
+  );
 
   const reviewedParticipant = useMemo(() => {
     if (!project || reviewedParticipantUserId == null) {
@@ -238,7 +243,7 @@ export function useProjectAnnotationPage() {
     const isFirstTime = annotationWorkspace.completedSteps <= 0;
 
     const initialStep = normalizeStepIndex(
-      isCompleted || isFirstTime ? 1 : annotationWorkspace.firstPendingStepIndex,
+      isReviewMode || isCompleted || isFirstTime ? 1 : annotationWorkspace.firstPendingStepIndex,
       total,
     );
 
@@ -248,6 +253,7 @@ export function useProjectAnnotationPage() {
     annotationWorkspace,
     hasResolvedResumeStep,
     isInvalidProjectId,
+    isReviewMode,
     setHasResolvedResumeStep,
     setResumeGlobalStepIndex,
   ]);
@@ -509,17 +515,38 @@ export function useProjectAnnotationPage() {
   };
 
   const handleToggleWarning = async () => {
-    if (!currentStep || !isReviewMode || reviewedParticipantUserId == null) {
+    if (!currentStep) {
       return;
     }
 
+    const wasWarningActive = currentStep.warning;
+
     try {
-      await toggleProjectAnnotationWarningMutation.mutateAsync({
-        projectId: numericProjectId,
-        participantUserId: reviewedParticipantUserId,
-        datasetItemId: currentStep.datasetItemId,
-        stepIndex: currentStep.stepIndex,
-      });
+      if (isReviewMode && reviewedParticipantUserId != null) {
+        await toggleProjectAnnotationWarningMutation.mutateAsync({
+          projectId: numericProjectId,
+          participantUserId: reviewedParticipantUserId,
+          datasetItemId: currentStep.datasetItemId,
+          stepIndex: currentStep.stepIndex,
+        });
+        toast.success(
+          t(
+            wasWarningActive
+              ? 'project.annotationPage.warningCleared'
+              : 'project.annotationPage.warningMarked',
+          ),
+        );
+        return;
+      }
+
+      if (currentStep.warning) {
+        await resolveOwnProjectAnnotationWarningMutation.mutateAsync({
+          projectId: numericProjectId,
+          datasetItemId: currentStep.datasetItemId,
+          stepIndex: currentStep.stepIndex,
+        });
+        toast.success(t('project.annotationPage.warningResolved'));
+      }
     } catch {
       toast.error(t('project.annotationPage.errors.warningToggleFailed'));
     }
@@ -653,7 +680,9 @@ export function useProjectAnnotationPage() {
     isReviewMode,
     isSavingCurrentStep,
     isSourceLoading,
-    isWarningUpdating: toggleProjectAnnotationWarningMutation.isPending,
+    isWarningUpdating:
+      toggleProjectAnnotationWarningMutation.isPending ||
+      resolveOwnProjectAnnotationWarningMutation.isPending,
     labels,
     nerLabelColorMap,
     nerSourceSelectionRef,

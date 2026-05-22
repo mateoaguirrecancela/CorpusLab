@@ -12,7 +12,7 @@ import {
   splitNotificationStreamBuffer,
 } from '@/modules/notification/utils/notificationStream';
 
-export async function getMyNotifications(limit = 12): Promise<NotificationListResponse> {
+export async function getMyNotifications(limit = 10): Promise<NotificationListResponse> {
   const response = await api.get<NotificationListResponse>('/notifications', {
     params: { limit },
   });

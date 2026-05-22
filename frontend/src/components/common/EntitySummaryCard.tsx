@@ -91,7 +91,7 @@ export function EntitySummaryCard({
   const hasTopRow = Boolean(computedTopLeft) || Boolean(computedTopRight);
 
   return (
-    <article className="stagger flex h-full flex-col justify-between rounded-2xl border border-border bg-surface-base p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-(--shadow-card-hover)">
+    <article className="flex h-full flex-col justify-between rounded-2xl border border-border bg-surface-base p-5 hover:border-primary/30 hover:shadow-(--shadow-card-hover)">
       <div>
         {hasTopRow && (
           <div className="flex flex-wrap items-center justify-between gap-2">

@@ -220,6 +220,10 @@
       },
       "warningToggleLabel": "Toggle review warning",
       "warningTooltip": "Mark for review",
+      "warningResolveTooltip": "Mark warning as resolved",
+      "warningMarked": "Alert marked.",
+      "warningCleared": "Alert cleared.",
+      "warningResolved": "Alert resolved.",
       "warningToggled": "Review warning status updated.",
       "errors": {
         "invalidId": "The project identifier is invalid.",

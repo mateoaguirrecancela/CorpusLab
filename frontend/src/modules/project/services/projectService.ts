@@ -340,6 +340,21 @@ export async function toggleProjectAnnotationWarning(
   return data;
 }
 
+export async function resolveOwnProjectAnnotationWarning(
+  projectId: number,
+  datasetItemId: number,
+  stepIndex: number,
+): Promise<SaveProjectAnnotationStepResponse> {
+  const { data } = await api.put<SaveProjectAnnotationStepResponse>(
+    `/projects/${projectId}/annotations/steps/warning-resolution`,
+    {
+      datasetItemId,
+      stepIndex,
+    },
+  );
+  return data;
+}
+
 function parseFileNameFromContentDisposition(
   contentDisposition: string | undefined,
 ): string | null {

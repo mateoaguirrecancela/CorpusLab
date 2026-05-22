@@ -212,6 +212,13 @@
         "completed": "Completado",
         "pending": "Pendente"
       },
+      "warningToggleLabel": "Alternar alerta de revision",
+      "warningTooltip": "Marcar para revision",
+      "warningResolveTooltip": "Marcar alerta como resolta",
+      "warningMarked": "Alerta marcada.",
+      "warningCleared": "Alerta desmarcada.",
+      "warningResolved": "Alerta resolta.",
+      "warningToggled": "Estado da alerta actualizado.",
       "fields": {
         "selectLabelPlaceholder": "Selecciona unha etiqueta",
         "labelsPlaceholder": "Etiquetas separadas por coma",
@@ -223,7 +230,8 @@
         "emptyPayload": "Debes introducir unha anotación antes de gardar.",
         "classificationRequired": "Debes completar a clasificación antes de continuar.",
         "nerLabelRequired": "Selecciona unha etiqueta antes de resaltar texto.",
-        "nerOverlappingEntities": "Non se permiten entidades solapadas."
+        "nerOverlappingEntities": "Non se permiten entidades solapadas.",
+        "warningToggleFailed": "Non se puido actualizar a alerta de revision."
       }
     },
     "create": {

@@ -8,7 +8,70 @@
       "settings": "Configuración"
     },
     "dashboard": {
-      "title": "Panel"
+      "title": "Panel",
+      "subtitle": "Resumen diario de tus proyectos activos, anotaciones y alertas de revisores.",
+      "actions": {
+        "viewProjects": "Ver proyectos",
+        "newProject": "Nuevo proyecto"
+      },
+      "loading": {
+        "metrics": "Cargando resumen del panel...",
+        "trends": "Cargando tendencias de anotacion...",
+        "projects": "Cargando proyectos...",
+        "activity": "Cargando actividad..."
+      },
+      "errors": {
+        "metricsLoadFailed": "No se pudo cargar el resumen del panel.",
+        "trendsLoadFailed": "No se pudieron cargar las tendencias de anotacion.",
+        "projectsLoadFailed": "No se pudieron cargar los proyectos del panel."
+      },
+      "empty": {
+        "metrics": "Todavia no hay metricas para mostrar.",
+        "trends": "No hay anotaciones en los ultimos 7 dias.",
+        "advancedProjects": "Todavia no hay proyectos con progreso.",
+        "recentProjects": "Todavia no hay proyectos recientes.",
+        "activity": "No hay actividad reciente."
+      },
+      "kpis": {
+        "activeProjects": {
+          "title": "Proyectos activos",
+          "supportingText": "En {{count}} grupos de investigacion"
+        },
+        "annotationsToday": {
+          "title": "Anotaciones de hoy",
+          "supportingText": "Completadas por ti hoy",
+          "trend": "mas que ayer",
+          "trendDown": "menos que ayer"
+        },
+        "pendingAnnotations": {
+          "title": "Anotaciones pendientes",
+          "supportingText": "En {{count}} proyectos asignados",
+          "trend": "menos que ayer"
+        },
+        "openAlerts": {
+          "title": "Alertas abiertas",
+          "supportingText": "Marcadas por revisores",
+          "trend": "nuevas desde ayer"
+        }
+      },
+      "trends": {
+        "title": "Anotaciones semanales",
+        "description": "Evolucion de anotaciones completadas durante los ultimos 7 dias.",
+        "filterLabel": "Filtrar grupo de investigacion",
+        "allGroups": "Todos los grupos"
+      },
+      "projects": {
+        "advancedTitle": "Proyectos mas avanzados",
+        "recentTitle": "Proyectos recientes",
+        "open": "Abrir",
+        "viewAll": "Ver todo",
+        "progress": "Progreso",
+        "pendingAnnotations": "{{count}} pendientes"
+      },
+      "activity": {
+        "title": "Notificaciones",
+        "description": "Las mismas actualizaciones relevantes del header."
+      }
     },
     "profile": {
       "title": "Mi perfil",

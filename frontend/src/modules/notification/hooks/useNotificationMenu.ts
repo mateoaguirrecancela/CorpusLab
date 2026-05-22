@@ -21,7 +21,7 @@ import {
   getUnreadCount,
 } from '@/modules/notification/utils/notificationMenu';
 
-const NOTIFICATIONS_LIMIT = 12;
+const NOTIFICATIONS_LIMIT = 10;
 
 export function useNotificationMenu() {
   const { i18n } = useTranslation();

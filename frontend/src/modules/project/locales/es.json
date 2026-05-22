@@ -218,16 +218,20 @@
         "annotationPlaceholder": "Escribe la anotación",
         "notesPlaceholder": "Explica tu criterio o añade aclaraciones"
       },
-      "warningToggleLabel": "Alternar aviso de revisión",
+      "warningToggleLabel": "Alternar alerta de revisión",
       "warningTooltip": "Marcar para revisión",
-      "warningToggled": "Estado de aviso actualizado.",
+      "warningResolveTooltip": "Marcar alerta como resuelta",
+      "warningMarked": "Alerta marcada.",
+      "warningCleared": "Alerta desmarcada.",
+      "warningResolved": "Alerta resuelta.",
+      "warningToggled": "Estado de alerta actualizado.",
       "errors": {
         "invalidId": "El identificador del proyecto no es válido.",
         "emptyPayload": "Debes introducir una anotación antes de guardar.",
         "classificationRequired": "Debes completar la clasificación antes de continuar.",
         "nerLabelRequired": "Selecciona una etiqueta antes de resaltar texto.",
         "nerOverlappingEntities": "No se permiten entidades solapadas.",
-        "warningToggleFailed": "No se pudo actualizar el aviso de revisión."
+        "warningToggleFailed": "No se pudo actualizar la alerta de revisión."
       }
     },
     "create": {

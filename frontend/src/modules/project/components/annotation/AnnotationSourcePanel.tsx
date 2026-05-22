@@ -54,6 +54,7 @@ export function AnnotationSourcePanel({
   onToggleWarning,
 }: AnnotationSourcePanelProps) {
   const { t } = useTranslation();
+  const canToggleWarning = isReviewMode || currentStep.warning;
 
   return (
     <section className="min-w-0 rounded-xl border border-border bg-surface-base p-5 sm:p-6">
@@ -73,11 +74,15 @@ export function AnnotationSourcePanel({
               className={[
                 'inline-flex items-center justify-center transition-colors',
                 currentStep.warning ? 'text-red-500' : 'text-muted-foreground/40',
-                isReviewMode ? 'cursor-pointer hover:text-red-400' : 'cursor-default',
+                canToggleWarning ? 'cursor-pointer hover:text-red-400' : 'cursor-default',
               ].join(' ')}
-              disabled={!isReviewMode || isWarningUpdating}
+              disabled={!canToggleWarning || isWarningUpdating}
               onClick={onToggleWarning}
-              title={t('project.annotationPage.warningTooltip')}
+              title={t(
+                isReviewMode
+                  ? 'project.annotationPage.warningTooltip'
+                  : 'project.annotationPage.warningResolveTooltip',
+              )}
               type="button"
             >
               <AlertTriangle aria-hidden className="size-5" />
