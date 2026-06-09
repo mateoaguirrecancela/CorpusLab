@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { useToastMessages } from '@/hooks/useToastMessages';
-import { getResolvedLanguage } from '@/lib/i18n';
+import { useToastMessages } from '@/shared/hooks/useToastMessages';
+import { getResolvedLanguage } from '@/app/config/i18n';
 import {
   useMarkAllNotificationsAsReadMutation,
   useMarkNotificationAsReadMutation,

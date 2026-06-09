@@ -2,8 +2,8 @@ import { type FormEventHandler, useMemo } from 'react';
 import { CalendarDays, Globe, Lock, Mail, MapPin, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
-import { useToastMessages } from '@/hooks/useToastMessages';
-import { getResolvedLanguage } from '@/lib/i18n';
+import { useToastMessages } from '@/shared/hooks/useToastMessages';
+import { getResolvedLanguage } from '@/app/config/i18n';
 import {
   AuthDivider,
   AuthLinkPrompt,

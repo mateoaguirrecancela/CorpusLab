@@ -1,14 +1,13 @@
 import { FlaskConical, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { EntitySummaryCard } from '@/components/common/EntitySummaryCard';
-import { TEXT_BUTTON_CLASS } from '@/components/common/textButtonClass';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { type ProjectAssignedSummary } from '@/modules/project/types/project';
-import { participantRoleI18nKey } from '@/modules/project/utils/projectDisplayUtils';
+import { type ResearchGroupAssignedProjectSummary } from '@/modules/researchgroup/types/researchGroup';
+import { researchGroupProjectParticipantRoleI18nKey } from '@/modules/researchgroup/utils/researchGroupUtils';
 
 type ResearchGroupProjectsSectionProps = Readonly<{
-  assignedProjects: ProjectAssignedSummary[];
+  assignedProjects: ResearchGroupAssignedProjectSummary[];
   canCreateProjects: boolean;
   hasNextProjectsPage: boolean;
   isFetchingNextProjectsPage: boolean;
@@ -21,7 +20,7 @@ type ResearchGroupProjectsSectionProps = Readonly<{
 }>;
 
 type ResearchGroupProjectsContentProps = Readonly<{
-  assignedProjects: ProjectAssignedSummary[];
+  assignedProjects: ResearchGroupAssignedProjectSummary[];
   hasNextProjectsPage: boolean;
   isFetchingNextProjectsPage: boolean;
   isLoadingProjects: boolean;
@@ -75,7 +74,7 @@ function ResearchGroupProjectsGrid({
             key={project.id}
             onAction={() => onOpenProject(project.id)}
             role={project.participantRole}
-            roleLabel={t(participantRoleI18nKey(project.participantRole))}
+            roleLabel={t(researchGroupProjectParticipantRoleI18nKey(project.participantRole))}
             title={project.name}
           />
         ))}
@@ -83,17 +82,18 @@ function ResearchGroupProjectsGrid({
 
       {hasNextProjectsPage && (
         <div className="mt-6 flex justify-center">
-          <button
-            className={TEXT_BUTTON_CLASS}
+          <Button
             disabled={isFetchingNextProjectsPage}
             onClick={onLoadMoreProjects}
+            size="text"
             type="button"
+            variant="text"
           >
             {isFetchingNextProjectsPage && <Spinner aria-hidden className="size-4" />}
             {isFetchingNextProjectsPage
               ? t('project.list.loadingMore')
               : t('project.list.loadMore')}
-          </button>
+          </Button>
         </div>
       )}
     </>
@@ -151,21 +151,18 @@ export function ResearchGroupProjectsSection({
         </h2>
 
         <div className="flex items-center gap-4">
-          <button
+          <Button
             aria-pressed={showArchivedProjects}
-            className={TEXT_BUTTON_CLASS}
             onClick={onToggleArchivedProjects}
+            size="text"
             type="button"
+            variant="text"
           >
             {showArchivedProjects ? t('project.list.viewActive') : t('project.list.viewArchived')}
-          </button>
+          </Button>
 
           {canCreateProjects && (
-            <Button
-              className="h-10 rounded-md bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-strong cursor-pointer"
-              onClick={onCreateProject}
-              type="button"
-            >
+            <Button onClick={onCreateProject} size="action" type="button" variant="primaryAction">
               <Plus className="size-4" />
               {t('researchGroup.detail.newProject')}
             </Button>

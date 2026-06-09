@@ -1,5 +1,5 @@
 import { type TFunction } from 'i18next';
-import { formatDate } from '@/lib/dateFormatters';
+import { formatDate } from '@/shared/utils/dateFormatters';
 import { type NotificationItem } from '@/modules/notification/types/notification';
 
 export function formatNotificationDate(createdAt: string, locale: string): string {
@@ -14,10 +14,7 @@ export function getNotificationTitle(notification: NotificationItem, t: TFunctio
   return t(`notification.types.${notification.type}.title`);
 }
 
-function getNotificationDatasetItemLabel(
-  notification: NotificationItem,
-  t: TFunction,
-): string {
+function getNotificationDatasetItemLabel(notification: NotificationItem, t: TFunction): string {
   if (notification.datasetItemName && notification.datasetItemName.trim().length > 0) {
     return notification.datasetItemName;
   }
@@ -35,10 +32,7 @@ function isCsvFileName(fileName: string): boolean {
   return fileName.trim().toLowerCase().endsWith('.csv');
 }
 
-function getNotificationDatasetFileLabel(
-  notification: NotificationItem,
-  t: TFunction,
-): string {
+function getNotificationDatasetFileLabel(notification: NotificationItem, t: TFunction): string {
   if (notification.datasetItemName && notification.datasetItemName.trim().length > 0) {
     return notification.datasetItemName.trim();
   }

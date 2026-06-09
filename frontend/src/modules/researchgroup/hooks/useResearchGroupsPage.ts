@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router';
-import { useToastMessages } from '@/hooks/useToastMessages';
+import { useToastMessages } from '@/shared/hooks/useToastMessages';
 import {
   useResearchGroupInvitationsQuery,
   useResearchGroupsQuery,

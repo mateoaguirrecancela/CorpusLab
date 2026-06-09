@@ -41,16 +41,12 @@ export function BackButton({
 
   return (
     <Button
-      className={[
-        'h-10 rounded-md border border-border bg-surface-base px-4 text-sm font-semibold text-primary hover:bg-accent cursor-pointer',
-        className,
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      className={className}
       disabled={disabled}
       onClick={handleClick}
+      size="action"
       type="button"
-      variant="outline"
+      variant="secondaryAction"
     >
       <ArrowLeft className="size-4" />
       {t('common.actions.goBack')}

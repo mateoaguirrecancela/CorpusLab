@@ -1,4 +1,5 @@
 import { type ProfileResponse } from '@/modules/auth/types/profile';
+import type { AuthMessageResponse } from '@/modules/auth/types/common';
 
 export type LoginFormState = {
   email: string;
@@ -10,6 +11,4 @@ export type LoginResponse = ProfileResponse & {
   token: string;
 };
 
-export type LogoutResponse = {
-  message: string;
-};
+export type LogoutResponse = AuthMessageResponse;

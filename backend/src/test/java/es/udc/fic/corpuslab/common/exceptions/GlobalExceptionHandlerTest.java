@@ -58,4 +58,35 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().message()).isEqualTo("Too many requests");
     }
+
+    @Test
+    void handleUnhandledExceptionShouldReturnInternalServerErrorWithUuid() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler(messageSource);
+        when(messageSource.getMessage(eq("common.error.internal.server.error"), any(Object[].class), any(Locale.class)))
+                .thenReturn("Internal error with reference ID: 12345");
+
+        ResponseEntity<ApiErrorResponse> response =
+                handler.handleUnhandledException(new NullPointerException("NPE test"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().status()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR.value());
+        assertThat(response.getBody().message()).isEqualTo("Internal error with reference ID: 12345");
+        assertThat(response.getBody().details()).containsKey("errorId");
+    }
+
+    @Test
+    void handleTranslatableApiExceptionWithUnhandledRuntimeExceptionShouldDelegateToUnhandledException() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler(messageSource);
+        when(messageSource.getMessage(eq("common.error.internal.server.error"), any(Object[].class), any(Locale.class)))
+                .thenReturn("Internal error");
+
+        ResponseEntity<ApiErrorResponse> response =
+                handler.handleTranslatableApiException(new IllegalArgumentException("Illegal arg test"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().details()).containsKey("errorId");
+    }
 }
+

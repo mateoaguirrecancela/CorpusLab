@@ -1,5 +1,6 @@
-import { api } from '@/lib/api';
-import { extractTranslatedApiErrorMessage } from '@/lib/apiErrors';
+import { api } from '@/app/config/axiosInstance';
+import i18n from '@/app/config/i18n';
+import { extractApiErrorMessage } from '@/shared/api/apiErrors';
 import { type OAuthProvider } from '@/modules/auth/constants/session';
 import {
   type LoginFormState,
@@ -36,7 +37,7 @@ const AUTH_ERROR_KEYS = {
 } as const;
 
 function getAuthErrorMessage(error: unknown, key: keyof typeof AUTH_ERROR_KEYS): string {
-  return extractTranslatedApiErrorMessage(error, AUTH_ERROR_KEYS[key]);
+  return extractApiErrorMessage(error, i18n.t(AUTH_ERROR_KEYS[key]));
 }
 
 export async function signup(form: RegisterFormState): Promise<LoginResponse> {

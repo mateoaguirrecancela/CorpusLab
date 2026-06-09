@@ -2,11 +2,14 @@ package es.udc.fic.corpuslab.modules.project.integration;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,8 @@ import es.udc.fic.corpuslab.modules.auth.fixtures.UserLoginRequestTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserTestBuilder;
 import es.udc.fic.corpuslab.modules.auth.repositories.UserRepository;
 import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
+import es.udc.fic.corpuslab.modules.project.dataset.ProjectDatasetUploadStatusStore;
+import es.udc.fic.corpuslab.modules.project.dataset.dtos.ProjectDatasetUploadEventDto;
 import es.udc.fic.corpuslab.modules.project.shared.entities.Project;
 import es.udc.fic.corpuslab.modules.project.shared.repositories.DatasetItemRepository;
 import es.udc.fic.corpuslab.modules.project.shared.repositories.ProjectParticipantRepository;
@@ -72,6 +77,9 @@ class ProjectDatasetUploadIntegrationTest extends AbstractIntegrationTest {
 
         @Autowired
         private PasswordEncoder passwordEncoder;
+
+        @Autowired
+        private ProjectDatasetUploadStatusStore uploadStatusStore;
 
         private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
 
@@ -202,5 +210,76 @@ class ProjectDatasetUploadIntegrationTest extends AbstractIntegrationTest {
                                 project.getId())
                                 .header("Authorization", "Bearer " + session))
                                 .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldOpenDatasetUploadEventsForJobOwner() throws Exception {
+                createUser("owner.events@example.com");
+                User owner = userRepository.findByEmailIgnoreCase("owner.events@example.com").orElseThrow();
+
+                ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
+
+                Project project = new Project();
+                project.setResearchGroup(group);
+                project.setName("Dataset Events Project");
+                project = projectRepository.save(project);
+
+                String jobId = "job-" + UUID.randomUUID();
+                uploadStatusStore.save(
+                                new ProjectDatasetUploadEventDto(jobId, "COMPLETED", 100, "done", null),
+                                owner.getEmail(),
+                                project.getId());
+
+                String session = loginAs("owner.events@example.com");
+
+                mockMvc.perform(get(
+                                "/api/projects/{projectId}/dataset/upload-events/{jobId}", project.getId(), jobId)
+                                .header("Authorization", "Bearer " + session))
+                                .andExpect(status().isOk())
+                                .andExpect(request().asyncStarted())
+                                .andReturn();
+        }
+
+        @Test
+        void shouldReturnForbiddenWhenOpeningDatasetUploadEventsForForeignJob() throws Exception {
+                createUser("owner.events.foreign@example.com");
+                User owner = userRepository.findByEmailIgnoreCase("owner.events.foreign@example.com").orElseThrow();
+
+                createUser("other.events.foreign@example.com");
+
+                ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
+                memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                                .withUser(owner)
+                                .withResearchGroup(group)
+                                .withRole(ResearchGroupMemberRole.OWNER)
+                                .build());
+
+                Project project = new Project();
+                project.setResearchGroup(group);
+                project.setName("Dataset Foreign Events Project");
+                project = projectRepository.save(project);
+
+                String jobId = "job-" + UUID.randomUUID();
+                uploadStatusStore.save(
+                                new ProjectDatasetUploadEventDto(jobId, "RUNNING", 50, "processing", null),
+                                owner.getEmail(),
+                                project.getId());
+
+                String session = loginAs("other.events.foreign@example.com");
+
+                mockMvc.perform(get("/api/projects/{projectId}/dataset/upload-events/{jobId}", project.getId(), jobId)
+                                .header("Authorization", "Bearer " + session))
+                                .andExpect(status().isForbidden());
+        }
+
+        @Test
+        void shouldReturnUnauthorizedWhenOpeningDatasetUploadEventsWithoutSession() throws Exception {
+                mockMvc.perform(get("/api/projects/{projectId}/dataset/upload-events/{jobId}", 1L, "job-no-auth"))
+                                .andExpect(status().isUnauthorized());
         }
 }

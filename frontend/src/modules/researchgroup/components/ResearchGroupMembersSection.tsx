@@ -115,10 +115,7 @@ export function ResearchGroupMembersSection({
           groupId={group.id}
           invitationCode={group.invitationCode}
           trigger={
-            <Button
-              className="h-10 rounded-md bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-strong cursor-pointer"
-              type="button"
-            >
+            <Button size="action" type="button" variant="primaryAction">
               <Plus className="size-4" />
               {t('researchGroup.detail.inviteMember')}
             </Button>

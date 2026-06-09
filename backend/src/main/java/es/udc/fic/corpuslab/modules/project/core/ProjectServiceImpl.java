@@ -188,6 +188,7 @@ public class ProjectServiceImpl implements ProjectService {
                 project.getName(),
                 project.getDescription(),
                 project.getProjectType(),
+                project.isSetupCompleted(),
                 progressSnapshot.projectCompletionPercentage(),
                 participant.getRole(),
                 participants,

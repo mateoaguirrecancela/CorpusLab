@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { invalidateQueryKeys } from '@/lib/queryInvalidation';
-import { type CreateResearchGroupPayload } from '@/modules/researchgroup/types/createResearchGroup';
+import {
+  invalidateResearchGroupInvitationQueries,
+  invalidateResearchGroupProjectMembershipQueries,
+  invalidateResearchGroupWriteQueries,
+} from '@/app/config/queryInvalidation';
 import {
   acceptResearchGroupInvitation,
   createResearchGroup,
@@ -16,39 +19,30 @@ import {
   updateResearchGroupMemberRole,
 } from '@/modules/researchgroup/services/researchGroupService';
 import {
-  assignedProjectsByGroupQueryKey,
-  myAssignedProjectsQueryKey,
-} from '@/modules/project/hooks/useProjectQueries';
-import {
+  type CreateResearchGroupPayload,
   type InvitableResearchGroupMemberRole,
   type InviteResearchGroupMemberPayload,
   type UpdateResearchGroupPayload,
 } from '@/modules/researchgroup/types/researchGroup';
-
-export const RESEARCH_GROUPS_QUERY_KEY = ['research-groups'] as const;
-export const RESEARCH_GROUP_INVITATIONS_QUERY_KEY = ['research-groups', 'invitations'] as const;
-
-export function researchGroupDetailQueryKey(groupId: number) {
-  return ['research-groups', groupId] as const;
-}
+import { researchGroupQueryKeys } from '@/modules/researchgroup/queryKeys';
 
 export function useResearchGroupsQuery() {
   return useQuery({
-    queryKey: RESEARCH_GROUPS_QUERY_KEY,
+    queryKey: researchGroupQueryKeys.all,
     queryFn: getMyResearchGroups,
   });
 }
 
 export function useResearchGroupInvitationsQuery() {
   return useQuery({
-    queryKey: RESEARCH_GROUP_INVITATIONS_QUERY_KEY,
+    queryKey: researchGroupQueryKeys.invitations,
     queryFn: getMyResearchGroupInvitations,
   });
 }
 
 export function useResearchGroupDetailQuery(groupId: number) {
   return useQuery({
-    queryKey: researchGroupDetailQueryKey(groupId),
+    queryKey: researchGroupQueryKeys.detail(groupId),
     queryFn: () => getResearchGroupDetail(groupId),
     enabled: Number.isFinite(groupId) && groupId > 0,
   });
@@ -60,7 +54,7 @@ export function useCreateResearchGroupMutation() {
   return useMutation({
     mutationFn: (payload: CreateResearchGroupPayload) => createResearchGroup(payload),
     onSuccess: () => {
-      invalidateQueryKeys(queryClient, [RESEARCH_GROUPS_QUERY_KEY]);
+      invalidateResearchGroupWriteQueries(queryClient);
     },
   });
 }
@@ -71,10 +65,7 @@ export function useUpdateResearchGroupMutation(groupId: number) {
   return useMutation({
     mutationFn: (payload: UpdateResearchGroupPayload) => updateResearchGroup(groupId, payload),
     onSuccess: () => {
-      invalidateQueryKeys(queryClient, [
-        researchGroupDetailQueryKey(groupId),
-        RESEARCH_GROUPS_QUERY_KEY,
-      ]);
+      invalidateResearchGroupWriteQueries(queryClient, groupId);
     },
   });
 }
@@ -85,12 +76,7 @@ export function useDeleteResearchGroupMutation(groupId: number) {
   return useMutation({
     mutationFn: () => deleteResearchGroup(groupId),
     onSuccess: () => {
-      invalidateQueryKeys(queryClient, [
-        RESEARCH_GROUPS_QUERY_KEY,
-        researchGroupDetailQueryKey(groupId),
-        assignedProjectsByGroupQueryKey(groupId),
-        myAssignedProjectsQueryKey(),
-      ]);
+      invalidateResearchGroupProjectMembershipQueries(queryClient, groupId);
     },
   });
 }
@@ -102,10 +88,7 @@ export function useInviteResearchGroupMemberMutation(groupId: number) {
     mutationFn: (payload: InviteResearchGroupMemberPayload) =>
       inviteResearchGroupMember(groupId, payload),
     onSuccess: () => {
-      invalidateQueryKeys(queryClient, [
-        researchGroupDetailQueryKey(groupId),
-        RESEARCH_GROUPS_QUERY_KEY,
-      ]);
+      invalidateResearchGroupWriteQueries(queryClient, groupId);
     },
   });
 }
@@ -116,10 +99,7 @@ export function useJoinResearchGroupByCodeMutation() {
   return useMutation({
     mutationFn: (code: string) => joinResearchGroupByCode(code),
     onSuccess: () => {
-      invalidateQueryKeys(queryClient, [
-        RESEARCH_GROUPS_QUERY_KEY,
-        RESEARCH_GROUP_INVITATIONS_QUERY_KEY,
-      ]);
+      invalidateResearchGroupInvitationQueries(queryClient);
     },
   });
 }
@@ -130,10 +110,7 @@ export function useAcceptResearchGroupInvitationMutation() {
   return useMutation({
     mutationFn: (invitationId: number) => acceptResearchGroupInvitation(invitationId),
     onSuccess: () => {
-      invalidateQueryKeys(queryClient, [
-        RESEARCH_GROUPS_QUERY_KEY,
-        RESEARCH_GROUP_INVITATIONS_QUERY_KEY,
-      ]);
+      invalidateResearchGroupInvitationQueries(queryClient);
     },
   });
 }
@@ -144,7 +121,7 @@ export function useDeclineResearchGroupInvitationMutation() {
   return useMutation({
     mutationFn: (invitationId: number) => declineResearchGroupInvitation(invitationId),
     onSuccess: () => {
-      invalidateQueryKeys(queryClient, [RESEARCH_GROUP_INVITATIONS_QUERY_KEY]);
+      invalidateResearchGroupInvitationQueries(queryClient);
     },
   });
 }
@@ -161,10 +138,7 @@ export function useUpdateResearchGroupMemberRoleMutation(groupId: number) {
       role: InvitableResearchGroupMemberRole;
     }) => updateResearchGroupMemberRole(groupId, memberUserId, { role }),
     onSuccess: () => {
-      invalidateQueryKeys(queryClient, [
-        researchGroupDetailQueryKey(groupId),
-        RESEARCH_GROUPS_QUERY_KEY,
-      ]);
+      invalidateResearchGroupWriteQueries(queryClient, groupId);
     },
   });
 }
@@ -175,12 +149,7 @@ export function useRemoveResearchGroupMemberMutation(groupId: number) {
   return useMutation({
     mutationFn: (memberUserId: number) => removeResearchGroupMember(groupId, memberUserId),
     onSuccess: () => {
-      invalidateQueryKeys(queryClient, [
-        researchGroupDetailQueryKey(groupId),
-        RESEARCH_GROUPS_QUERY_KEY,
-        assignedProjectsByGroupQueryKey(groupId),
-        myAssignedProjectsQueryKey(),
-      ]);
+      invalidateResearchGroupProjectMembershipQueries(queryClient, groupId);
     },
   });
 }

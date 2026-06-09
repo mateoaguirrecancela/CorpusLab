@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import es.udc.fic.corpuslab.modules.project.annotation.dtos.ProjectAnnotationWorkspaceDto;
+import es.udc.fic.corpuslab.modules.project.annotation.dtos.ProjectAnnotationWarningResponseDto;
 import es.udc.fic.corpuslab.modules.project.annotation.dtos.SaveProjectAnnotationStepRequestDto;
 import es.udc.fic.corpuslab.modules.project.annotation.dtos.SaveProjectAnnotationStepResponseDto;
 import jakarta.validation.Valid;
@@ -69,7 +70,7 @@ public class ProjectAnnotationController {
 
     @PutMapping("/{projectId}/annotations/participants/{participantUserId}/steps/warning")
     @ResponseStatus(HttpStatus.OK)
-    public SaveProjectAnnotationStepResponseDto toggleAnnotationWarning(
+    public ProjectAnnotationWarningResponseDto toggleAnnotationWarning(
             Authentication authentication,
             @PathVariable Long projectId,
             @PathVariable Long participantUserId,
@@ -84,7 +85,7 @@ public class ProjectAnnotationController {
 
     @PutMapping("/{projectId}/annotations/steps/warning-resolution")
     @ResponseStatus(HttpStatus.OK)
-    public SaveProjectAnnotationStepResponseDto resolveOwnAnnotationWarning(
+    public ProjectAnnotationWarningResponseDto resolveOwnAnnotationWarning(
             Authentication authentication,
             @PathVariable Long projectId,
             @Valid @RequestBody ResolveAnnotationWarningRequest request) {

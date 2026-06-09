@@ -18,13 +18,9 @@ public final class FileSecurityUtil {
 
     private static final Tika TIKA = new Tika();
 
-    // Dangerous extensions that should NEVER be allowed
-    private static final Set<String> BANNED_EXTENSIONS = Set.of(
-            "exe", "bat", "cmd", "sh", "php", "jsp", "asp", "aspx", "js", "vbs", "jar", "war", "ear", "bin");
-
     // Whitelist of common safe extensions (can be expanded)
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
-            "txt", "pdf", "csv", "json", "png", "jpg", "jpeg", "gif", "doc", "docx", "xls", "xlsx");
+            "txt", "json", "csv", "pdf", "png", "jpg", "jpeg", "webp");
 
     // CSV Injection characters
     private static final List<String> CSV_INJECTION_CHARS = List.of("=", "+", "-", "@");
@@ -70,9 +66,9 @@ public final class FileSecurityUtil {
         }
 
         String lowExtension = extension.toLowerCase();
-        if (BANNED_EXTENSIONS.contains(lowExtension)) {
-            log.warn("Banned extension detected: {}", lowExtension);
-            throw new InvalidProjectDatasetException("Forbidden file type: " + extension);
+        if (!ALLOWED_EXTENSIONS.contains(lowExtension)) {
+            log.warn("Extension not in allowed list: {}", lowExtension);
+            throw new InvalidProjectDatasetException("Unsupported file type: " + extension);
         }
     }
 

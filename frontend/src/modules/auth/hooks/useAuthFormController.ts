@@ -10,7 +10,7 @@ import {
   useWatch,
 } from 'react-hook-form';
 import { type z } from 'zod';
-import { type FieldKey, mergeFormValues, pickFieldErrors } from '@/lib/formUtils';
+import { type FieldKey, mergeFormValues, pickFieldErrors } from '@/shared/utils/formUtils';
 
 type UseAuthFormControllerOptions<TValues extends FieldValues> = {
   defaultValues: TValues;

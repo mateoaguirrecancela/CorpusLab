@@ -1,8 +1,8 @@
-import { api } from '@/lib/api';
-import { extractApiErrorMessage } from '@/lib/apiErrors';
-import i18n from '@/lib/i18n';
-import { type CreateResearchGroupPayload } from '@/modules/researchgroup/types/createResearchGroup';
+import { api } from '@/app/config/axiosInstance';
+import { extractApiErrorMessage } from '@/shared/api/apiErrors';
+import i18n from '@/app/config/i18n';
 import {
+  type CreateResearchGroupPayload,
   type InviteResearchGroupMemberPayload,
   type ResearchGroupDetail,
   type ResearchGroupInvitation,

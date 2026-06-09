@@ -1,5 +1,5 @@
 import { type CountryOption, type RegisterFormState } from '@/modules/auth/types/signup';
-import { buildCountryOptions } from '@/lib/countries';
+import { buildCountryOptions } from '@/shared/constants/countries';
 
 export function getCountryOptions(locale: string): CountryOption[] {
   return buildCountryOptions(locale);

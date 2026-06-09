@@ -155,13 +155,14 @@ export function EditResearchGroupDialog({
           <DialogFooter>
             {showDeleteButton ? (
               <Button
-                className="h-10 min-w-32 rounded-md bg-destructive text-sm font-semibold text-white transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70 cursor-pointer"
                 disabled={isDeleting || isSaving}
                 onClick={() => {
                   setOpen(false);
                   setConfirmDeleteOpen(true);
                 }}
+                size="action-md"
                 type="button"
+                variant="danger"
               >
                 {t('researchGroup.edit.delete')}
               </Button>
@@ -171,8 +172,8 @@ export function EditResearchGroupDialog({
               isPending={isSaving}
               label={t('researchGroup.edit.submit')}
               loadingLabel={t('common.actions.saving')}
-              minWidthClassName="min-w-32"
               onClick={() => void handleSubmit(submitForm)()}
+              size="action-md"
             />
           </DialogFooter>
         </DialogContent>

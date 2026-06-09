@@ -1,5 +1,6 @@
 import { type InfiniteData } from '@tanstack/react-query';
-import { type ProjectAssignedSummary, type SliceResponse } from '@/modules/project/types/project';
+import { type SliceResponse } from '@/shared/types/slice';
+import { type ResearchGroupAssignedProjectSummary } from '@/modules/researchgroup/types/researchGroup';
 
 export function parseResearchGroupId(id: string | undefined): number {
   return Number(id);
@@ -10,7 +11,9 @@ export function isValidResearchGroupId(groupId: number): boolean {
 }
 
 export function getAssignedProjectsFromPages(
-  assignedProjectsData: InfiniteData<SliceResponse<ProjectAssignedSummary>> | undefined,
-): ProjectAssignedSummary[] {
+  assignedProjectsData:
+    | InfiniteData<SliceResponse<ResearchGroupAssignedProjectSummary>>
+    | undefined,
+): ResearchGroupAssignedProjectSummary[] {
   return assignedProjectsData?.pages.flatMap((page) => page.content) ?? [];
 }

@@ -30,11 +30,7 @@ export function ResearchGroupDetailToolbar({
           onDeleted={onDeleted}
           showDeleteButton
           trigger={
-            <Button
-              className="h-10 rounded-md border border-border bg-surface-base px-4 text-sm font-semibold text-primary hover:bg-accent cursor-pointer"
-              type="button"
-              variant="outline"
-            >
+            <Button size="action" type="button" variant="secondaryAction">
               <FilePenLine className="size-4" />
               {t('researchGroup.detail.editGroup')}
             </Button>

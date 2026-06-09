@@ -3,7 +3,7 @@ import { Lock, Mail } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
-import { useToastMessages } from '@/hooks/useToastMessages';
+import { useToastMessages } from '@/shared/hooks/useToastMessages';
 import {
   AuthDivider,
   AuthLinkPrompt,

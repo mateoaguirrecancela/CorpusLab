@@ -17,11 +17,4 @@ export type UpdateProfilePayload = {
   city: string;
 };
 
-export type ProfileFormState = {
-  firstName: string;
-  lastName: string;
-  birth: string;
-  gender: string;
-  countryCode: string;
-  city: string;
-};
+export type ProfileFormState = UpdateProfilePayload;

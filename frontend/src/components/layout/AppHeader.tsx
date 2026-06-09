@@ -6,12 +6,12 @@ import { Link, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import corpusLabLogo from '@/assets/corpuslab.webp';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { getUserInitials } from '@/lib/user';
+import { getUserInitials } from '@/shared/utils/user';
 import { useProfileQuery } from '@/modules/auth/hooks/useProfileQuery';
 import { getLogoutErrorMessage, logout } from '@/modules/auth/services/authService';
 import { clearSession } from '@/modules/auth/services/sessionService';
 import { NotificationMenu } from '@/modules/notification/components/NotificationMenu';
-import { NOTIFICATIONS_QUERY_KEY } from '@/modules/notification/hooks/useNotificationQueries';
+import { notificationQueryKeys } from '@/modules/notification/queryKeys';
 
 type AppTopbarProps = Readonly<{
   isSidebarCollapsed: boolean;
@@ -49,7 +49,7 @@ export function AppHeader({ isSidebarCollapsed, onToggleSidebar }: AppTopbarProp
     } catch (error) {
       toast.error(getLogoutErrorMessage(error));
     } finally {
-      clearSession(queryClient, [NOTIFICATIONS_QUERY_KEY]);
+      clearSession(queryClient, [notificationQueryKeys.all]);
       navigate('/auth/login', { replace: true });
       setIsLoggingOut(false);
     }

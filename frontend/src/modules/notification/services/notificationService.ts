@@ -1,6 +1,6 @@
-import { api } from '@/lib/api';
-import { extractTranslatedApiErrorMessage } from '@/lib/apiErrors';
-import i18n, { getResolvedLanguage } from '@/lib/i18n';
+import { api } from '@/app/config/axiosInstance';
+import i18n, { getResolvedLanguage } from '@/app/config/i18n';
+import { extractApiErrorMessage } from '@/shared/api/apiErrors';
 import { getSessionToken } from '@/modules/auth/services/sessionService';
 import {
   type NotificationItem,
@@ -81,13 +81,13 @@ async function readNotificationEventStream(
 }
 
 export function getNotificationsErrorMessage(error: unknown): string {
-  return extractTranslatedApiErrorMessage(error, 'notification.errors.loadFailed');
+  return extractApiErrorMessage(error, i18n.t('notification.errors.loadFailed'));
 }
 
 export function getMarkNotificationReadErrorMessage(error: unknown): string {
-  return extractTranslatedApiErrorMessage(error, 'notification.errors.markReadFailed');
+  return extractApiErrorMessage(error, i18n.t('notification.errors.markReadFailed'));
 }
 
 export function getMarkAllNotificationsReadErrorMessage(error: unknown): string {
-  return extractTranslatedApiErrorMessage(error, 'notification.errors.markAllReadFailed');
+  return extractApiErrorMessage(error, i18n.t('notification.errors.markAllReadFailed'));
 }

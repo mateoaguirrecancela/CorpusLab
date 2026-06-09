@@ -1,7 +1,7 @@
 import { ArrowRight, FolderKanban, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { type RoleBadgeRole, RoleBadge } from '@/components/common/RoleBadge';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/utils/cn';
 
 type EntityFooterMeta = Readonly<{
   kind: 'research-group' | 'members';

@@ -45,20 +45,21 @@ export function ConfirmDestructiveDialog({
 
         <DialogFooter>
           <Button
-            className="h-10 rounded-md border border-border bg-surface-base px-4 text-sm font-semibold text-primary hover:bg-accent cursor-pointer"
             disabled={isConfirming}
             onClick={() => onOpenChange(false)}
+            size="action"
             type="button"
-            variant="outline"
+            variant="secondaryAction"
           >
             {t('common.actions.cancel')}
           </Button>
 
           <Button
-            className="h-10 min-w-32 rounded-md bg-destructive text-sm font-semibold text-white transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70 cursor-pointer"
             disabled={isConfirming}
             onClick={() => void onConfirm()}
+            size="action-md"
             type="button"
+            variant="danger"
           >
             {isConfirming ? (
               <span className="inline-flex items-center gap-2">

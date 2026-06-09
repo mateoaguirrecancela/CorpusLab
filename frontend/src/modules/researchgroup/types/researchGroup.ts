@@ -1,3 +1,8 @@
+import type {
+  ProjectAssignedSummary,
+  ProjectParticipantRole,
+} from '@/modules/project/shared/types/project';
+
 export type ResearchGroupMemberRole = 'OWNER' | 'ADMIN' | 'ANNOTATOR';
 
 export const INVITABLE_RESEARCH_GROUP_MEMBER_ROLES = [
@@ -44,10 +49,14 @@ export type InviteResearchGroupMemberPayload = {
   role: InvitableResearchGroupMemberRole;
 };
 
-export type UpdateResearchGroupPayload = {
+type ResearchGroupBasePayload = {
   name: string;
   description?: string;
 };
+
+export type CreateResearchGroupPayload = ResearchGroupBasePayload;
+
+export type UpdateResearchGroupPayload = ResearchGroupBasePayload;
 
 export type UpdateResearchGroupMemberRolePayload = {
   role: InvitableResearchGroupMemberRole;
@@ -66,3 +75,7 @@ export type ResearchGroupInvitation = {
   createdAt: string;
   expiresAt: string;
 };
+
+export type ResearchGroupProjectParticipantRole = ProjectParticipantRole;
+
+export type ResearchGroupAssignedProjectSummary = ProjectAssignedSummary;

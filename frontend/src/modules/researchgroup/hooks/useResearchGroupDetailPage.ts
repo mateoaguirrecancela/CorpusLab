@@ -1,13 +1,15 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
-import { useToastMessages } from '@/hooks/useToastMessages';
-import { useAssignedProjectsByGroupQuery } from '@/modules/project/hooks/useProjectQueries';
-import { getProjectsLoadErrorMessage } from '@/modules/project/services/projectService';
-import { type ProjectAssignedSummary } from '@/modules/project/types/project';
+import { useToastMessages } from '@/shared/hooks/useToastMessages';
 import { useResearchGroupDetailQuery } from '@/modules/researchgroup/hooks/useResearchGroupQueries';
+import { useResearchGroupAssignedProjectsQuery } from '@/modules/researchgroup/hooks/useResearchGroupProjectQueries';
+import { getResearchGroupProjectsLoadErrorMessage } from '@/modules/researchgroup/services/researchGroupProjectService';
 import { getResearchGroupDetailErrorMessage } from '@/modules/researchgroup/services/researchGroupService';
 import { useResearchGroupUIStore } from '@/modules/researchgroup/stores/useResearchGroupUIStore';
-import { type ResearchGroupDetail } from '@/modules/researchgroup/types/researchGroup';
+import {
+  type ResearchGroupAssignedProjectSummary,
+  type ResearchGroupDetail,
+} from '@/modules/researchgroup/types/researchGroup';
 import {
   getAssignedProjectsFromPages,
   isValidResearchGroupId,
@@ -15,7 +17,7 @@ import {
 } from '@/modules/researchgroup/utils/researchGroupDetailPage';
 
 type ResearchGroupDetailPageState = Readonly<{
-  assignedProjects: ProjectAssignedSummary[];
+  assignedProjects: ResearchGroupAssignedProjectSummary[];
   canCreateProjects: boolean;
   canManageResearchers: boolean;
   errorMessage: string;
@@ -62,10 +64,12 @@ export function useResearchGroupDetailPage(): ResearchGroupDetailPageState {
     hasNextPage: hasNextProjectsPage,
     fetchNextPage: fetchNextProjectsPage,
     isFetchingNextPage: isFetchingNextProjectsPage,
-  } = useAssignedProjectsByGroupQuery(numericGroupId, showArchivedProjects);
+  } = useResearchGroupAssignedProjectsQuery(numericGroupId, showArchivedProjects);
 
   const assignedProjects = getAssignedProjectsFromPages(assignedProjectsData);
-  const projectsErrorMessage = isProjectsError ? getProjectsLoadErrorMessage(projectsError) : '';
+  const projectsErrorMessage = isProjectsError
+    ? getResearchGroupProjectsLoadErrorMessage(projectsError)
+    : '';
 
   useToastMessages({
     errorMessage,

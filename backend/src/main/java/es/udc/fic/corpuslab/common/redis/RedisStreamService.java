@@ -125,6 +125,24 @@ public class RedisStreamService {
         return readNew(streamKey, group, consumerName, count);
     }
 
+    public List<MapRecord<String, Object, Object>> readNewThenPending(
+            String streamKey,
+            String group,
+            String consumerName,
+            long count) {
+        if (!prepareStreamGroup(streamKey, group)) {
+            return List.of();
+        }
+
+        List<MapRecord<String, Object, Object>> newRecords = readNew(streamKey, group, consumerName, count);
+
+        if (newRecords != null && !newRecords.isEmpty()) {
+            return newRecords;
+        }
+
+        return readPending(streamKey, group, consumerName, count);
+    }
+
     public List<MapRecord<String, Object, Object>> readPending(
             String streamKey,
             String group,

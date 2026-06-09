@@ -1,8 +1,7 @@
 import { type QueryClient, type QueryKey } from '@tanstack/react-query';
-import { PROFILE_QUERY_KEY } from '@/modules/auth/constants/queryKeys';
+import { authQueryKeys } from '@/modules/auth/queryKeys';
 import { SESSION_AUTH_TOKEN_STORAGE_KEY } from '@/modules/auth/constants/session';
 import { type ProfileResponse } from '@/modules/auth/types/profile';
-import { toSessionProfile } from '@/modules/auth/utils/authPayloads';
 
 type AuthSessionProfile = ProfileResponse & {
   token: string;
@@ -25,7 +24,19 @@ export function storeAuthenticatedSession(
   session: AuthSessionProfile,
 ): void {
   storeSessionToken(session.token);
-  queryClient.setQueryData<ProfileResponse>(PROFILE_QUERY_KEY, toSessionProfile(session));
+  queryClient.setQueryData<ProfileResponse>(authQueryKeys.profile, toSessionProfile(session));
+}
+
+function toSessionProfile(session: AuthSessionProfile): ProfileResponse {
+  return {
+    email: session.email,
+    firstName: session.firstName,
+    lastName: session.lastName,
+    birth: session.birth,
+    gender: session.gender,
+    countryCode: session.countryCode,
+    city: session.city,
+  };
 }
 
 export function clearSession(
@@ -33,7 +44,7 @@ export function clearSession(
   additionalQueryKeys: readonly QueryKey[] = [],
 ): void {
   localStorage.removeItem(SESSION_AUTH_TOKEN_STORAGE_KEY);
-  queryClient.removeQueries({ queryKey: PROFILE_QUERY_KEY });
+  queryClient.removeQueries({ queryKey: authQueryKeys.profile });
 
   for (const queryKey of additionalQueryKeys) {
     queryClient.removeQueries({ queryKey });
