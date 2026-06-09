@@ -1,3 +1,5 @@
+export type { CountryOption } from '@/shared/types/country';
+
 export type RegisterFormState = {
   firstName: string;
   lastName: string;
@@ -7,9 +9,4 @@ export type RegisterFormState = {
   gender: '' | 'MALE' | 'FEMALE' | 'OTHER';
   countryCode: string;
   city: string;
-};
-
-export type CountryOption = {
-  value: string;
-  label: string;
 };

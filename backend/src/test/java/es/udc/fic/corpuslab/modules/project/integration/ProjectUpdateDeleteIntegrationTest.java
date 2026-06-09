@@ -516,4 +516,148 @@ class ProjectUpdateDeleteIntegrationTest extends AbstractIntegrationTest {
         assertThat(projectParticipantRepository.findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(project.getId())).isEmpty();
         assertThat(datasetItemRepository.findByProjectIdOrderByItemIndexAsc(project.getId())).isEmpty();
     }
+
+    @Test
+    void shouldCleanupIncompleteProjectWhenRequesterIsCreator() throws Exception {
+        User creator = UserTestBuilder.validUser()
+                .withEmail("creator.cleanup@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        creator = userRepository.save(creator);
+
+        ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(creator)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.OWNER)
+                .build());
+
+        Project project = new Project();
+        project.setName("Cleanup Candidate");
+        project.setResearchGroup(group);
+        project = projectRepository.save(project);
+
+        ProjectParticipant participant = new ProjectParticipant();
+        participant.setProject(project);
+        participant.setUser(creator);
+        participant.setRole(ProjectParticipantRole.CREATOR);
+        projectParticipantRepository.save(participant);
+
+        String session = loginAs("creator.cleanup@example.com");
+
+        mockMvc.perform(delete("/api/research-groups/{groupId}/projects/{projectId}/wizard-cleanup", group.getId(),
+                project.getId())
+                .header("Authorization", "Bearer " + session))
+                .andExpect(status().isNoContent());
+
+        assertThat(projectRepository.existsById(project.getId())).isFalse();
+        assertThat(projectParticipantRepository.findByProjectIdOrderByRoleAscUserLastNameAscUserFirstNameAsc(project.getId()))
+                .isEmpty();
+    }
+
+    @Test
+    void shouldReturnForbiddenWhenRequesterIsNotCreatorOnWizardCleanup() throws Exception {
+        User creator = UserTestBuilder.validUser()
+                .withEmail("creator.cleanup.forbidden@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        creator = userRepository.save(creator);
+
+        User participantUser = UserTestBuilder.validUser()
+                .withEmail("participant.cleanup.forbidden@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        participantUser = userRepository.save(participantUser);
+
+        ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(creator)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.OWNER)
+                .build());
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(participantUser)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.ANNOTATOR)
+                .build());
+
+        Project project = new Project();
+        project.setName("Cleanup Forbidden");
+        project.setResearchGroup(group);
+        project = projectRepository.save(project);
+
+        ProjectParticipant creatorParticipant = new ProjectParticipant();
+        creatorParticipant.setProject(project);
+        creatorParticipant.setUser(creator);
+        creatorParticipant.setRole(ProjectParticipantRole.CREATOR);
+        projectParticipantRepository.save(creatorParticipant);
+
+        ProjectParticipant participant = new ProjectParticipant();
+        participant.setProject(project);
+        participant.setUser(participantUser);
+        participant.setRole(ProjectParticipantRole.PARTICIPANT);
+        projectParticipantRepository.save(participant);
+
+        String session = loginAs("participant.cleanup.forbidden@example.com");
+
+        mockMvc.perform(delete("/api/research-groups/{groupId}/projects/{projectId}/wizard-cleanup", group.getId(),
+                project.getId())
+                .header("Authorization", "Bearer " + session))
+                .andExpect(status().isForbidden());
+
+        assertThat(projectRepository.existsById(project.getId())).isTrue();
+    }
+
+    @Test
+    void shouldReturnForbiddenWhenProjectIsNotEligibleForWizardCleanup() throws Exception {
+        User creator = UserTestBuilder.validUser()
+                .withEmail("creator.cleanup.ineligible@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        creator = userRepository.save(creator);
+
+        User assignedParticipant = UserTestBuilder.validUser()
+                .withEmail("participant.cleanup.ineligible@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build();
+        assignedParticipant = userRepository.save(assignedParticipant);
+
+        ResearchGroup group = researchGroupRepository.save(ResearchGroupTestBuilder.validGroup().build());
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(creator)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.OWNER)
+                .build());
+        memberRepository.save(ResearchGroupMemberTestBuilder.validMember()
+                .withUser(assignedParticipant)
+                .withResearchGroup(group)
+                .withRole(ResearchGroupMemberRole.ANNOTATOR)
+                .build());
+
+        Project project = new Project();
+        project.setName("Cleanup Not Eligible");
+        project.setResearchGroup(group);
+        project = projectRepository.save(project);
+
+        ProjectParticipant creatorParticipant = new ProjectParticipant();
+        creatorParticipant.setProject(project);
+        creatorParticipant.setUser(creator);
+        creatorParticipant.setRole(ProjectParticipantRole.CREATOR);
+        projectParticipantRepository.save(creatorParticipant);
+
+        ProjectParticipant participant = new ProjectParticipant();
+        participant.setProject(project);
+        participant.setUser(assignedParticipant);
+        participant.setRole(ProjectParticipantRole.PARTICIPANT);
+        projectParticipantRepository.save(participant);
+
+        String session = loginAs("creator.cleanup.ineligible@example.com");
+
+        mockMvc.perform(delete("/api/research-groups/{groupId}/projects/{projectId}/wizard-cleanup", group.getId(),
+                project.getId())
+                .header("Authorization", "Bearer " + session))
+                .andExpect(status().isForbidden());
+
+        assertThat(projectRepository.existsById(project.getId())).isTrue();
+    }
 }

@@ -7,5 +7,7 @@ public record SaveProjectAnnotationStepResponseDto(
         long participantCompletedSteps,
         long participantTotalSteps,
         int participantCompletionPercentage,
-        int projectCompletionPercentage) {
+        int projectCompletionPercentage,
+        int firstPendingStepIndex,
+        Object annotation) {
 }

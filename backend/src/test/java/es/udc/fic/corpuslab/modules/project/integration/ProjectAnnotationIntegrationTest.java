@@ -41,6 +41,7 @@ import es.udc.fic.corpuslab.modules.notification.entities.Notification;
 import es.udc.fic.corpuslab.modules.notification.enums.NotificationType;
 import es.udc.fic.corpuslab.modules.notification.repositories.NotificationRepository;
 import es.udc.fic.corpuslab.modules.project.shared.entities.DatasetItem;
+import es.udc.fic.corpuslab.modules.project.shared.entities.Label;
 import es.udc.fic.corpuslab.modules.project.shared.entities.Project;
 import es.udc.fic.corpuslab.modules.project.shared.entities.ProjectParticipant;
 import es.udc.fic.corpuslab.modules.project.shared.enums.ProjectParticipantRole;
@@ -151,7 +152,8 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
                                 .andExpect(jsonPath("$.stepIndex").value(0))
                                 .andExpect(jsonPath("$.participantCompletedSteps").value(1))
                                 .andExpect(jsonPath("$.participantTotalSteps").value(3))
-                                .andExpect(jsonPath("$.participantCompletionPercentage").value(33));
+                                .andExpect(jsonPath("$.participantCompletionPercentage").value(33))
+                                .andExpect(jsonPath("$.firstPendingStepIndex").value(2));
 
                 mockMvc.perform(get("/api/projects/{projectId}", project.getId())
                                 .header("Authorization", "Bearer " + token))
@@ -239,7 +241,8 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
                                 .content(objectMapper.writeValueAsString(clearRequest)))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.participantCompletedSteps").value(0))
-                                .andExpect(jsonPath("$.participantCompletionPercentage").value(0));
+                                .andExpect(jsonPath("$.participantCompletionPercentage").value(0))
+                                .andExpect(jsonPath("$.firstPendingStepIndex").value(1));
 
                 mockMvc.perform(get("/api/projects/{projectId}/annotations/steps", project.getId())
                                 .param("offset", "0")
@@ -889,6 +892,155 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
+        void shouldReturnBadRequestWhenSavingAnnotationForArchivedProject() throws Exception {
+                User owner = createUser("owner.annotation.archived@example.com");
+                User annotator = createUser("annotator.annotation.archived@example.com");
+
+                ResearchGroup group = createGroup("Annotation Archived Project Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Archived Annotation Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project.setArchived(true);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createCsvDatasetItem(project, "id,text\n1,alpha");
+                String token = loginAs("annotator.annotation.archived@example.com");
+
+                mockMvc.perform(put("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                                "datasetItemId", item.getId(),
+                                                "stepIndex", 0,
+                                                "annotation", Map.of("label", "POSITIVE")))))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenSavingAnnotationBeforeProjectSetupIsCompleted() throws Exception {
+                User owner = createUser("owner.annotation.setup.pending@example.com");
+                User annotator = createUser("annotator.annotation.setup.pending@example.com");
+
+                ResearchGroup group = createGroup("Annotation Setup Pending Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Pending Setup Annotation Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project.setSetupCompleted(false);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createCsvDatasetItem(project, "id,text\n1,alpha");
+                String token = loginAs("annotator.annotation.setup.pending@example.com");
+
+                mockMvc.perform(put("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                                "datasetItemId", item.getId(),
+                                                "stepIndex", 0,
+                                                "annotation", Map.of("label", "POSITIVE")))))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenSimpleClassificationLabelIsNotConfigured() throws Exception {
+                User owner = createUser("owner.annotation.label.invalid@example.com");
+                User annotator = createUser("annotator.annotation.label.invalid@example.com");
+
+                ResearchGroup group = createGroup("Annotation Invalid Label Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Invalid Label Annotation Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createCsvDatasetItem(project, "id,text\n1,alpha");
+                String token = loginAs("annotator.annotation.label.invalid@example.com");
+
+                mockMvc.perform(put("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                                "datasetItemId", item.getId(),
+                                                "stepIndex", 0,
+                                                "annotation", Map.of("label", "NOT_CONFIGURED")))))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenMultilabelPayloadIsNotAList() throws Exception {
+                User owner = createUser("owner.annotation.multilabel.invalid@example.com");
+                User annotator = createUser("annotator.annotation.multilabel.invalid@example.com");
+
+                ResearchGroup group = createGroup("Annotation Invalid Multilabel Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Invalid Multilabel Annotation Project");
+                project.setProjectType(ProjectType.TEXT_CLASSIFICATION_MULTILABEL);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createCsvDatasetItem(project, "id,text\n1,alpha");
+                String token = loginAs("annotator.annotation.multilabel.invalid@example.com");
+
+                mockMvc.perform(put("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                                "datasetItemId", item.getId(),
+                                                "stepIndex", 0,
+                                                "annotation", Map.of("labels", "POSITIVE")))))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenSeq2SeqPayloadContainsUnsupportedFields() throws Exception {
+                User owner = createUser("owner.annotation.seq2seq.invalid@example.com");
+                User annotator = createUser("annotator.annotation.seq2seq.invalid@example.com");
+
+                ResearchGroup group = createGroup("Annotation Invalid Seq2Seq Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                Project project = createProject(group, "Invalid Seq2Seq Annotation Project");
+                project.setProjectType(ProjectType.SEQ2SEQ);
+                project = projectRepository.save(project);
+
+                assign(project, owner, ProjectParticipantRole.CREATOR);
+                assign(project, annotator, ProjectParticipantRole.PARTICIPANT);
+
+                DatasetItem item = createCsvDatasetItem(project, "id,text\n1,alpha");
+                String token = loginAs("annotator.annotation.seq2seq.invalid@example.com");
+
+                mockMvc.perform(put("/api/projects/{projectId}/annotations/steps", project.getId())
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                                "datasetItemId", item.getId(),
+                                                "stepIndex", 0,
+                                                "annotation", Map.of(
+                                                                "text", "summary",
+                                                                "extra", Map.of("anything", true))))))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
         void shouldReturnBadRequestWhenDatasetItemBelongsToAnotherProject() throws Exception {
                 User owner = createUser("owner.annotation.dataset.mismatch@example.com");
                 User annotator = createUser("annotator.annotation.dataset.mismatch@example.com");
@@ -1257,6 +1409,22 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
                 Project project = new Project();
                 project.setResearchGroup(group);
                 project.setName(name);
+                project.setSetupCompleted(true);
+                for (String labelName : List.of(
+                                "POSITIVE",
+                                "NEGATIVE",
+                                "PERSON",
+                                "ORG",
+                                "correcta",
+                                "incorrecta",
+                                "OWNER_ONLY",
+                                "PARTICIPANT_ONLY")) {
+                        Label label = new Label();
+                        label.setProject(project);
+                        label.setName(labelName);
+                        label.setColor("#10B981");
+                        project.getLabels().add(label);
+                }
                 return projectRepository.save(project);
         }
 

@@ -1,16 +1,18 @@
 import { PageContainer } from '@/components/common/PageContainer';
 import { Spinner } from '@/components/ui/spinner';
-import { type ProjectAssignedSummary } from '@/modules/project/types/project';
 import { ResearchGroupDetailToolbar } from '@/modules/researchgroup/components/ResearchGroupDetailToolbar';
 import { ResearchGroupMembersSection } from '@/modules/researchgroup/components/ResearchGroupMembersSection';
 import { ResearchGroupOverviewSection } from '@/modules/researchgroup/components/ResearchGroupOverviewSection';
 import { ResearchGroupProjectsSection } from '@/modules/researchgroup/components/ResearchGroupProjectsSection';
 import { useResearchGroupDetailPage } from '@/modules/researchgroup/hooks/useResearchGroupDetailPage';
-import { type ResearchGroupDetail } from '@/modules/researchgroup/types/researchGroup';
+import {
+  type ResearchGroupAssignedProjectSummary,
+  type ResearchGroupDetail,
+} from '@/modules/researchgroup/types/researchGroup';
 import { useTranslation } from 'react-i18next';
 
 type ResearchGroupDetailContentProps = Readonly<{
-  assignedProjects: ProjectAssignedSummary[];
+  assignedProjects: ResearchGroupAssignedProjectSummary[];
   canCreateProjects: boolean;
   canManageResearchers: boolean;
   errorMessage: string;

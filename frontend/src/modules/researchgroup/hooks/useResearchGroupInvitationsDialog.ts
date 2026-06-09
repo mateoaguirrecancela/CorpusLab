@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { useToastMessages } from '@/hooks/useToastMessages';
+import { useToastMessages } from '@/shared/hooks/useToastMessages';
 import {
   useAcceptResearchGroupInvitationMutation,
   useDeclineResearchGroupInvitationMutation,

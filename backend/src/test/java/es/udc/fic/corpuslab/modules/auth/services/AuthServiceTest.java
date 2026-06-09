@@ -32,6 +32,7 @@ import es.udc.fic.corpuslab.modules.auth.entities.User;
 import es.udc.fic.corpuslab.modules.auth.exceptions.EmailAlreadyRegisteredException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.EmailNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.InvalidCredentialsException;
+import es.udc.fic.corpuslab.modules.auth.exceptions.OAuthLoginCodeNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetEmailDeliveryException;
 import es.udc.fic.corpuslab.modules.auth.exceptions.PasswordResetTokenNotFoundException;
 import es.udc.fic.corpuslab.modules.auth.fixtures.UserLoginRequestTestBuilder;
@@ -310,6 +311,33 @@ class AuthServiceTest {
 
         assertThat(firstResponse.message()).isEqualTo("Logged out successfully");
         assertThat(secondResponse.message()).isEqualTo("Logged out successfully");
+    }
+
+    @Test
+    void exchangeOAuthCodeShouldConsumeCodeAndReturnSignedSession() {
+        User oauthUser = UserTestBuilder.validUser().withEmail("oauth.user@example.com").build();
+        setId(oauthUser, 55L);
+
+        when(oAuthLoginCodeService.consumeCode("valid-oauth-code")).thenReturn(oauthUser);
+        when(jwtTokenService.generateToken("oauth.user@example.com")).thenReturn("oauth-jwt-token");
+
+        UserLoginResponseDto response = authService.exchangeOAuthCode("valid-oauth-code");
+
+        assertThat(response.id()).isEqualTo(55L);
+        assertThat(response.email()).isEqualTo("oauth.user@example.com");
+        assertThat(response.token()).isEqualTo("oauth-jwt-token");
+    }
+
+    @Test
+    void exchangeOAuthCodeShouldPropagateNotFoundWhenCodeCannotBeConsumed() {
+        when(oAuthLoginCodeService.consumeCode("invalid-oauth-code"))
+                .thenThrow(new OAuthLoginCodeNotFoundException());
+
+        assertThatThrownBy(() -> authService.exchangeOAuthCode("invalid-oauth-code"))
+                .isInstanceOf(OAuthLoginCodeNotFoundException.class)
+                .hasMessageContaining("not found or expired");
+
+        verify(jwtTokenService, never()).generateToken(any());
     }
 
     @Test

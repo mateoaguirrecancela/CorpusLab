@@ -23,19 +23,19 @@ export function ResearchGroupOverviewSection({ group }: ResearchGroupOverviewSec
         <div className="flex lg:justify-end gap-4">
           <div className="rounded-md bg-background p-4 text-center w-30 h-30">
             <p className="text-xs font-bold tracking-widest text-muted-foreground uppercase">
-              {t('researchGroup.detail.totalMembers')}
+              {t('researchGroup.detail.activeProjects')}
             </p>
             <p className="mt-2 text-4xl font-black leading-none text-primary">
-              {group.totalMembers}
+              {group.activeProjects}
             </p>
           </div>
 
           <div className="rounded-md bg-background p-4 text-center w-30 h-30">
             <p className="text-xs font-bold tracking-widest text-muted-foreground uppercase">
-              {t('researchGroup.detail.activeProjects')}
+              {t('researchGroup.detail.totalMembers')}
             </p>
             <p className="mt-2 text-4xl font-black leading-none text-primary">
-              {group.activeProjects}
+              {group.totalMembers}
             </p>
           </div>
         </div>

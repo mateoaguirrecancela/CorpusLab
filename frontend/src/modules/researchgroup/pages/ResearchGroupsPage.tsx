@@ -17,10 +17,7 @@ export default function ResearchGroupsPage() {
     <>
       <ResearchGroupInvitationsDialog
         trigger={
-          <Button
-            className="h-10 px-4 rounded-md border border-border bg-surface-base text-sm font-semibold text-foreground transition-colors hover:bg-accent cursor-pointer"
-            type="button"
-          >
+          <Button size="action" type="button" variant="secondaryAction">
             <Mail className="size-4" />
             {t('researchGroup.invitations')}
             {invitations.length > 0 && (
@@ -34,10 +31,7 @@ export default function ResearchGroupsPage() {
 
       <CreateResearchGroupDialog
         trigger={
-          <Button
-            className="h-10 px-4 rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-muted cursor-pointer"
-            type="button"
-          >
+          <Button size="action" type="button" variant="primaryAction">
             <Plus className="size-4" />
             {t('researchGroup.newGroup')}
           </Button>

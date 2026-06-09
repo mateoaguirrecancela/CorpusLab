@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -197,6 +198,28 @@ class NotificationIntegrationTest extends AbstractIntegrationTest {
     @Test
     void shouldReturnUnauthorizedWithoutSession() throws Exception {
         mockMvc.perform(get("/api/notifications"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldOpenNotificationStreamForAuthenticatedUser() throws Exception {
+        userRepository.save(UserTestBuilder.validUser()
+                .withEmail("stream.user@example.com")
+                .withPasswordHash(passwordEncoder.encode("strong-password"))
+                .build());
+
+        String session = loginAs("stream.user@example.com");
+
+        mockMvc.perform(get("/api/notifications/stream")
+                .header("Authorization", "Bearer " + session))
+                .andExpect(status().isOk())
+                .andExpect(request().asyncStarted())
+                .andReturn();
+    }
+
+    @Test
+    void shouldReturnUnauthorizedWhenOpeningNotificationStreamWithoutSession() throws Exception {
+        mockMvc.perform(get("/api/notifications/stream"))
                 .andExpect(status().isUnauthorized());
     }
 

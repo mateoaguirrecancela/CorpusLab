@@ -1,9 +1,6 @@
 import { Link } from 'react-router';
 import { SubmitButtonWithSpinner } from '@/components/ui/submit-button-with-spinner';
 
-const AUTH_SUBMIT_BUTTON_CLASS =
-  'h-11 w-full cursor-pointer rounded-md bg-primary text-sm font-semibold text-white shadow-[var(--shadow-primary-action)] hover:bg-primary-strong disabled:bg-secondary';
-
 type AuthSubmitButtonProps = {
   canSubmit: boolean;
   idleLabel: string;
@@ -30,11 +27,12 @@ export function AuthSubmitButton({
 }: Readonly<AuthSubmitButtonProps>) {
   return (
     <SubmitButtonWithSpinner
-      className={AUTH_SUBMIT_BUTTON_CLASS}
       disabled={!canSubmit}
       idleLabel={idleLabel}
       isSubmitting={isSubmitting}
+      size="auth"
       submittingLabel={submittingLabel}
+      variant="primaryAction"
     />
   );
 }

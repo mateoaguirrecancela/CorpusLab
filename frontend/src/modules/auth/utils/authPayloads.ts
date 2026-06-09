@@ -1,7 +1,7 @@
 import { type ForgotPasswordFormState } from '@/modules/auth/types/forgotPassword';
 import { type LoginFormState } from '@/modules/auth/types/login';
 import { type ResetPasswordPayload } from '@/modules/auth/types/resetPassword';
-import { type ProfileResponse, type UpdateProfilePayload } from '@/modules/auth/types/profile';
+import { type UpdateProfilePayload } from '@/modules/auth/types/profile';
 import { type RegisterFormState } from '@/modules/auth/types/signup';
 
 type SignupPayload = {
@@ -80,17 +80,5 @@ export function toResetPasswordPayload(payload: ResetPasswordPayload): ResetPass
 export function toOAuthExchangePayload(code: string): OAuthExchangePayload {
   return {
     code: code.trim(),
-  };
-}
-
-export function toSessionProfile(session: ProfileResponse): ProfileResponse {
-  return {
-    email: session.email,
-    firstName: session.firstName,
-    lastName: session.lastName,
-    birth: session.birth,
-    gender: session.gender,
-    countryCode: session.countryCode,
-    city: session.city,
   };
 }

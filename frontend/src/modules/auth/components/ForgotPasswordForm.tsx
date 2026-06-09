@@ -2,7 +2,7 @@ import { type FormEventHandler } from 'react';
 import { Mail } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { FormFieldControl } from '@/components/common/FormFieldControl';
-import { useToastMessages } from '@/hooks/useToastMessages';
+import { useToastMessages } from '@/shared/hooks/useToastMessages';
 import { AuthLinkPrompt, AuthSubmitButton } from '@/modules/auth/components/AuthFormActions';
 import { type ForgotPasswordFormState } from '@/modules/auth/types/forgotPassword';
 

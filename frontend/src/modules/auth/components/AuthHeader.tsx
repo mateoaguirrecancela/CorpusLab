@@ -19,10 +19,7 @@ export function AuthHeader() {
             {t('auth.header.login')}
           </Link>
           <Link to="/auth/signup">
-            <Button
-              className="h-8 rounded-md bg-primary px-4 text-xs font-semibold text-white hover:bg-primary-strong cursor-pointer"
-              type="button"
-            >
+            <Button className="px-4 text-xs" type="button" variant="primaryAction">
               {t('auth.header.signup')}
             </Button>
           </Link>

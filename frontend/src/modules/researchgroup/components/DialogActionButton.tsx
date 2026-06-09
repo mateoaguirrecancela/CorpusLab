@@ -6,7 +6,7 @@ type DialogActionButtonProps = Readonly<{
   isPending: boolean;
   label: string;
   loadingLabel: string;
-  minWidthClassName?: string;
+  size?: 'action-sm' | 'action-md' | 'action-wide' | 'action-xl';
   onClick: () => void;
 }>;
 
@@ -15,16 +15,11 @@ export function DialogActionButton({
   isPending,
   label,
   loadingLabel,
-  minWidthClassName = 'min-w-28',
+  size = 'action-sm',
   onClick,
 }: DialogActionButtonProps) {
   return (
-    <Button
-      className={`h-10 ${minWidthClassName} cursor-pointer rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:bg-secondary`}
-      disabled={disabled}
-      onClick={onClick}
-      type="button"
-    >
+    <Button disabled={disabled} onClick={onClick} size={size} type="button" variant="primaryAction">
       {isPending ? (
         <span className="inline-flex items-center gap-2">
           <Spinner aria-hidden className="size-4" />

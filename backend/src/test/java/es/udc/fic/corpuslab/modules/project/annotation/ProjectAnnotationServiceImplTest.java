@@ -32,12 +32,14 @@ import es.udc.fic.corpuslab.modules.project.progress.ProjectProgressCalculator;
 import es.udc.fic.corpuslab.modules.project.progress.UserAnnotationCountDto;
 import es.udc.fic.corpuslab.modules.project.shared.entities.Annotation;
 import es.udc.fic.corpuslab.modules.project.shared.entities.DatasetItem;
+import es.udc.fic.corpuslab.modules.project.shared.entities.Label;
 import es.udc.fic.corpuslab.modules.project.shared.entities.Project;
 import es.udc.fic.corpuslab.modules.project.shared.entities.ProjectParticipant;
 import es.udc.fic.corpuslab.modules.project.shared.enums.ProjectParticipantRole;
 import es.udc.fic.corpuslab.modules.project.shared.enums.ProjectType;
 import es.udc.fic.corpuslab.modules.project.fixtures.ProjectParticipantTestBuilder;
 import es.udc.fic.corpuslab.modules.project.fixtures.ProjectTestBuilder;
+import es.udc.fic.corpuslab.modules.project.shared.exceptions.InvalidProjectAnnotationException;
 import es.udc.fic.corpuslab.modules.project.shared.references.ProjectEntityReferenceService;
 import es.udc.fic.corpuslab.modules.project.shared.repositories.AnnotationRepository;
 import es.udc.fic.corpuslab.modules.project.shared.repositories.DatasetItemRepository;
@@ -80,7 +82,7 @@ class ProjectAnnotationServiceImplTest {
         when(authApiService.findUserByEmail(any()))
                 .thenReturn(new UserInfo(1L, user.getEmail(), user.getFirstName(), user.getLastName()));
 
-        Project project = ProjectTestBuilder.validProject().build();
+        Project project = ProjectTestBuilder.validProject().withSetupCompleted(true).build();
         setProjectId(project, 100L);
 
         ProjectParticipant participant = ProjectParticipantTestBuilder.validParticipant()
@@ -131,6 +133,67 @@ class ProjectAnnotationServiceImplTest {
     }
 
     @Test
+    void getParticipantAnnotationWorkspaceForCreator_ShouldRejectWhenProjectIsArchived() {
+        User requester = UserTestBuilder.validUser().build();
+        setId(requester, 1L);
+
+        when(authApiService.findUserByEmail(any()))
+                .thenReturn(new UserInfo(1L, requester.getEmail(), requester.getFirstName(), requester.getLastName()));
+
+        Project project = ProjectTestBuilder.validProject()
+                .withSetupCompleted(true)
+                .build();
+        project.setArchived(true);
+
+        ProjectParticipant requesterParticipant = ProjectParticipantTestBuilder.validParticipant()
+                .withRole(ProjectParticipantRole.CREATOR)
+                .withProject(project)
+                .withUser(requester)
+                .build();
+
+        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(requesterParticipant));
+
+        assertThatThrownBy(() -> projectAnnotationService.getParticipantAnnotationWorkspaceForCreator(
+                requester.getEmail(),
+                100L,
+                2L,
+                0,
+                50))
+                .isInstanceOf(InvalidProjectAnnotationException.class)
+                .hasMessageContaining("archived");
+    }
+
+    @Test
+    void getParticipantAnnotationWorkspaceForCreator_ShouldRejectWhenProjectSetupIsIncomplete() {
+        User requester = UserTestBuilder.validUser().build();
+        setId(requester, 1L);
+
+        when(authApiService.findUserByEmail(any()))
+                .thenReturn(new UserInfo(1L, requester.getEmail(), requester.getFirstName(), requester.getLastName()));
+
+        Project project = ProjectTestBuilder.validProject()
+                .withSetupCompleted(false)
+                .build();
+
+        ProjectParticipant requesterParticipant = ProjectParticipantTestBuilder.validParticipant()
+                .withRole(ProjectParticipantRole.CREATOR)
+                .withProject(project)
+                .withUser(requester)
+                .build();
+
+        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(requesterParticipant));
+
+        assertThatThrownBy(() -> projectAnnotationService.getParticipantAnnotationWorkspaceForCreator(
+                requester.getEmail(),
+                100L,
+                2L,
+                0,
+                50))
+                .isInstanceOf(InvalidProjectAnnotationException.class)
+                .hasMessageContaining("setup");
+    }
+
+    @Test
     void saveAnnotationStep_ShouldSaveAnnotation_AndReturnCompletionProgress() {
         User user = UserTestBuilder.validUser().build();
         setId(user, 1L);
@@ -143,7 +206,11 @@ class ProjectAnnotationServiceImplTest {
             return null;
         }).when(entityReferenceService).attachUser(any(Annotation.class), eq(1L));
 
-        Project project = ProjectTestBuilder.validProject().withProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE).build();
+        Project project = ProjectTestBuilder.validProject()
+                .withProjectType(ProjectType.TEXT_CLASSIFICATION_SIMPLE)
+                .withSetupCompleted(true)
+                .build();
+        addLabel(project, "test");
         setProjectId(project, 100L);
 
         ProjectParticipant participant = ProjectParticipantTestBuilder.validParticipant()
@@ -166,13 +233,71 @@ class ProjectAnnotationServiceImplTest {
         when(annotationRepository.countByDatasetItemProjectIdAndUserId(100L, 1L)).thenReturn(0L);
         when(annotationRepository.countCompletedStepsByUser(100L))
                 .thenReturn(List.of(new UserAnnotationCountDto(1L, 1L)));
+        when(annotationRepository.findByProjectIdAndUserIdWithDatasetItem(100L, 1L))
+                .thenReturn(List.of(expectedAnnotation));
 
         SaveProjectAnnotationStepRequestDto request = new SaveProjectAnnotationStepRequestDto(50L, 0, Map.of("label", "test"));
         
         SaveProjectAnnotationStepResponseDto response = projectAnnotationService.saveAnnotationStep(user.getEmail(), 100L, request);
 
         assertThat(response.participantCompletionPercentage()).isEqualTo(100);
+        assertThat(response.firstPendingStepIndex()).isEqualTo(1);
         verify(annotationRepository).save(any());
+    }
+
+    @Test
+    void saveAnnotationStep_ShouldRejectAnnotation_WhenProjectIsArchived() {
+        User user = UserTestBuilder.validUser().build();
+        setId(user, 1L);
+
+        when(authApiService.findUserByEmail(any()))
+                .thenReturn(new UserInfo(1L, user.getEmail(), user.getFirstName(), user.getLastName()));
+
+        Project project = ProjectTestBuilder.validProject()
+                .withSetupCompleted(true)
+                .build();
+        project.setArchived(true);
+        setProjectId(project, 100L);
+
+        ProjectParticipant participant = ProjectParticipantTestBuilder.validParticipant()
+                .withRole(ProjectParticipantRole.PARTICIPANT).withProject(project).withUser(user).build();
+        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(participant));
+
+        SaveProjectAnnotationStepRequestDto request = new SaveProjectAnnotationStepRequestDto(
+                50L,
+                0,
+                Map.of("label", "test"));
+
+        assertThatThrownBy(() -> projectAnnotationService.saveAnnotationStep(user.getEmail(), 100L, request))
+                .isInstanceOf(InvalidProjectAnnotationException.class)
+                .hasMessageContaining("archived");
+    }
+
+    @Test
+    void saveAnnotationStep_ShouldRejectAnnotation_WhenProjectSetupIsIncomplete() {
+        User user = UserTestBuilder.validUser().build();
+        setId(user, 1L);
+
+        when(authApiService.findUserByEmail(any()))
+                .thenReturn(new UserInfo(1L, user.getEmail(), user.getFirstName(), user.getLastName()));
+
+        Project project = ProjectTestBuilder.validProject()
+                .withSetupCompleted(false)
+                .build();
+        setProjectId(project, 100L);
+
+        ProjectParticipant participant = ProjectParticipantTestBuilder.validParticipant()
+                .withRole(ProjectParticipantRole.PARTICIPANT).withProject(project).withUser(user).build();
+        when(projectParticipantRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(participant));
+
+        SaveProjectAnnotationStepRequestDto request = new SaveProjectAnnotationStepRequestDto(
+                50L,
+                0,
+                Map.of("label", "test"));
+
+        assertThatThrownBy(() -> projectAnnotationService.saveAnnotationStep(user.getEmail(), 100L, request))
+                .isInstanceOf(InvalidProjectAnnotationException.class)
+                .hasMessageContaining("setup");
     }
 
     private void setId(Object entity, Long id) {
@@ -189,5 +314,12 @@ class ProjectAnnotationServiceImplTest {
             field.setAccessible(true);
             field.set(project, id);
         } catch (Exception e) {}
+    }
+
+    private void addLabel(Project project, String name) {
+        Label label = new Label();
+        label.setProject(project);
+        label.setName(name);
+        project.getLabels().add(label);
     }
 }

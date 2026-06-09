@@ -4,11 +4,10 @@ import {
   type ResearchGroupFormValues,
 } from '@/modules/researchgroup/schemas/researchGroupFormSchemas';
 import {
+  type CreateResearchGroupPayload,
   type InviteResearchGroupMemberPayload,
   INVITABLE_RESEARCH_GROUP_MEMBER_ROLES,
-  type UpdateResearchGroupPayload,
 } from '@/modules/researchgroup/types/researchGroup';
-import { type CreateResearchGroupPayload } from '@/modules/researchgroup/types/createResearchGroup';
 
 export const EMPTY_RESEARCH_GROUP_FORM: ResearchGroupFormValues = {
   description: '',
@@ -119,7 +118,7 @@ export function canSubmitJoinByCode({
 
 export function toResearchGroupPayload(
   values: ResearchGroupPayloadInput,
-): CreateResearchGroupPayload & UpdateResearchGroupPayload {
+): CreateResearchGroupPayload {
   const description = values.description?.trim() ?? '';
 
   return {

@@ -1,7 +1,11 @@
 package es.udc.fic.corpuslab.modules.project.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasItem;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
@@ -366,5 +370,53 @@ class ProjectAssignParticipantsIntegrationTest extends AbstractIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void shouldReturnProjectAssignmentContextForOwner() throws Exception {
+                User owner = createUser("owner.assignment.context@example.com");
+                User annotator = createUser("annotator.assignment.context@example.com");
+
+                ResearchGroup group = createGroup("Assignment Context Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                String session = loginAs("owner.assignment.context@example.com");
+
+                mockMvc.perform(get("/api/research-groups/{groupId}/projects/assignment-context", group.getId())
+                                .header("Authorization", "Bearer " + session))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.researchGroupId").value(group.getId()))
+                                .andExpect(jsonPath("$.currentUserId").value(owner.getId()))
+                                .andExpect(jsonPath("$.members[*].userId", containsInAnyOrder(
+                                                Math.toIntExact(owner.getId()),
+                                                Math.toIntExact(annotator.getId()))))
+                                .andExpect(jsonPath("$.defaultAssignments.length()").value(1))
+                                .andExpect(jsonPath("$.defaultAssignments[*].userId")
+                                                .value(hasItem(Math.toIntExact(owner.getId()))))
+                                .andExpect(jsonPath("$.defaultAssignments[*].iaaGroup")
+                                                .value(hasItem("GROUP_A")));
+        }
+
+        @Test
+        void shouldReturnForbiddenForAssignmentContextWhenRequesterIsAnnotator() throws Exception {
+                User owner = createUser("owner.assignment.context.forbidden@example.com");
+                User annotator = createUser("annotator.assignment.context.forbidden@example.com");
+
+                ResearchGroup group = createGroup("Assignment Context Forbidden Group");
+                addMembership(owner, group, ResearchGroupMemberRole.OWNER);
+                addMembership(annotator, group, ResearchGroupMemberRole.ANNOTATOR);
+
+                String session = loginAs("annotator.assignment.context.forbidden@example.com");
+
+                mockMvc.perform(get("/api/research-groups/{groupId}/projects/assignment-context", group.getId())
+                                .header("Authorization", "Bearer " + session))
+                                .andExpect(status().isForbidden());
+        }
+
+        @Test
+        void shouldReturnUnauthorizedForAssignmentContextWithoutSession() throws Exception {
+                mockMvc.perform(get("/api/research-groups/{groupId}/projects/assignment-context", 123L))
+                                .andExpect(status().isUnauthorized());
         }
 }

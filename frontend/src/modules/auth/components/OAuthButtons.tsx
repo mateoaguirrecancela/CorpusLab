@@ -22,12 +22,12 @@ export function OAuthButtons({ disabled, onProviderClick }: Readonly<OAuthButton
     <div className="grid gap-3 sm:grid-cols-2">
       {OAUTH_PROVIDERS.map(({ label, logo, provider }) => (
         <Button
-          className="h-10 cursor-pointer rounded-md border border-border bg-surface-base text-sm font-semibold text-foreground hover:bg-accent"
           disabled={disabled}
           key={provider}
           onClick={() => onProviderClick(provider)}
+          size="action"
           type="button"
-          variant="outline"
+          variant="secondaryAction"
         >
           <img alt="" aria-hidden className="size-4" src={logo} />
           <span>{label}</span>

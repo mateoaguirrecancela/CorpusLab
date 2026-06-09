@@ -16,6 +16,7 @@ public record ProjectDetailDto(
         String name,
         String description,
         ProjectType projectType,
+        boolean setupCompleted,
         int completionPercentage,
         ProjectParticipantRole participantRole,
         List<ProjectDetailParticipantDto> participants,

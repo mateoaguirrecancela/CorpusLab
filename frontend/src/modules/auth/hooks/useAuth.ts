@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { PROFILE_QUERY_KEY } from '@/modules/auth/constants/queryKeys';
+import { authQueryKeys } from '@/modules/auth/queryKeys';
 import { getProfile } from '@/modules/auth/services/authService';
 import { hasSessionToken } from '@/modules/auth/services/sessionService';
 
@@ -12,7 +12,7 @@ export function useAuth(): UseAuthResult {
   const hasToken = hasSessionToken();
 
   const { data, isLoading, isFetching, isError } = useQuery({
-    queryKey: PROFILE_QUERY_KEY,
+    queryKey: authQueryKeys.profile,
     queryFn: getProfile,
     enabled: hasToken,
     retry: false,

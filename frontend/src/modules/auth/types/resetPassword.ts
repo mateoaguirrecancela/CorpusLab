@@ -1,3 +1,5 @@
+import type { AuthMessageResponse } from '@/modules/auth/types/common';
+
 export type ResetPasswordFormState = {
   token: string;
   newPassword: string;
@@ -9,6 +11,4 @@ export type ResetPasswordPayload = {
   newPassword: string;
 };
 
-export type ResetPasswordResponse = {
-  message: string;
-};
+export type ResetPasswordResponse = AuthMessageResponse;

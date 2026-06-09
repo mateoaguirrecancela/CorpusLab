@@ -19,6 +19,7 @@ import es.udc.fic.corpuslab.modules.project.progress.ProjectProgressCalculator;
 import es.udc.fic.corpuslab.modules.project.progress.ProjectProgressSnapshot;
 import es.udc.fic.corpuslab.modules.project.annotation.dtos.ProjectAnnotationStepDto;
 import es.udc.fic.corpuslab.modules.project.annotation.dtos.ProjectAnnotationWorkspaceDto;
+import es.udc.fic.corpuslab.modules.project.annotation.dtos.ProjectAnnotationWarningResponseDto;
 import es.udc.fic.corpuslab.modules.project.setup.dtos.ProjectSetupLabelDto;
 import es.udc.fic.corpuslab.modules.project.annotation.dtos.SaveProjectAnnotationStepRequestDto;
 import es.udc.fic.corpuslab.modules.project.annotation.dtos.SaveProjectAnnotationStepResponseDto;
@@ -27,6 +28,7 @@ import es.udc.fic.corpuslab.modules.project.shared.entities.DatasetItem;
 import es.udc.fic.corpuslab.modules.project.shared.entities.Project;
 import es.udc.fic.corpuslab.modules.project.shared.entities.ProjectParticipant;
 import es.udc.fic.corpuslab.modules.project.shared.enums.ProjectParticipantRole;
+import es.udc.fic.corpuslab.modules.project.shared.exceptions.InvalidProjectAnnotationException;
 import es.udc.fic.corpuslab.modules.project.shared.exceptions.InvalidProjectDatasetException;
 import es.udc.fic.corpuslab.modules.project.shared.exceptions.InvalidProjectParticipantsException;
 import es.udc.fic.corpuslab.modules.project.shared.exceptions.ProjectNotFoundException;
@@ -91,6 +93,8 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                 .findByProjectIdAndUserId(projectId, userInfo.userId())
                 .orElseThrow(() -> new ProjectNotFoundException(projectId));
 
+        requireAnnotatableProject(participant.getProject());
+
         return buildAnnotationWorkspace(participant.getProject(), userInfo.userId(), offset, limit);
     }
 
@@ -107,6 +111,8 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
         if (requesterParticipant.getRole() != ProjectParticipantRole.CREATOR) {
             throw new AccessDeniedException("Only project creators can view investigators annotations");
         }
+
+        requireAnnotatableProject(requesterParticipant.getProject());
 
         ProjectParticipant targetParticipant = projectParticipantRepository
                 .findByProjectIdAndUserId(projectId, participantUserId)
@@ -131,6 +137,8 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                 .findByProjectIdAndUserId(projectId, userInfo.userId())
                 .orElseThrow(() -> new ProjectNotFoundException(projectId));
 
+        requireAnnotatableProject(participant.getProject());
+
         List<ProjectParticipant> participants = projectParticipantRepository
                 .findByProjectIdWithUserAndProject(projectId);
         List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
@@ -142,7 +150,8 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
 
         long totalSteps = countTotalSteps(datasetItems);
         long completedStepsBeforeSave = Math.max(0L,
-                Math.min(annotationRepository.countByDatasetItemProjectIdAndUserId(projectId, userInfo.userId()), totalSteps));
+                Math.min(annotationRepository.countByDatasetItemProjectIdAndUserId(projectId, userInfo.userId()),
+                        totalSteps));
         int completionBeforeSave = ProjectAnnotationUtils.toPercentage(completedStepsBeforeSave, totalSteps);
 
         Object rawAnnotation = request.annotation();
@@ -150,7 +159,7 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
         if (rawAnnotation != null) {
             normalizedAnnotation = annotationPayloadNormalizer.normalize(
                     rawAnnotation,
-                    participant.getProject().getProjectType());
+                    participant.getProject());
         }
         ProjectDatasetUtils.DatasetStepDefinition stepDefinition = ProjectDatasetUtils
                 .resolveStepDefinition(targetItem);
@@ -171,6 +180,9 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
         ProjectProgressSnapshot progressAfterSave = projectProgressCalculator
                 .buildProjectProgressSnapshot(participants, totalSteps, completedStepsAfterSave);
         int completionAfterSave = progressAfterSave.completionPercentageForUser(userInfo.userId());
+        int firstPendingStepIndexAfterSave = findFirstPendingStepIndex(
+                datasetItems,
+                buildUserAnnotationLookup(projectId, userInfo.userId()));
 
         if (completionBeforeSave < 100 && completionAfterSave == 100) {
             notifyProjectOwnersOnAnnotationCompletion(participant.getProject(), participants, userInfo);
@@ -185,12 +197,14 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                 progressAfterSave.completedStepsForUser(userInfo.userId()),
                 progressAfterSave.totalSteps(),
                 completionAfterSave,
-                progressAfterSave.projectCompletionPercentage());
+                progressAfterSave.projectCompletionPercentage(),
+                firstPendingStepIndexAfterSave,
+                normalizedAnnotation);
     }
 
     @Override
     @Transactional
-    public SaveProjectAnnotationStepResponseDto toggleAnnotationWarning(String authenticatedEmail, Long projectId,
+    public ProjectAnnotationWarningResponseDto toggleAnnotationWarning(String authenticatedEmail, Long projectId,
             Long participantUserId, Long datasetItemId, Integer stepIndex) {
         UserInfo requesterInfo = authApiService.findUserByEmail(authenticatedEmail);
 
@@ -199,15 +213,12 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                 .orElseThrow(() -> new ProjectNotFoundException(projectId));
 
         annotationWarningPolicy.requireCreator(requesterParticipant);
+        requireAnnotatableProject(requesterParticipant.getProject());
 
         ProjectParticipant targetParticipant = projectParticipantRepository
                 .findByProjectIdAndUserId(projectId, participantUserId)
                 .orElseThrow(() -> new InvalidProjectParticipantsException(
                         "Selected investigator is not assigned to this project"));
-
-        List<ProjectParticipant> participants = projectParticipantRepository
-                .findByProjectIdWithUserAndProject(projectId);
-        List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
 
         Annotation annotation = annotationRepository
                 .findByDatasetItemIdAndDatasetItemProjectIdAndUserIdAndStepIndex(
@@ -253,28 +264,24 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
         requesterParticipant.getProject().markActivity();
         projectMetricsCacheService.evictProjectReadCaches(projectId);
 
-        ProjectProgressSnapshot progressSnapshot = projectProgressCalculator
-                .buildProjectProgressSnapshotForDatasetItems(projectId, participants, datasetItems);
-
-        return new SaveProjectAnnotationStepResponseDto(
+        return new ProjectAnnotationWarningResponseDto(
                 projectId,
                 datasetItemId,
                 stepIndex,
-                progressSnapshot.completedStepsForUser(participantUserId),
-                progressSnapshot.totalSteps(),
-                progressSnapshot.completionPercentageForUser(participantUserId),
-                progressSnapshot.projectCompletionPercentage());
+                newWarningStatus);
     }
 
     @Override
     @Transactional
-    public SaveProjectAnnotationStepResponseDto resolveOwnAnnotationWarning(String authenticatedEmail, Long projectId,
+    public ProjectAnnotationWarningResponseDto resolveOwnAnnotationWarning(String authenticatedEmail, Long projectId,
             Long datasetItemId, Integer stepIndex) {
         UserInfo userInfo = authApiService.findUserByEmail(authenticatedEmail);
 
         ProjectParticipant participant = projectParticipantRepository
                 .findByProjectIdAndUserId(projectId, userInfo.userId())
                 .orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        requireAnnotatableProject(participant.getProject());
 
         Annotation annotation = annotationRepository
                 .findByDatasetItemIdAndDatasetItemProjectIdAndUserIdAndStepIndex(
@@ -315,20 +322,11 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
         participant.getProject().markActivity();
         projectMetricsCacheService.evictProjectReadCaches(projectId);
 
-        List<ProjectParticipant> participants = projectParticipantRepository
-                .findByProjectIdWithUserAndProject(projectId);
-        List<DatasetItem> datasetItems = datasetItemRepository.findByProjectIdOrderByItemIndexAsc(projectId);
-        ProjectProgressSnapshot progressSnapshot = projectProgressCalculator
-                .buildProjectProgressSnapshotForDatasetItems(projectId, participants, datasetItems);
-
-        return new SaveProjectAnnotationStepResponseDto(
+        return new ProjectAnnotationWarningResponseDto(
                 projectId,
                 datasetItemId,
                 stepIndex,
-                progressSnapshot.completedStepsForUser(userInfo.userId()),
-                progressSnapshot.totalSteps(),
-                progressSnapshot.completionPercentageForUser(userInfo.userId()),
-                progressSnapshot.projectCompletionPercentage());
+                false);
     }
 
     private ProjectAnnotationWorkspaceDto buildAnnotationWorkspace(
@@ -361,6 +359,19 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
                 buildAnnotationSteps(datasetItems, sanitizedOffset, sanitizedLimit, annotationLookup));
     }
 
+    private void requireAnnotatableProject(Project project) {
+        requireProjectSetupCompleted(project);
+        if (project.isArchived()) {
+            throw new InvalidProjectAnnotationException("Project is archived");
+        }
+    }
+
+    private void requireProjectSetupCompleted(Project project) {
+        if (!project.isSetupCompleted()) {
+            throw new InvalidProjectAnnotationException("Project setup is not completed");
+        }
+    }
+
     private int sanitizeAnnotationStepsLimit(int limit) {
         if (limit <= 0) {
             return ProjectConstants.DEFAULT_ANNOTATION_STEPS_LIMIT;
@@ -378,11 +389,14 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
             ProjectDatasetUtils.DatasetStepDefinition definition = ProjectDatasetUtils
                     .resolveStepDefinition(datasetItem);
             int totalSteps = definition.totalSteps();
-            if (totalSteps <= 0) continue;
+            if (totalSteps <= 0)
+                continue;
 
             for (int stepIndex = 0; stepIndex < totalSteps; stepIndex++) {
-                if (absoluteIndex++ < offset) continue;
-                if (steps.size() >= limit) return steps;
+                if (absoluteIndex++ < offset)
+                    continue;
+                if (steps.size() >= limit)
+                    return steps;
 
                 Annotation annotation = findStepAnnotation(annotationLookup, datasetItem.getId(), stepIndex);
                 Object payload = extractNormalizedPayload(annotation);
@@ -467,12 +481,14 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
     private Annotation findStepAnnotation(Map<Long, Map<Integer, Annotation>> annotationLookup,
             Long datasetItemId, int stepIndex) {
         Map<Integer, Annotation> stepsByDatasetItem = annotationLookup.get(datasetItemId);
-        if (stepsByDatasetItem == null) return null;
+        if (stepsByDatasetItem == null)
+            return null;
         return stepsByDatasetItem.get(stepIndex);
     }
 
     private Object extractNormalizedPayload(Annotation annotation) {
-        if (annotation == null) return null;
+        if (annotation == null)
+            return null;
         Object annotationPayload = annotation.getPayload();
         if (!(annotationPayload instanceof Map<?, ?> rawMap)
                 || !rawMap.containsKey(ProjectConstants.ANNOTATION_WRAPPED_VALUE_KEY)
@@ -506,9 +522,11 @@ public class ProjectAnnotationServiceImpl implements ProjectAnnotationService {
     private void notifyProjectOwnersOnAnnotationCompletion(Project project, List<ProjectParticipant> participants,
             UserInfo actor) {
         for (ProjectParticipant projectParticipant : participants) {
-            if (projectParticipant.getRole() != ProjectParticipantRole.CREATOR) continue;
+            if (projectParticipant.getRole() != ProjectParticipantRole.CREATOR)
+                continue;
             Long ownerId = projectParticipant.getUser().getId();
-            if (ownerId.equals(actor.userId())) continue;
+            if (ownerId.equals(actor.userId()))
+                continue;
 
             notificationService.createProjectAnnotationCompletedNotification(
                     ownerId, actor.userId(),

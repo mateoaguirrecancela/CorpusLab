@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
+import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -11,8 +12,6 @@ import {
   getOAuthRedirectParams,
   hasOAuthRedirectParams,
 } from '@/modules/auth/utils/oauthRedirect';
-
-const LOGIN_REDIRECT_DELAY_MS = 1600;
 
 const oauthExchangeCache = new Map<string, Promise<LoginResponse>>();
 
@@ -32,7 +31,6 @@ export function useOAuthRedirect(searchParams: URLSearchParams) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [errorMessage, setErrorMessage] = useState('');
   const params = useMemo(() => getOAuthRedirectParams(searchParams), [searchParams]);
   const providerLabel = useMemo(
     () => getOAuthProviderLabel(params.provider, t),
@@ -41,19 +39,10 @@ export function useOAuthRedirect(searchParams: URLSearchParams) {
 
   useEffect(() => {
     let isCurrent = true;
-    let loginRedirectTimeout: ReturnType<typeof globalThis.setTimeout> | undefined;
-
-    const redirectToLoginSoon = () => {
-      loginRedirectTimeout = globalThis.setTimeout(() => {
-        if (isCurrent) {
-          navigate('/auth/login', { replace: true });
-        }
-      }, LOGIN_REDIRECT_DELAY_MS);
-    };
 
     const failOAuthLogin = (message: string) => {
-      setErrorMessage(message);
-      redirectToLoginSoon();
+      toast.error(message);
+      navigate('/auth/login', { replace: true });
     };
 
     const completeOAuthLogin = async () => {
@@ -94,16 +83,10 @@ export function useOAuthRedirect(searchParams: URLSearchParams) {
 
     return () => {
       isCurrent = false;
-
-      if (loginRedirectTimeout) {
-        globalThis.clearTimeout(loginRedirectTimeout);
-      }
     };
   }, [navigate, params, queryClient, t]);
 
   return {
-    errorMessage,
-    isCompleting: errorMessage.length === 0,
     providerLabel,
   };
 }
