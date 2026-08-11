@@ -45,8 +45,7 @@ export function ProjectDetailHeaderActions({
 }: ProjectDetailHeaderActionsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const canOpenAnnotationWorkspace =
-    project != null && project.setupCompleted && !project.archived;
+  const canOpenAnnotationWorkspace = project != null && project.setupCompleted && !project.archived;
 
   return (
     <div className="flex items-center justify-between gap-4">
