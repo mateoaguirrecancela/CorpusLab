@@ -150,7 +150,7 @@ class FileSecurityIntegrationTest extends AbstractIntegrationTest {
                                 .header("Authorization", "Bearer " + sessionToken))
                                 .andExpect(status().isBadRequest())
                                 .andExpect(jsonPath("$.message")
-                                                .value("Invalid dataset upload: Forbidden file type: exe"));
+                                                .value("Invalid dataset upload: Unsupported file type: exe"));
         }
 
         @Test
@@ -201,6 +201,28 @@ class FileSecurityIntegrationTest extends AbstractIntegrationTest {
                 org.junit.jupiter.api.Assertions.assertTrue(sanitizedContent.contains("John,'=1+2"));
                 org.junit.jupiter.api.Assertions.assertTrue(sanitizedContent.contains("Jane,'-500"));
                 org.junit.jupiter.api.Assertions.assertTrue(sanitizedContent.contains("Bob,'@SUM(A1:A2)"));
+        }
+
+        @Test
+        void shouldDeriveStoredMimeTypeFromExtensionIgnoringDeclaredContentType() throws Exception {
+                // A declared text/html would be echoed back on an inline response and execute
+                // in the app origin, so the stored type must come from the extension instead.
+                MockMultipartFile spoofedHtml = new MockMultipartFile(
+                                "files",
+                                "notes.txt",
+                                "text/html",
+                                "<script>alert(document.domain)</script>".getBytes());
+
+                mockMvc.perform(multipart("/api/research-groups/{groupId}/projects/{projectId}/dataset", groupId,
+                                projectId)
+                                .file(spoofedHtml)
+                                .header("Authorization", "Bearer " + sessionToken))
+                                .andExpect(status().isAccepted());
+
+                var items = waitForDatasetItems();
+                org.junit.jupiter.api.Assertions.assertEquals(
+                                "text/plain",
+                                items.get(0).getContent().get("mimeType"));
         }
 
         private List<DatasetItem> waitForDatasetItems()

@@ -1341,9 +1341,9 @@ class ProjectAnnotationIntegrationTest extends AbstractIntegrationTest {
                 assertThat(csvContent).contains("instance_id");
                 assertThat(csvContent).contains("distil_predictions");
             assertThat(csvContent).contains(annotator.getId() + "_annotation");
-            assertThat(csvContent).contains(annotator.getId() + "_coment");
+            assertThat(csvContent).contains(annotator.getId() + "_comment");
             assertThat(csvContent).doesNotContain(annotator.getEmail().toLowerCase() + "_annotation");
-            assertThat(csvContent).doesNotContain(annotator.getEmail().toLowerCase() + "_coment");
+            assertThat(csvContent).doesNotContain(annotator.getEmail().toLowerCase() + "_comment");
                 assertThat(csvContent).contains("correcta");
                 assertThat(csvContent).contains("insult|borderline");
                 assertThat(csvContent).doesNotContain(annotator.getId() + "_binary_annotation");

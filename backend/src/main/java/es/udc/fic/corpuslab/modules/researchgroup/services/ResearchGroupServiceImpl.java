@@ -4,10 +4,8 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,8 +42,6 @@ import es.udc.fic.corpuslab.modules.researchgroup.repositories.ResearchGroupRepo
 
 @Service
 public class ResearchGroupServiceImpl implements ResearchGroupService {
-
-    private static final int MAX_TOKEN_GENERATION_ATTEMPTS = 10;
 
     private final AuthApiService authApiService;
     private final ResearchGroupRepository researchGroupRepository;
@@ -221,7 +217,7 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
         invitation.setRole(role);
         invitation.setStatus(ResearchGroupInvitationStatus.PENDING);
         invitation.setExpiresAt(Instant.now().plus(invitationExpirationDays, ChronoUnit.DAYS));
-        invitation = saveInvitationWithUniqueToken(invitation);
+        invitation = invitationRepository.saveAndFlush(invitation);
 
         if (invitedUserInfo != null) {
             notificationService.createResearchGroupInvitationReceivedNotification(
@@ -234,7 +230,7 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
 
         String inviterFullName = inviterInfo.fullName();
         String invitationUrl = frontendBaseUrl + "/home/research-groups";
-        String signupUrl = frontendBaseUrl + "/auth/signup?invitationToken=" + invitation.getToken();
+        String signupUrl = frontendBaseUrl + "/auth/signup";
 
         try {
             if (invitedUserInfo != null) {
@@ -436,25 +432,6 @@ public class ResearchGroupServiceImpl implements ResearchGroupService {
                     group.getId(),
                     group.getName());
         }
-    }
-
-    private ResearchGroupInvitation saveInvitationWithUniqueToken(ResearchGroupInvitation invitation) {
-        for (int attempt = 1; attempt <= MAX_TOKEN_GENERATION_ATTEMPTS; attempt++) {
-            String token = UUID.randomUUID().toString();
-            if (invitationRepository.existsByToken(token)) {
-                continue;
-            }
-            invitation.setToken(token);
-            try {
-                return invitationRepository.saveAndFlush(invitation);
-            } catch (DataIntegrityViolationException ex) {
-                if (invitationRepository.existsByToken(token)) {
-                    continue;
-                }
-                throw ex;
-            }
-        }
-        throw new IllegalStateException("Unable to generate a unique invitation token");
     }
 
     private ResearchGroupDetailDto toDetailDto(ResearchGroup group, ResearchGroupMember currentMember) {

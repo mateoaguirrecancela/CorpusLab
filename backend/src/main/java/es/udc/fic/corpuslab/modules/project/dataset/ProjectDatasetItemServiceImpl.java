@@ -77,7 +77,7 @@ public class ProjectDatasetItemServiceImpl implements ProjectDatasetItemService 
             try {
                 byte[] fileBytes = file.getBytes();
                 String originalFilename = file.getOriginalFilename();
-                String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
+                String contentType = FileSecurityUtil.resolveSafeMimeType(originalFilename);
 
                 if (ProjectDatasetUtils.isCsvFile(originalFilename, contentType)) {
                     fileBytes = FileSecurityUtil.sanitizeCsv(fileBytes);
