@@ -162,6 +162,10 @@ export function ProjectMetricsSection({
     projectType,
   });
 
+  if (!metricsSupported) {
+    return null;
+  }
+
   return (
     <div className="pt-6">
       <ProjectMetricsHeader
