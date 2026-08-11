@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.tika.Tika;
@@ -18,9 +19,19 @@ public final class FileSecurityUtil {
 
     private static final Tika TIKA = new Tika();
 
-    // Whitelist of common safe extensions (can be expanded)
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
-            "txt", "json", "csv", "pdf", "png", "jpg", "jpeg", "webp");
+    private static final String DEFAULT_MIME_TYPE = "application/octet-stream";
+
+    private static final Map<String, String> EXTENSION_MIME_TYPES = Map.of(
+            "txt", "text/plain",
+            "json", "application/json",
+            "csv", "text/csv",
+            "pdf", "application/pdf",
+            "png", "image/png",
+            "jpg", "image/jpeg",
+            "jpeg", "image/jpeg",
+            "webp", "image/webp");
+
+    private static final Set<String> ALLOWED_EXTENSIONS = EXTENSION_MIME_TYPES.keySet();
 
     // CSV Injection characters
     private static final List<String> CSV_INJECTION_CHARS = List.of("=", "+", "-", "@");
@@ -46,6 +57,19 @@ public final class FileSecurityUtil {
 
         // 2. MIME Spoofing detection with Magic Bytes
         validateMagicBytes(file);
+    }
+
+    public static String resolveSafeMimeType(String filename) {
+        if (filename == null) {
+            return DEFAULT_MIME_TYPE;
+        }
+
+        String extension = StringUtils.getFilenameExtension(StringUtils.cleanPath(filename));
+        if (extension == null) {
+            return DEFAULT_MIME_TYPE;
+        }
+
+        return EXTENSION_MIME_TYPES.getOrDefault(extension.toLowerCase(), DEFAULT_MIME_TYPE);
     }
 
     /**

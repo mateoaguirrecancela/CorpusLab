@@ -40,9 +40,6 @@ public class ResearchGroupInvitation {
     @Column(name = "invited_email", nullable = false)
     private String invitedEmail;
 
-    @Column(nullable = false, unique = true, length = 128)
-    private String token;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ResearchGroupMemberRole role;
@@ -96,14 +93,6 @@ public class ResearchGroupInvitation {
 
     public void setInvitedEmail(String invitedEmail) {
         this.invitedEmail = invitedEmail;
-    }
-
-    public String getToken() {
-        return token;
-    }
-
-    public void setToken(String token) {
-        this.token = token;
     }
 
     public ResearchGroupMemberRole getRole() {

@@ -56,7 +56,7 @@ services:
         condition: service_healthy
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.14-alpine
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -72,7 +72,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.9-alpine
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
@@ -84,7 +84,7 @@ services:
       retries: 5
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.13.0
     restart: unless-stopped
     volumes:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -100,7 +100,7 @@ services:
         condition: service_healthy
 
   grafana:
-    image: grafana/grafana-oss:latest
+    image: grafana/grafana-oss:13.0.2
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}

@@ -239,7 +239,6 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                 invitation.setResearchGroup(group);
                 invitation.setInviterUser(owner);
                 invitation.setInvitedEmail("duplicate@example.com");
-                invitation.setToken("token-duplicate");
                 invitation.setRole(ResearchGroupMemberRole.ANNOTATOR);
                 invitation.setStatus(ResearchGroupInvitationStatus.PENDING);
                 invitation.setExpiresAt(Instant.now().plusSeconds(86400));
@@ -476,7 +475,6 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                 invitation.setInviterUser(owner);
                 invitation.setInvitedUser(invitee);
                 invitation.setInvitedEmail("invitee.accept@example.com");
-                invitation.setToken("accept-token");
                 invitation.setRole(ResearchGroupMemberRole.ADMIN);
                 invitation.setStatus(ResearchGroupInvitationStatus.PENDING);
                 invitation.setExpiresAt(Instant.now().plusSeconds(86400));
@@ -529,7 +527,6 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                 invitation.setInviterUser(owner);
                 invitation.setInvitedUser(invitee);
                 invitation.setInvitedEmail("invitee.decline@example.com");
-                invitation.setToken("decline-token");
                 invitation.setRole(ResearchGroupMemberRole.ANNOTATOR);
                 invitation.setStatus(ResearchGroupInvitationStatus.PENDING);
                 invitation.setExpiresAt(Instant.now().plusSeconds(86400));
@@ -596,7 +593,6 @@ class ResearchGroupInvitationIntegrationTest extends AbstractIntegrationTest {
                 invitation.setInviterUser(owner);
                 invitation.setInvitedUser(joiner);
                 invitation.setInvitedEmail("joiner.pending@example.com");
-                invitation.setToken("join-pending-token");
                 invitation.setRole(ResearchGroupMemberRole.ADMIN);
                 invitation.setStatus(ResearchGroupInvitationStatus.PENDING);
                 invitation.setExpiresAt(Instant.now().plusSeconds(86400));

@@ -16,8 +16,6 @@ public interface ResearchGroupInvitationRepository extends JpaRepository<Researc
 
   long deleteByResearchGroupId(Long researchGroupId);
 
-  boolean existsByToken(String token);
-
   @Query("""
       SELECT COUNT(i) > 0
       FROM ResearchGroupInvitation i

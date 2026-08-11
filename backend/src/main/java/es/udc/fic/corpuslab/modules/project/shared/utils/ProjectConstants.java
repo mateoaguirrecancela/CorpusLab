@@ -19,7 +19,7 @@ public class ProjectConstants {
     public static final String ANNOTATION_KEY_TEXT = "text";
     public static final String ANNOTATION_WRAPPED_VALUE_KEY = "value";
     public static final String EXPORT_ANNOTATION_HEADER_SUFFIX = "_annotation";
-    public static final String EXPORT_COMMENT_HEADER_SUFFIX = "_coment";
+    public static final String EXPORT_COMMENT_HEADER_SUFFIX = "_comment";
     public static final int DEFAULT_ANNOTATION_STEPS_LIMIT = 50;
     public static final int MAX_ANNOTATION_STEPS_LIMIT = 250;
     public static final int PREVIEW_MAX_LENGTH = 160;

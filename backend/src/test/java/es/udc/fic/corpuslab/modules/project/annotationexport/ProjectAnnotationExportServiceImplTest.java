@@ -89,7 +89,7 @@ class ProjectAnnotationExportServiceImplTest {
         exportService.writeAnnotationResultsCsv("creator@example.com", 100L, outputStream);
 
         assertThat(outputStream.toString(StandardCharsets.UTF_8))
-                .isEqualTo("text,meta,2_annotation,2_coment\nHello,1,POS,reviewed\n");
+                .isEqualTo("text,meta,2_annotation,2_comment\nHello,1,POS,reviewed\n");
     }
 
     private ProjectAnnotationExportServiceImpl service() {

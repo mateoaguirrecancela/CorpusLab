@@ -80,12 +80,12 @@ export function EditProjectDialog({
       <Dialog open={open} onOpenChange={handleOpenChange}>
         {trigger ? <DialogTrigger render={trigger as ReactElement} /> : undefined}
 
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="flex max-h-[85dvh] flex-col sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{t('project.edit.title')}</DialogTitle>
           </DialogHeader>
 
-          <div className="my-8 space-y-5">
+          <div className="my-6 -mx-2 min-h-0 flex-1 space-y-5 overflow-y-auto p-2">
             <FormFieldControl
               id="edit-project-name"
               inputProps={{
@@ -117,7 +117,7 @@ export function EditProjectDialog({
             />
 
             <div className="space-y-3">
-              <p className="text-sm font-semibold text-primary">
+              <p className="text-xs font-bold tracking-widest text-muted-foreground uppercase">
                 {t('project.edit.participantsLabel')}
               </p>
 
@@ -141,7 +141,7 @@ export function EditProjectDialog({
                 type="button"
                 variant="danger"
               >
-                {t('researchGroup.edit.delete')}
+                {t('project.edit.delete')}
               </Button>
             ) : undefined}
             <Button
