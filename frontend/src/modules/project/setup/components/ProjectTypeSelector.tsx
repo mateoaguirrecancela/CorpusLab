@@ -42,11 +42,11 @@ const PROJECT_TYPES: ProjectTypeOption[] = [
   },
 ];
 
-interface ProjectTypeSelectorProps {
+type ProjectTypeSelectorProps = Readonly<{
   value: ProjectType;
   onChange: (value: ProjectType) => void;
   disabledTypes?: ProjectType[];
-}
+}>;
 
 export function ProjectTypeSelector({
   value,

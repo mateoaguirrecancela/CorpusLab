@@ -2,11 +2,11 @@ import { cn } from '@/shared/utils/cn';
 
 type FeedbackVariant = 'error' | 'success';
 
-type FeedbackMessageProps = {
+type FeedbackMessageProps = Readonly<{
   message: string;
   variant: FeedbackVariant;
   className?: string;
-};
+}>;
 
 const FEEDBACK_VARIANT_STYLES: Record<FeedbackVariant, string> = {
   error: 'border-danger-border bg-danger-soft text-destructive',

@@ -16,6 +16,42 @@ import { cn } from '@/shared/utils/cn';
 import { EditProjectDialog } from '@/modules/project/core/components/EditProjectDialog';
 import { type ProjectDetail } from '@/modules/project/shared/types/project';
 
+type ArchiveActionButtonProps = Readonly<{
+  isArchived: boolean;
+  isUpdating: boolean;
+  onArchiveAction: () => void;
+}>;
+
+function ArchiveActionButton({
+  isArchived,
+  isUpdating,
+  onArchiveAction,
+}: ArchiveActionButtonProps) {
+  const { t } = useTranslation();
+
+  let icon = <Archive className="size-4" />;
+  let label = t('project.detail.archiveProject');
+  if (isUpdating) {
+    icon = <Spinner aria-hidden className="size-4" />;
+    label = t('project.detail.updatingArchiveState');
+  } else if (isArchived) {
+    icon = <ArchiveRestore className="size-4" />;
+    label = t('project.detail.unarchiveProject');
+  }
+
+  return (
+    <button
+      className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+      disabled={isUpdating}
+      onClick={onArchiveAction}
+      type="button"
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
 type ProjectDetailHeaderActionsProps = Readonly<{
   detailErrorMessage: string;
   editProjectOpen: boolean;
@@ -77,25 +113,11 @@ export function ProjectDetailHeaderActions({
                   align="end"
                   className="w-64 rounded-xl border border-border bg-surface-base p-1.5"
                 >
-                  <button
-                    className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
-                    disabled={isArchiveStateUpdating}
-                    onClick={onArchiveAction}
-                    type="button"
-                  >
-                    {isArchiveStateUpdating ? (
-                      <Spinner aria-hidden className="size-4" />
-                    ) : project.archived ? (
-                      <ArchiveRestore className="size-4" />
-                    ) : (
-                      <Archive className="size-4" />
-                    )}
-                    {isArchiveStateUpdating
-                      ? t('project.detail.updatingArchiveState')
-                      : project.archived
-                        ? t('project.detail.unarchiveProject')
-                        : t('project.detail.archiveProject')}
-                  </button>
+                  <ArchiveActionButton
+                    isArchived={project.archived}
+                    isUpdating={isArchiveStateUpdating}
+                    onArchiveAction={onArchiveAction}
+                  />
 
                   <button
                     className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-accent cursor-pointer"

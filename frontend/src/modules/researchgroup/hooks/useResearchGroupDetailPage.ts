@@ -13,7 +13,6 @@ import {
 import {
   getAssignedProjectsFromPages,
   isValidResearchGroupId,
-  parseResearchGroupId,
 } from '@/modules/researchgroup/utils/researchGroupDetailPage';
 
 type ResearchGroupDetailPageState = Readonly<{
@@ -39,7 +38,7 @@ export function useResearchGroupDetailPage(): ResearchGroupDetailPageState {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const numericGroupId = parseResearchGroupId(id);
+  const numericGroupId = Number(id);
   const isInvalidGroupId = !isValidResearchGroupId(numericGroupId);
   const showArchivedProjects = useResearchGroupUIStore(
     (state) => state.archivedProjectsByGroupId[numericGroupId] ?? false,

@@ -1,7 +1,16 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Interfaz web de CorpusLab: plataforma web colaborativa para el apoyo en tareas de anotación en proyectos científicos.",
+  "license": "Apache-2.0",
+  "author": "Mateo Aguirre Cancela",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mateoaguirrecancela/CorpusLab.git",
+    "directory": "frontend"
+  },
+  "homepage": "https://github.com/mateoaguirrecancela/CorpusLab#readme",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -1,7 +1,6 @@
 import * as Papa from 'papaparse';
-import { isCsvDatasetFile } from '@/modules/project/shared/utils/projectFileUtils';
 
-export { isCsvDatasetFile };
+export { isCsvDatasetFile } from '@/modules/project/shared/utils/projectFileUtils';
 
 export async function extractCsvHeadersFromFile(file: File): Promise<string[]> {
   const textContent = await file.text();

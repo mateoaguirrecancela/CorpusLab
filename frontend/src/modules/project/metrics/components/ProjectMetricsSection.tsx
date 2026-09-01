@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import { Activity, AlertCircle, CircleDashed } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Spinner } from '@/components/ui/spinner';
@@ -166,6 +167,15 @@ export function ProjectMetricsSection({
     return null;
   }
 
+  let content: ReactNode;
+  if (showLoading) {
+    content = <ProjectMetricsSkeleton metricTypes={skeletonMetricTypes} />;
+  } else if (emptyMessage.length > 0) {
+    content = <ProjectMetricsEmptyState isError={isError} message={emptyMessage} />;
+  } else {
+    content = <ProjectMetricsList items={metricItems} />;
+  }
+
   return (
     <div className="pt-6">
       <ProjectMetricsHeader
@@ -175,13 +185,7 @@ export function ProjectMetricsSection({
         showLoading={showLoading}
       />
 
-      {showLoading ? (
-        <ProjectMetricsSkeleton metricTypes={skeletonMetricTypes} />
-      ) : emptyMessage.length > 0 ? (
-        <ProjectMetricsEmptyState isError={isError} message={emptyMessage} />
-      ) : (
-        <ProjectMetricsList items={metricItems} />
-      )}
+      {content}
     </div>
   );
 }
