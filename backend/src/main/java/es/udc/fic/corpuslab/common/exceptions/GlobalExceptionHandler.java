@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import es.udc.fic.corpuslab.modules.auth.exceptions.AuthRateLimitExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -131,5 +132,14 @@ public class GlobalExceptionHandler {
         public ResponseEntity<ApiErrorResponse> handleMissingParams(Exception ex) {
                 Map<String, String> details = Map.of("error", ex.getMessage());
                 return buildErrorResponse(HttpStatus.BAD_REQUEST, "common.error.validation", null, details);
+        }
+
+        @ExceptionHandler(MaxUploadSizeExceededException.class)
+        public ResponseEntity<ApiErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
+                long maxSizeMb = Math.max(1L, Math.round(ex.getMaxUploadSize() / (1024.0 * 1024.0)));
+                return buildErrorResponse(
+                                HttpStatus.CONTENT_TOO_LARGE,
+                                "common.error.file.too.large",
+                                new Object[] { maxSizeMb });
         }
 }

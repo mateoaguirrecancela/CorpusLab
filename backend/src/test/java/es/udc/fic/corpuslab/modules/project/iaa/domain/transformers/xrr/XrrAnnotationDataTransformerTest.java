@@ -121,6 +121,128 @@ class XrrAnnotationDataTransformerTest {
         assertThat(data.skippedUnitCount()).isZero();
     }
 
+    @Test
+    void supportedTypesShouldExposeSimpleMultilabelNerAndXrr() {
+        assertThat(transformer.supportedProjectTypes()).containsExactlyInAnyOrder(
+                ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+                ProjectType.TEXT_CLASSIFICATION_MULTILABEL,
+                ProjectType.NER);
+        assertThat(transformer.supportedMetricTypes())
+                .containsExactly(es.udc.fic.corpuslab.modules.project.shared.enums.MetricType.XRR);
+    }
+
+    @Test
+    void transformShouldFallBackToContextAnnotatorsWhenNoMetadataConfigured() {
+        IaaCalculationContext context = new IaaCalculationContext(
+                10L,
+                ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+                List.of(
+                        annotation(1L, 50L, 0, Map.of("label", "A")),
+                        annotation(2L, 50L, 0, Map.of("label", "A"))),
+                List.of(),
+                List.of(annotator(1L), annotator(2L)),
+                Map.of());
+
+        XrrAnnotationData data = transformer.transform(context);
+
+        assertThat(data.groupXSources()).containsExactly("annotator:1", "annotator:2");
+        assertThat(data.groupYSources()).isEmpty();
+    }
+
+    @Test
+    void transformShouldFallBackToAnnotationAnnotatorsWhenNoAnnotatorsProvided() {
+        IaaCalculationContext context = new IaaCalculationContext(
+                11L,
+                ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+                List.of(
+                        annotation(1L, 51L, 0, Map.of("label", "A")),
+                        annotation(2L, 51L, 0, Map.of("label", "A"))),
+                List.of(),
+                List.of(),
+                Map.of());
+
+        XrrAnnotationData data = transformer.transform(context);
+
+        assertThat(data.groupXSources()).containsExactlyInAnyOrder("annotator:1", "annotator:2");
+    }
+
+    @Test
+    void transformShouldNormalizeMultilabelAnnotationsFromDifferentPayloadShapes() {
+        IaaCalculationContext context = new IaaCalculationContext(
+                12L,
+                ProjectType.TEXT_CLASSIFICATION_MULTILABEL,
+                List.of(
+                        annotation(20L, 60L, 0, Map.of("labels", List.of("b", "a", "b"))),
+                        new IaaAnnotation(60L, 21L, 0, "a,b")),
+                List.of(),
+                List.of(),
+                Map.of(
+                        XrrAnnotationDataTransformer.METADATA_KEY_GROUP_X_ANNOTATOR_IDS, List.of(20L),
+                        XrrAnnotationDataTransformer.METADATA_KEY_GROUP_Y_ANNOTATOR_IDS, List.of(21L)));
+
+        XrrAnnotationData data = transformer.transform(context);
+
+        assertThat(data.groupXRows()).containsExactly(List.of("a||b"));
+        assertThat(data.groupYRows()).containsExactly(List.of("a||b"));
+    }
+
+    @Test
+    void transformShouldSkipAnnotationsWithNullNormalizedValue() {
+        IaaCalculationContext context = new IaaCalculationContext(
+                13L,
+                ProjectType.TEXT_CLASSIFICATION_MULTILABEL,
+                List.of(annotation(30L, 61L, 0, Map.of("unrelatedKey", "value"))),
+                List.of(),
+                List.of(),
+                Map.of(XrrAnnotationDataTransformer.METADATA_KEY_GROUP_X_ANNOTATOR_IDS, List.of(30L)));
+
+        XrrAnnotationData data = transformer.transform(context);
+
+        assertThat(data.groupXRows()).isEmpty();
+    }
+
+    @Test
+    void transformShouldSkipDatasetItemsWithNullId() {
+        IaaDatasetItem itemWithNullId = new IaaDatasetItem(null, 0, List.of(), true);
+        IaaDatasetItem validItem = csvDatasetItemWithRows(
+                62L, 0, List.of(Map.of("gold", "A", "pred", "A")));
+
+        IaaCalculationContext context = new IaaCalculationContext(
+                14L,
+                ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+                List.of(),
+                List.of(itemWithNullId, validItem),
+                List.of(),
+                Map.of(
+                        XrrAnnotationDataTransformer.METADATA_KEY_GROUP_X_COLUMNS, List.of("gold"),
+                        XrrAnnotationDataTransformer.METADATA_KEY_GROUP_Y_COLUMNS, List.of("pred")));
+
+        XrrAnnotationData data = transformer.transform(context);
+
+        assertThat(data.groupXRows()).containsExactly(List.of("A"));
+    }
+
+    @Test
+    void transformShouldReturnNullForUnmatchedColumn() {
+        IaaDatasetItem datasetItem = csvDatasetItemWithRows(
+                63L, 0, List.of(Map.of("gold", "A")));
+
+        IaaCalculationContext context = new IaaCalculationContext(
+                15L,
+                ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+                List.of(),
+                List.of(datasetItem),
+                List.of(),
+                Map.of(
+                        XrrAnnotationDataTransformer.METADATA_KEY_GROUP_X_COLUMNS, List.of("gold"),
+                        XrrAnnotationDataTransformer.METADATA_KEY_GROUP_Y_COLUMNS, List.of("missing-column")));
+
+        XrrAnnotationData data = transformer.transform(context);
+
+        assertThat(data.groupYSources()).isEmpty();
+        assertThat(data.skippedUnitCount()).isEqualTo(1);
+    }
+
     private IaaAnnotation annotation(Long annotatorId, Long datasetItemId, int stepIndex, Map<String, Object> payload) {
         return new IaaAnnotation(datasetItemId, annotatorId, stepIndex, payload);
     }

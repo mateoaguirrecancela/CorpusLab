@@ -2,9 +2,9 @@ import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router';
 import { APP_NAVIGATION_ITEMS } from '@/shared/constants/appNavigation';
 
-type AppSidebarProps = {
+type AppSidebarProps = Readonly<{
   isCollapsed: boolean;
-};
+}>;
 
 export function AppSidebar({ isCollapsed }: AppSidebarProps) {
   const { t } = useTranslation();

@@ -6,7 +6,6 @@ import {
 import {
   type CreateResearchGroupPayload,
   type InviteResearchGroupMemberPayload,
-  INVITABLE_RESEARCH_GROUP_MEMBER_ROLES,
 } from '@/modules/researchgroup/types/researchGroup';
 
 export const EMPTY_RESEARCH_GROUP_FORM: ResearchGroupFormValues = {
@@ -28,7 +27,7 @@ export const DIRTY_VALIDATED_FIELD_OPTIONS = {
   shouldValidate: true,
 } as const;
 
-export const INVITABLE_ROLES = INVITABLE_RESEARCH_GROUP_MEMBER_ROLES;
+export { INVITABLE_RESEARCH_GROUP_MEMBER_ROLES as INVITABLE_ROLES } from '@/modules/researchgroup/types/researchGroup';
 
 const RESEARCH_GROUP_FORM_TEXT_FIELDS = ['name', 'description'] as const;
 

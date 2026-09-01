@@ -34,6 +34,43 @@ export async function uploadProjectDataset(
   return waitForDatasetUploadCompletion(projectId, response.data.jobId);
 }
 
+async function* readDatasetUploadEvents(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+): AsyncGenerator<UploadDatasetEvent> {
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      return;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const events = buffer.split('\n\n');
+    buffer = events.pop() ?? '';
+
+    for (const rawEvent of events) {
+      const uploadEvent = parseDatasetUploadEvent(rawEvent);
+      if (uploadEvent) {
+        yield uploadEvent;
+      }
+    }
+  }
+}
+
+function resolveDatasetUploadEvent(uploadEvent: UploadDatasetEvent): UploadDatasetResponse | null {
+  if (uploadEvent.status === 'COMPLETED' && uploadEvent.result) {
+    return uploadEvent.result;
+  }
+
+  if (uploadEvent.status === 'FAILED') {
+    throw new Error(uploadEvent.message ?? i18n.t('project.errors.datasetUploadFailed'));
+  }
+
+  return null;
+}
+
 async function waitForDatasetUploadCompletion(
   projectId: number,
   jobId: string,
@@ -61,33 +98,10 @@ async function waitForDatasetUploadCompletion(
       throw new Error(i18n.t('project.errors.datasetUploadFailed'));
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-
-      buffer += decoder.decode(value, { stream: true });
-      const events = buffer.split('\n\n');
-      buffer = events.pop() ?? '';
-
-      for (const rawEvent of events) {
-        const uploadEvent = parseDatasetUploadEvent(rawEvent);
-        if (!uploadEvent) {
-          continue;
-        }
-
-        if (uploadEvent.status === 'COMPLETED' && uploadEvent.result) {
-          return uploadEvent.result;
-        }
-
-        if (uploadEvent.status === 'FAILED') {
-          throw new Error(uploadEvent.message ?? i18n.t('project.errors.datasetUploadFailed'));
-        }
+    for await (const uploadEvent of readDatasetUploadEvents(response.body.getReader())) {
+      const result = resolveDatasetUploadEvent(uploadEvent);
+      if (result != null) {
+        return result;
       }
     }
 

@@ -22,23 +22,17 @@ import type {
 } from '@/modules/project/shared/api/projectDtos';
 import type {
   ProjectParticipantAssignment,
-  ProjectParticipantAssignmentGroup,
-  ProjectParticipantRole,
-  ProjectMetricStatus,
-  ProjectMetricType,
   ProjectSetupLabel,
   ProjectType,
 } from '@/modules/project/shared/types/projectPrimitives';
 
+export type { ProjectParticipantAssignment, ProjectSetupLabel, ProjectType };
 export type {
-  ProjectParticipantAssignment,
   ProjectParticipantAssignmentGroup,
   ProjectParticipantRole,
   ProjectMetricStatus,
   ProjectMetricType,
-  ProjectSetupLabel,
-  ProjectType,
-};
+} from '@/modules/project/shared/types/projectPrimitives';
 
 export type ProjectSummary = ProjectSummaryDto & {
   researchGroupName?: string;

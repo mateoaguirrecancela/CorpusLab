@@ -35,6 +35,20 @@ class ProjectProgressCalculatorTest {
         assertThat(snapshot.projectCompletionPercentage()).isEqualTo(75);
     }
 
+    @Test
+    void buildProjectProgressSnapshotShouldSkipParticipantsWithoutUserOrUserId() {
+        User validUser = userWithId(1L, "valid@example.com");
+        User userWithoutId = UserTestBuilder.validUser().withEmail("no-id@example.com").build();
+        ProjectProgressCalculator calculator = new ProjectProgressCalculator(null, null, null);
+
+        ProjectProgressSnapshot snapshot = calculator.buildProjectProgressSnapshot(
+                List.of(participant(validUser), participant(userWithoutId)),
+                2L,
+                Map.of(1L, 1L));
+
+        assertThat(snapshot.completedStepsByUser()).containsOnlyKeys(1L);
+    }
+
     private ProjectParticipant participant(User user) {
         return ProjectParticipantTestBuilder.validParticipant().withUser(user).build();
     }

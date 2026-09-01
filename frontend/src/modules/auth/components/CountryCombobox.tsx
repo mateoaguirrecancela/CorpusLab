@@ -11,13 +11,13 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { type CountryOption } from '@/modules/auth/types/signup';
 
-type CountryComboboxProps = {
+type CountryComboboxProps = Readonly<{
   id: string;
   value: string;
   options: CountryOption[];
   placeholder?: string;
   onChange: (value: string) => void;
-};
+}>;
 
 export function CountryCombobox({
   id,

@@ -140,6 +140,33 @@ class XrrCalculatorTest {
         assertThat(result.details()).containsEntry("missingRaterGroups", 1);
     }
 
+    @Test
+    void calculateShouldTreatSingleRaterGroupAsPerfectlyReliable() {
+        XrrAnnotationData data = new XrrAnnotationData(
+                ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+                List.of(
+                        List.of("A", "A"),
+                        List.of("A", "A"),
+                        List.of("A", "A")),
+                List.of(
+                        List.of("A"),
+                        List.of("A"),
+                        List.of("A")),
+                List.of("human1", "human2"),
+                List.of("llm1"),
+                3,
+                0);
+
+        IaaResult result = new XrrCalculator(new StubTransformer(data)).calculate(SIMPLE_CONTEXT);
+
+        assertThat(result.calculable()).isTrue();
+        assertThat(result.value()).isCloseTo(1.0, org.assertj.core.data.Offset.offset(1.0e-12));
+        assertThat(result.details())
+                .containsEntry("groupXIrr", 1.0)
+                .containsEntry("groupYIrr", 1.0)
+                .containsEntry("crossKappa", 1.0);
+    }
+
     private record StubTransformer(XrrAnnotationData data)
             implements AnnotationDataTransformer<XrrAnnotationData> {
 

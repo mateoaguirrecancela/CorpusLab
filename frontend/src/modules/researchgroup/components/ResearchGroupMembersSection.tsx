@@ -12,8 +12,10 @@ import {
 } from '@/components/ui/table';
 import { InviteResearchGroupMemberDialog } from '@/modules/researchgroup/components/InviteResearchGroupMemberDialog';
 import { ManageResearchGroupMemberDialog } from '@/modules/researchgroup/components/ManageResearchGroupMemberDialog';
-import { type ResearchGroupDetail } from '@/modules/researchgroup/types/researchGroup';
-import { type ResearchGroupMember } from '@/modules/researchgroup/types/researchGroup';
+import {
+  type ResearchGroupDetail,
+  type ResearchGroupMember,
+} from '@/modules/researchgroup/types/researchGroup';
 import { getResearchGroupMemberInitials } from '@/modules/researchgroup/utils/researchGroupUtils';
 
 type ResearchGroupMembersSectionProps = Readonly<{

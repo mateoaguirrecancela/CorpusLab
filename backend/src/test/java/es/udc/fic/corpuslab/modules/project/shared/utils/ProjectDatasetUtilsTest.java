@@ -65,6 +65,44 @@ class ProjectDatasetUtilsTest {
     }
 
     @Test
+    void isCsvFileShouldMatchByMimeTypeOrExtension() {
+        assertThat(ProjectDatasetUtils.isCsvFile("data.csv", "application/octet-stream")).isTrue();
+        assertThat(ProjectDatasetUtils.isCsvFile("data.txt", "text/csv")).isTrue();
+        assertThat(ProjectDatasetUtils.isCsvFile("data.txt", "text/plain")).isFalse();
+        assertThat(ProjectDatasetUtils.isCsvFile(null, null)).isFalse();
+    }
+
+    @Test
+    void isNerCompatibleFileShouldMatchKnownTextualFormats() {
+        assertThat(ProjectDatasetUtils.isNerCompatibleFile("notes.txt", "text/plain")).isTrue();
+        assertThat(ProjectDatasetUtils.isNerCompatibleFile("data.json", "application/json")).isTrue();
+        assertThat(ProjectDatasetUtils.isNerCompatibleFile("data.geo", "application/vnd.geo+json")).isTrue();
+        assertThat(ProjectDatasetUtils.isNerCompatibleFile("data.csv", "application/octet-stream")).isTrue();
+        assertThat(ProjectDatasetUtils.isNerCompatibleFile("data.json", "application/octet-stream")).isTrue();
+        assertThat(ProjectDatasetUtils.isNerCompatibleFile("image.png", "image/png")).isFalse();
+    }
+
+    @Test
+    void truncatePreviewShouldTruncateLongValues() {
+        String longValue = "a".repeat(200);
+
+        String truncated = ProjectDatasetUtils.truncatePreview(longValue);
+
+        assertThat(truncated).hasSize(ProjectConstants.PREVIEW_MAX_LENGTH);
+        assertThat(truncated).endsWith("...");
+    }
+
+    @Test
+    void parseCsvDatasetContentShouldReturnEmptyContentForBlankBase64() {
+        DatasetItem datasetItem = datasetItemWithId(203L, 0, "empty.csv", "text/csv", "");
+
+        ProjectDatasetUtils.CsvDatasetContent csvContent = ProjectDatasetUtils.parseCsvDatasetContent(datasetItem);
+
+        assertThat(csvContent.headers()).isEmpty();
+        assertThat(csvContent.steps()).isEmpty();
+    }
+
+    @Test
     void decodeStoredBase64ShouldHandleDataUrlPrefixes() {
         String encoded = Base64.getEncoder().encodeToString("hello".getBytes(StandardCharsets.UTF_8));
 

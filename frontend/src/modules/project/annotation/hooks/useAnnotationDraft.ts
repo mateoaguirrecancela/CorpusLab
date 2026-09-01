@@ -8,7 +8,6 @@ import {
   parseCommaSeparatedLabels,
   type AnnotationDraft,
   type AnnotationDraftByStep,
-  type NerAnnotationEntity,
 } from '@/modules/project/annotation/utils/annotationPageUtils';
 
 const EMPTY_DRAFT: AnnotationDraft = {
@@ -106,4 +105,5 @@ export function useAnnotationDraft(
   };
 }
 
-export type { AnnotationDraft, NerAnnotationEntity };
+export type { AnnotationDraft };
+export type { NerAnnotationEntity } from '@/modules/project/annotation/utils/annotationPageUtils';

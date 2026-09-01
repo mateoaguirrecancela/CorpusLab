@@ -126,46 +126,79 @@ function countKey(key: string, count: number): string {
   return `project.detail.metrics.counts.${key}.${count === 1 ? 'one' : 'other'}`;
 }
 
+function xrrUndefinedMessage(metric: ProjectMetric, t: TFunction): string | null {
+  const groupAIrr = detailFiniteNumber(metric, 'groupXIrr');
+  if (groupAIrr != null && groupAIrr <= 0) {
+    return t('project.detail.metrics.reasons.XRR.IRR_NOT_POSITIVE', { group: 'A' });
+  }
+
+  const groupBIrr = detailFiniteNumber(metric, 'groupYIrr');
+  if (groupBIrr != null && groupBIrr <= 0) {
+    return t('project.detail.metrics.reasons.XRR.IRR_NOT_POSITIVE', { group: 'B' });
+  }
+
+  return null;
+}
+
+function fleissInsufficientItemsMessage(metric: ProjectMetric, t: TFunction): string | null {
+  const missingRatings = detailNumber(metric, 'missingRatings');
+  if (missingRatings == null) {
+    return null;
+  }
+  return t(countKey('missingAnnotation', missingRatings), { count: missingRatings });
+}
+
+function xrrInsufficientAnnotatorsMessage(metric: ProjectMetric, t: TFunction): string | null {
+  const missingGroups = detailNumber(metric, 'missingRaterGroups');
+  if (missingGroups == null) {
+    return null;
+  }
+  return t(countKey('missingGroup', missingGroups), { count: missingGroups });
+}
+
+function insufficientAnnotatorsMessage(metric: ProjectMetric, t: TFunction): string | null {
+  const missingAnnotators =
+    detailNumber(metric, 'missingAnnotators') ?? Math.max(0, 2 - metric.annotatorCount);
+  if (missingAnnotators <= 0) {
+    return null;
+  }
+  return t(countKey('missingAnnotator', missingAnnotators), { count: missingAnnotators });
+}
+
+function insufficientItemsMessage(metric: ProjectMetric, t: TFunction): string | null {
+  const missingItems =
+    detailNumber(metric, 'missingCompleteUnits') ?? detailNumber(metric, 'skippedUnits');
+  if (missingItems == null) {
+    return null;
+  }
+  return t(countKey('missingItem', missingItems), { count: missingItems });
+}
+
 function countedNonCalculableMessage(metric: ProjectMetric, t: TFunction): string | null {
   if (metric.metricType === 'XRR' && metric.status === 'UNDEFINED') {
-    const groupAIrr = detailFiniteNumber(metric, 'groupXIrr');
-    const groupBIrr = detailFiniteNumber(metric, 'groupYIrr');
-    if (groupAIrr != null && groupAIrr <= 0) {
-      return t('project.detail.metrics.reasons.XRR.IRR_NOT_POSITIVE', { group: 'A' });
-    }
-    if (groupBIrr != null && groupBIrr <= 0) {
-      return t('project.detail.metrics.reasons.XRR.IRR_NOT_POSITIVE', { group: 'B' });
-    }
+    return xrrUndefinedMessage(metric, t);
   }
 
   if (metric.metricType === 'FLEISS_KAPPA' && metric.status === 'INSUFFICIENT_ITEMS') {
-    const missingRatings = detailNumber(metric, 'missingRatings');
-    if (missingRatings != null) {
-      return t(countKey('missingAnnotation', missingRatings), { count: missingRatings });
+    const message = fleissInsufficientItemsMessage(metric, t);
+    if (message != null) {
+      return message;
     }
   }
 
   if (metric.metricType === 'XRR' && metric.status === 'INSUFFICIENT_ANNOTATORS') {
-    const missingGroups = detailNumber(metric, 'missingRaterGroups');
-    if (missingGroups != null) {
-      return t(countKey('missingGroup', missingGroups), { count: missingGroups });
+    const message = xrrInsufficientAnnotatorsMessage(metric, t);
+    if (message != null) {
+      return message;
     }
   }
 
   if (metric.status === 'INSUFFICIENT_ANNOTATORS') {
-    const missingAnnotators =
-      detailNumber(metric, 'missingAnnotators') ?? Math.max(0, 2 - metric.annotatorCount);
-    if (missingAnnotators > 0) {
-      return t(countKey('missingAnnotator', missingAnnotators), { count: missingAnnotators });
-    }
+    return insufficientAnnotatorsMessage(metric, t);
   }
 
   if (metric.status === 'INSUFFICIENT_ITEMS') {
-    const missingItems =
-      detailNumber(metric, 'missingCompleteUnits') ?? detailNumber(metric, 'skippedUnits');
-    if (missingItems != null) {
-      return t(countKey('missingItem', missingItems), { count: missingItems });
-    }
+    return insufficientItemsMessage(metric, t);
   }
 
   return null;

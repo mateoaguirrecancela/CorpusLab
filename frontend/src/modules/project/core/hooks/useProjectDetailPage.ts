@@ -190,7 +190,7 @@ export function useProjectDetailPage(): ProjectDetailPageState {
   };
 
   const toggleArchivedState = async () => {
-    if (!project || !project.canArchiveProject) {
+    if (!project?.canArchiveProject) {
       return;
     }
 

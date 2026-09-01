@@ -65,6 +65,147 @@ class ProjectAnnotationUtilsTest {
     }
 
     @Test
+    void normalizeNerAnnotationPayloadShouldRejectNonMapPayload() {
+        assertThatThrownBy(() -> ProjectAnnotationUtils.normalizeNerAnnotationPayload("not-a-map"))
+                .isInstanceOf(InvalidProjectDatasetException.class)
+                .hasMessageContaining("object with entities");
+    }
+
+    @Test
+    void normalizeNerAnnotationPayloadShouldRejectMissingEntitiesKey() {
+        Map<String, Object> payload = Map.of(ProjectConstants.ANNOTATION_KEY_NOTES, "no entities here");
+
+        assertThatThrownBy(() -> ProjectAnnotationUtils.normalizeNerAnnotationPayload(payload))
+                .isInstanceOf(InvalidProjectDatasetException.class)
+                .hasMessageContaining("at least one entity");
+    }
+
+    @Test
+    void normalizeNerAnnotationPayloadShouldRejectEmptyEntitiesList() {
+        Map<String, Object> payload = Map.of(ProjectConstants.NER_ANNOTATION_KEY_ENTITIES, List.of());
+
+        assertThatThrownBy(() -> ProjectAnnotationUtils.normalizeNerAnnotationPayload(payload))
+                .isInstanceOf(InvalidProjectDatasetException.class)
+                .hasMessageContaining("at least one entity");
+    }
+
+    @Test
+    void normalizeNerAnnotationPayloadShouldRejectNonMapEntity() {
+        Map<String, Object> payload = Map.of(ProjectConstants.NER_ANNOTATION_KEY_ENTITIES, List.of("not-a-map"));
+
+        assertThatThrownBy(() -> ProjectAnnotationUtils.normalizeNerAnnotationPayload(payload))
+                .isInstanceOf(InvalidProjectDatasetException.class)
+                .hasMessageContaining("must be an object");
+    }
+
+    @Test
+    void normalizeNerAnnotationPayloadShouldRejectMissingRequiredFields() {
+        Map<String, Object> missingLabel = Map.of(
+                ProjectConstants.NER_ANNOTATION_KEY_TEXT, "John",
+                ProjectConstants.NER_ANNOTATION_KEY_START_OFFSET, 0,
+                ProjectConstants.NER_ANNOTATION_KEY_END_OFFSET, 4);
+        Map<String, Object> payloadMissingLabel = Map.of(
+                ProjectConstants.NER_ANNOTATION_KEY_ENTITIES, List.of(missingLabel));
+
+        assertThatThrownBy(() -> ProjectAnnotationUtils.normalizeNerAnnotationPayload(payloadMissingLabel))
+                .isInstanceOf(InvalidProjectDatasetException.class)
+                .hasMessageContaining("requires label");
+    }
+
+    @Test
+    void normalizeNerAnnotationPayloadShouldRejectNegativeOffset() {
+        Map<String, Object> entity = Map.of(
+                ProjectConstants.NER_ANNOTATION_KEY_LABEL, "ORG",
+                ProjectConstants.NER_ANNOTATION_KEY_TEXT, "AI",
+                ProjectConstants.NER_ANNOTATION_KEY_START_OFFSET, -1,
+                ProjectConstants.NER_ANNOTATION_KEY_END_OFFSET, 2);
+        Map<String, Object> payload = Map.of(ProjectConstants.NER_ANNOTATION_KEY_ENTITIES, List.of(entity));
+
+        assertThatThrownBy(() -> ProjectAnnotationUtils.normalizeNerAnnotationPayload(payload))
+                .isInstanceOf(InvalidProjectDatasetException.class)
+                .hasMessageContaining("offsets are invalid");
+    }
+
+    @Test
+    void normalizeNerAnnotationPayloadShouldRejectEndOffsetNotAfterStartOffset() {
+        Map<String, Object> entity = Map.of(
+                ProjectConstants.NER_ANNOTATION_KEY_LABEL, "ORG",
+                ProjectConstants.NER_ANNOTATION_KEY_TEXT, "AI",
+                ProjectConstants.NER_ANNOTATION_KEY_START_OFFSET, 5,
+                ProjectConstants.NER_ANNOTATION_KEY_END_OFFSET, 5);
+        Map<String, Object> payload = Map.of(ProjectConstants.NER_ANNOTATION_KEY_ENTITIES, List.of(entity));
+
+        assertThatThrownBy(() -> ProjectAnnotationUtils.normalizeNerAnnotationPayload(payload))
+                .isInstanceOf(InvalidProjectDatasetException.class)
+                .hasMessageContaining("offsets are invalid");
+    }
+
+    @Test
+    void normalizeNerAnnotationPayloadShouldDeduplicateRepeatedEntities() {
+        Map<String, Object> entity = Map.of(
+                ProjectConstants.NER_ANNOTATION_KEY_LABEL, "ORG",
+                ProjectConstants.NER_ANNOTATION_KEY_TEXT, "AI",
+                ProjectConstants.NER_ANNOTATION_KEY_START_OFFSET, 0,
+                ProjectConstants.NER_ANNOTATION_KEY_END_OFFSET, 2);
+        Map<String, Object> payload = Map.of(
+                ProjectConstants.NER_ANNOTATION_KEY_ENTITIES, List.of(entity, entity));
+
+        Map<String, Object> normalized = ProjectAnnotationUtils.normalizeNerAnnotationPayload(payload);
+
+        assertThat((List<?>) normalized.get(ProjectConstants.NER_ANNOTATION_KEY_ENTITIES)).hasSize(1);
+    }
+
+    @Test
+    void parseOffsetValueShouldHandleNumbersStringsAndInvalidInput() {
+        assertThat(ProjectAnnotationUtils.parseOffsetValue(5)).isEqualTo(5);
+        assertThat(ProjectAnnotationUtils.parseOffsetValue(5.0)).isEqualTo(5);
+        assertThat(ProjectAnnotationUtils.parseOffsetValue(5.5)).isNull();
+        assertThat(ProjectAnnotationUtils.parseOffsetValue(Double.NaN)).isNull();
+        assertThat(ProjectAnnotationUtils.parseOffsetValue(Double.POSITIVE_INFINITY)).isNull();
+        assertThat(ProjectAnnotationUtils.parseOffsetValue(" 7 ")).isEqualTo(7);
+        assertThat(ProjectAnnotationUtils.parseOffsetValue("  ")).isNull();
+        assertThat(ProjectAnnotationUtils.parseOffsetValue("not-a-number")).isNull();
+        assertThat(ProjectAnnotationUtils.parseOffsetValue(true)).isNull();
+    }
+
+    @Test
+    void normalizeAnnotationAsMapShouldWrapNonMapPayloads() {
+        Map<String, Object> mapResult = ProjectAnnotationUtils.normalizeAnnotationAsMap(Map.of("label", "A"));
+        assertThat(mapResult).containsEntry("label", "A");
+
+        Map<String, Object> wrapped = ProjectAnnotationUtils.normalizeAnnotationAsMap("free text");
+        assertThat(wrapped).containsEntry(ProjectConstants.ANNOTATION_WRAPPED_VALUE_KEY, "free text");
+    }
+
+    @Test
+    void hasAnnotationPayloadShouldCoverAllValueTypes() {
+        assertThat(ProjectAnnotationUtils.hasAnnotationPayload(null)).isFalse();
+        assertThat(ProjectAnnotationUtils.hasAnnotationPayload("   ")).isFalse();
+        assertThat(ProjectAnnotationUtils.hasAnnotationPayload("done")).isTrue();
+        assertThat(ProjectAnnotationUtils.hasAnnotationPayload(Map.of())).isFalse();
+        assertThat(ProjectAnnotationUtils.hasAnnotationPayload(Map.of("label", "A"))).isTrue();
+        assertThat(ProjectAnnotationUtils.hasAnnotationPayload(List.of())).isFalse();
+        assertThat(ProjectAnnotationUtils.hasAnnotationPayload(List.of("A"))).isTrue();
+        assertThat(ProjectAnnotationUtils.hasAnnotationPayload(Boolean.TRUE)).isTrue();
+    }
+
+    @Test
+    void buildProjectProgressSnapshotShouldIgnoreDatasetItemsWithoutSteps() {
+        User onlyUser = userWithId(1L, "only@example.com");
+        ProjectParticipant participant = ProjectParticipantTestBuilder.validParticipant().withUser(onlyUser).build();
+
+        DatasetItem emptyCsvItem = datasetItemWithId(200L, 0, "empty.csv", "text/csv", "text,label\n");
+
+        ProjectAnnotationUtils.ProjectProgressSnapshot snapshot = ProjectAnnotationUtils.buildProjectProgressSnapshot(
+                List.of(participant),
+                List.of(emptyCsvItem),
+                Map.of());
+
+        assertThat(snapshot.totalSteps()).isZero();
+        assertThat(snapshot.projectCompletionPercentage()).isZero();
+    }
+
+    @Test
     void buildProjectProgressSnapshotShouldCountCompletedStepsAndPercentages() {
         User firstUser = userWithId(1L, "first@example.com");
         User secondUser = userWithId(2L, "second@example.com");

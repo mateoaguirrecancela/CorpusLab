@@ -4,7 +4,6 @@ import {
   type ProjectSetupLabel,
   type ProjectType,
 } from '@/modules/project/shared/types/project';
-import { projectTypeI18nKey } from '@/modules/project/shared/utils/projectDisplayUtils';
 import { getFileExtension } from '@/modules/project/shared/utils/projectFileUtils';
 
 export const ANNOTATION_PAGE_SIZE = 50;
@@ -46,7 +45,7 @@ export type CsvLabelColumnValue = {
   value: string;
 };
 
-export { projectTypeI18nKey };
+export { projectTypeI18nKey } from '@/modules/project/shared/utils/projectDisplayUtils';
 
 export function annotationStepKey(step: AnnotationStep): string {
   return `${step.datasetItemId}:${step.stepIndex}`;
@@ -374,13 +373,14 @@ export function buildNerTextSegments(
   return segments;
 }
 
-const SELECTION_TRIM_PATTERN = /^(?:[\s]|(?![()[\]{}])\p{P})+|(?:[\s]|(?![()[\]{}])\p{P})+$/gu;
+const LEADING_TRIM_PATTERN = /^(?:\s|(?![()[\]{}])\p{P})+/gu;
+const TRAILING_TRIM_PATTERN = /(?:\s|(?![()[\]{}])\p{P})+$/gu;
 
 function cleanSelectedText(
   rawText: string,
   rawStartOffset: number,
 ): { text: string; startOffset: number; endOffset: number } | null {
-  const cleanedText = rawText.replace(SELECTION_TRIM_PATTERN, '');
+  const cleanedText = rawText.replace(LEADING_TRIM_PATTERN, '').replace(TRAILING_TRIM_PATTERN, '');
   if (cleanedText.length === 0) {
     return null;
   }
