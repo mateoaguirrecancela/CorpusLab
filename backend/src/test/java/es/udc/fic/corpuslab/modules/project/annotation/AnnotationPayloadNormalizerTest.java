@@ -169,6 +169,78 @@ class AnnotationPayloadNormalizerTest {
                 .hasMessageContaining("notes");
     }
 
+    @Test
+    void normalizeShouldRejectNullOrEmptyPayloads() {
+        Project project = project(ProjectType.TEXT_CLASSIFICATION_SIMPLE, "Positive");
+
+        assertThatThrownBy(() -> normalizer.normalize(null, project))
+                .isInstanceOf(InvalidProjectAnnotationException.class)
+                .hasMessageContaining("payload is required");
+        assertThatThrownBy(() -> normalizer.normalize("   ", project))
+                .isInstanceOf(InvalidProjectAnnotationException.class)
+                .hasMessageContaining("payload is required");
+        assertThatThrownBy(() -> normalizer.normalize(List.of(), project))
+                .isInstanceOf(InvalidProjectAnnotationException.class)
+                .hasMessageContaining("payload is required");
+        assertThatThrownBy(() -> normalizer.normalize(Map.of(), project))
+                .isInstanceOf(InvalidProjectAnnotationException.class)
+                .hasMessageContaining("payload is required");
+    }
+
+    @Test
+    void normalizeShouldRejectMissingProjectType() {
+        Project project = new Project();
+
+        assertThatThrownBy(() -> normalizer.normalize(Map.of("label", "A"), project))
+                .isInstanceOf(InvalidProjectAnnotationException.class)
+                .hasMessageContaining("Project type is required");
+    }
+
+    @Test
+    void normalizeShouldRejectBlankLabel() {
+        Project project = project(ProjectType.TEXT_CLASSIFICATION_SIMPLE, "Positive");
+
+        assertThatThrownBy(() -> normalizer.normalize(Map.of("label", "   "), project))
+                .isInstanceOf(InvalidProjectAnnotationException.class)
+                .hasMessageContaining("label is required");
+    }
+
+    @Test
+    void normalizeShouldRejectMultilabelPayloadWithNoValidLabels() {
+        Project project = project(ProjectType.TEXT_CLASSIFICATION_MULTILABEL, "Positive");
+
+        assertThatThrownBy(() -> normalizer.normalize(Map.of("labels", List.of()), project))
+                .isInstanceOf(InvalidProjectAnnotationException.class)
+                .hasMessageContaining("at least one label");
+    }
+
+    @Test
+    void normalizeShouldIgnoreExplicitNullNotes() {
+        Project project = project(ProjectType.SEQ2SEQ);
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("text", "answer");
+        payload.put("notes", null);
+
+        Map<String, Object> normalized = normalizeMap(payload, project);
+
+        assertThat(normalized).doesNotContainKey(ProjectConstants.ANNOTATION_KEY_NOTES);
+    }
+
+    @Test
+    void normalizeShouldWrapNerTransformerValidationErrors() {
+        Project project = project(ProjectType.NER, "PERSON");
+
+        assertThatThrownBy(() -> normalizer.normalize(
+                Map.of("entities", List.of(Map.of(
+                        "label", "PERSON",
+                        "text", "John",
+                        "startOffset", 0,
+                        "endOffset", 100))),
+                project))
+                .isInstanceOf(InvalidProjectAnnotationException.class)
+                .hasMessageContaining("selected text length");
+    }
+
     @SuppressWarnings("unchecked")
     private Map<String, Object> normalizeMap(Object annotationPayload, Project project) {
         return (Map<String, Object>) normalizer.normalize(annotationPayload, project);

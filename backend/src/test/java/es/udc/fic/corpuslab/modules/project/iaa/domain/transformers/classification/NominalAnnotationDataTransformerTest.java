@@ -77,6 +77,86 @@ class NominalAnnotationDataTransformerTest {
         assertThat(data.categories()).containsExactlyInAnyOrder("alpha||beta", "ai||science");
     }
 
+    @Test
+    void transformShouldSkipAnnotatorsWithoutUserId() {
+        IaaDatasetItem datasetItem = datasetItemWithId(30L);
+        List<IaaAnnotator> annotators = List.of(annotator(1L), new IaaAnnotator(null));
+
+        IaaCalculationContext context = new IaaCalculationContext(
+                2L,
+                ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+                List.of(annotation(1L, 30L, 0, Map.of("label", "A"))),
+                List.of(datasetItem),
+                annotators,
+                Map.of());
+
+        NominalAnnotationData data = transformer.transform(context);
+
+        assertThat(data.annotatorVectors()).hasSize(1);
+        assertThat(data.annotatorVectors().getFirst().annotatorId()).isEqualTo(1L);
+    }
+
+    @Test
+    void transformShouldSkipAnnotationsWithNullPayload() {
+        IaaDatasetItem datasetItem = datasetItemWithId(31L);
+        IaaAnnotation nullPayloadAnnotation = new IaaAnnotation(31L, 1L, 0, null);
+
+        IaaCalculationContext context = new IaaCalculationContext(
+                3L,
+                ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+                List.of(nullPayloadAnnotation),
+                List.of(datasetItem),
+                List.of(annotator(1L)),
+                Map.of());
+
+        NominalAnnotationData data = transformer.transform(context);
+
+        assertThat(data.annotatorVectors().getFirst().annotationsByUnit()).isEmpty();
+        assertThat(data.categories()).isEmpty();
+    }
+
+    @Test
+    void transformShouldNormalizeNumericAndNonFiniteCategoryValues() {
+        IaaDatasetItem datasetItem = datasetItemWithId(32L);
+
+        IaaCalculationContext context = new IaaCalculationContext(
+                4L,
+                ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+                List.of(
+                        annotation(1L, 32L, 0, Map.of("label", 7)),
+                        annotation(1L, 32L, 1, Map.of("label", Double.NaN))),
+                List.of(datasetItem),
+                List.of(annotator(1L)),
+                Map.of());
+
+        NominalAnnotationData data = transformer.transform(context);
+
+        assertThat(data.annotatorVectors().getFirst().annotationsByUnit())
+                .containsEntry(new AnnotationUnitKey(32L, 0), "7")
+                .doesNotContainKey(new AnnotationUnitKey(32L, 1));
+    }
+
+    @Test
+    void transformShouldUseSingularLabelKeyAndPlainScalarForMultilabel() {
+        IaaDatasetItem datasetItem = datasetItemWithId(33L);
+
+        IaaCalculationContext context = new IaaCalculationContext(
+                5L,
+                ProjectType.TEXT_CLASSIFICATION_MULTILABEL,
+                List.of(
+                        annotation(1L, 33L, 0, Map.of("label", "solo")),
+                        new IaaAnnotation(33L, 1L, 1, "raw-scalar")),
+                List.of(datasetItem),
+                List.of(annotator(1L)),
+                Map.of());
+
+        NominalAnnotationData data = transformer.transform(context);
+
+        assertThat(data.annotatorVectors().getFirst().annotationsByUnit())
+                .containsEntry(new AnnotationUnitKey(33L, 0), "solo")
+                .containsEntry(new AnnotationUnitKey(33L, 1), "raw-scalar");
+    }
+
     private IaaAnnotation annotation(Long annotatorId, Long datasetItemId, int stepIndex, Map<String, Object> payload) {
         return new IaaAnnotation(datasetItemId, annotatorId, stepIndex, payload);
     }

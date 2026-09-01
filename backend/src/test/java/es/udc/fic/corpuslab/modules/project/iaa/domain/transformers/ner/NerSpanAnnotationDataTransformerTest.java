@@ -97,6 +97,57 @@ class NerSpanAnnotationDataTransformerTest {
         assertThat(annotationUnit.spans()).containsExactly(new NerSpan("PERSON", "Jane", 6, 10));
     }
 
+    @Test
+    void transformShouldSkipAnnotatorsWithoutUserIdAndDatasetItemsWithoutId() {
+        IaaDatasetItem itemWithNullId = new IaaDatasetItem(null, 0, List.of(), false);
+        IaaDatasetItem validItem = datasetItemWithId(40L, 0, "Hello Amy");
+        List<IaaAnnotator> annotators = List.of(annotator(1L), new IaaAnnotator(null));
+
+        IaaCalculationContext context = new IaaCalculationContext(
+                6L,
+                ProjectType.NER,
+                List.of(annotation(
+                        1L,
+                        40L,
+                        0,
+                        Map.of(IaaPayloadUtils.NER_ANNOTATION_KEY_ENTITIES, List.of(Map.of(
+                                IaaPayloadUtils.NER_ANNOTATION_KEY_LABEL, "PERSON",
+                                IaaPayloadUtils.NER_ANNOTATION_KEY_TEXT, "Amy",
+                                IaaPayloadUtils.NER_ANNOTATION_KEY_START_OFFSET, 6,
+                                IaaPayloadUtils.NER_ANNOTATION_KEY_END_OFFSET, 9))))),
+                List.of(itemWithNullId, validItem),
+                annotators,
+                Map.of());
+
+        NerSpanAnnotationData data = transformer.transform(context);
+
+        assertThat(data.annotatorVectors()).hasSize(1);
+        assertThat(data.annotatorVectors().getFirst().annotationsByUnit()).hasSize(1);
+    }
+
+    @Test
+    void transformShouldSkipAnnotationsWithoutUsableSpans() {
+        IaaDatasetItem datasetItem = datasetItemWithId(41L, 0, "no entities here");
+
+        IaaCalculationContext context = new IaaCalculationContext(
+                7L,
+                ProjectType.NER,
+                List.of(
+                        annotation(1L, 41L, 0, Map.of("unrelated", "value")),
+                        new IaaAnnotation(41L, 1L, 1, "not-a-map"),
+                        annotation(1L, 41L, 2, Map.of(
+                                IaaPayloadUtils.NER_ANNOTATION_KEY_ENTITIES, "not-a-list")),
+                        annotation(1L, 41L, 3, Map.of(
+                                IaaPayloadUtils.NER_ANNOTATION_KEY_ENTITIES, List.of("not-a-map-entity")))),
+                List.of(datasetItem),
+                List.of(annotator(1L)),
+                Map.of());
+
+        NerSpanAnnotationData data = transformer.transform(context);
+
+        assertThat(data.annotatorVectors().getFirst().annotationsByUnit()).isEmpty();
+    }
+
     private IaaAnnotation annotation(Long annotatorId, Long datasetItemId, int stepIndex, Map<String, Object> payload) {
         return new IaaAnnotation(datasetItemId, annotatorId, stepIndex, payload);
     }
