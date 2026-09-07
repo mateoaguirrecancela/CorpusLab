@@ -25,7 +25,10 @@ public class NominalAnnotationDataTransformer implements AnnotationDataTransform
 
     @Override
     public Set<ProjectType> supportedProjectTypes() {
-        return Set.of(ProjectType.TEXT_CLASSIFICATION_SIMPLE, ProjectType.TEXT_CLASSIFICATION_MULTILABEL);
+        return Set.of(
+                ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+                ProjectType.TEXT_CLASSIFICATION_MULTILABEL,
+                ProjectType.NER);
     }
 
     @Override
@@ -92,6 +95,10 @@ public class NominalAnnotationDataTransformer implements AnnotationDataTransform
     private String extractCategory(ProjectType projectType, Object payload) {
         if (payload == null) {
             return null;
+        }
+
+        if (projectType == ProjectType.NER) {
+            return IaaPayloadUtils.canonicalizeNerEntities(payload);
         }
 
         if (projectType == ProjectType.TEXT_CLASSIFICATION_MULTILABEL) {

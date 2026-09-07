@@ -14,10 +14,62 @@ import es.udc.fic.corpuslab.modules.project.iaa.domain.model.IaaAnnotator;
 import es.udc.fic.corpuslab.modules.project.iaa.domain.model.IaaCalculationContext;
 import es.udc.fic.corpuslab.modules.project.iaa.domain.model.IaaDatasetItem;
 import es.udc.fic.corpuslab.modules.project.iaa.domain.model.IaaDatasetStep;
+import es.udc.fic.corpuslab.modules.project.iaa.domain.transformers.IaaPayloadUtils;
 
 class NominalAnnotationDataTransformerTest {
 
     private final NominalAnnotationDataTransformer transformer = new NominalAnnotationDataTransformer();
+
+    @Test
+    void supportedProjectTypesShouldIncludeNerForSelectionOfFragments() {
+        assertThat(transformer.supportedProjectTypes()).containsExactlyInAnyOrder(
+                ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+                ProjectType.TEXT_CLASSIFICATION_MULTILABEL,
+                ProjectType.NER);
+    }
+
+    @Test
+    void transformShouldCanonicalizeNerSpansIntoStrictMatchCategories() {
+        IaaDatasetItem datasetItem = datasetItemWithId(42L);
+
+        IaaCalculationContext context = new IaaCalculationContext(
+                8L,
+                ProjectType.NER,
+                List.of(
+                        annotation(8L, 42L, 0, Map.of(
+                                IaaPayloadUtils.NER_ANNOTATION_KEY_ENTITIES, List.of(
+                                        Map.of(
+                                                IaaPayloadUtils.NER_ANNOTATION_KEY_LABEL, "ORG",
+                                                IaaPayloadUtils.NER_ANNOTATION_KEY_START_OFFSET, 10,
+                                                IaaPayloadUtils.NER_ANNOTATION_KEY_END_OFFSET, 16),
+                                        Map.of(
+                                                IaaPayloadUtils.NER_ANNOTATION_KEY_LABEL, "PER",
+                                                IaaPayloadUtils.NER_ANNOTATION_KEY_START_OFFSET, 0,
+                                                IaaPayloadUtils.NER_ANNOTATION_KEY_END_OFFSET, 5)))),
+                        annotation(9L, 42L, 0, Map.of(
+                                IaaPayloadUtils.NER_ANNOTATION_KEY_ENTITIES, List.of(
+                                        Map.of(
+                                                IaaPayloadUtils.NER_ANNOTATION_KEY_LABEL, "PER",
+                                                IaaPayloadUtils.NER_ANNOTATION_KEY_START_OFFSET, 0,
+                                                IaaPayloadUtils.NER_ANNOTATION_KEY_END_OFFSET, 5),
+                                        Map.of(
+                                                IaaPayloadUtils.NER_ANNOTATION_KEY_LABEL, "ORG",
+                                                IaaPayloadUtils.NER_ANNOTATION_KEY_START_OFFSET, 4,
+                                                IaaPayloadUtils.NER_ANNOTATION_KEY_END_OFFSET, 4))))),
+                List.of(datasetItem),
+                List.of(annotator(8L), annotator(9L)),
+                Map.of());
+
+        NominalAnnotationData data = transformer.transform(context);
+
+        // Coincide con la canonicalización de XrrAnnotationDataTransformerTest para el
+        // mismo payload: ambos transformadores comparten IaaPayloadUtils.canonicalizeNerEntities.
+        assertThat(data.annotatorVectors().get(0).annotationsByUnit())
+                .containsEntry(new AnnotationUnitKey(42L, 0), "0:5:PER||10:16:ORG");
+        assertThat(data.annotatorVectors().get(1).annotationsByUnit())
+                .containsEntry(new AnnotationUnitKey(42L, 0), "0:5:PER");
+        assertThat(data.categories()).containsExactlyInAnyOrder("0:5:PER||10:16:ORG", "0:5:PER");
+    }
 
     @Test
     void transformShouldNormalizeSingleLabelPayloadsAndKeepInactiveAnnotators() {

@@ -24,7 +24,8 @@ public class FleissKappaCalculator implements IaaMetricCalculator {
 
     private static final Set<ProjectType> SUPPORTED_PROJECT_TYPES = Set.of(
             ProjectType.TEXT_CLASSIFICATION_SIMPLE,
-            ProjectType.TEXT_CLASSIFICATION_MULTILABEL);
+            ProjectType.TEXT_CLASSIFICATION_MULTILABEL,
+            ProjectType.NER);
 
     private final AnnotationDataTransformer<NominalAnnotationData> transformer;
 
