@@ -12,6 +12,7 @@
 .vite/
 *.tsbuildinfo
 .eslintcache
+**/coverage/
 .env
 .env.local
 .env.*.local

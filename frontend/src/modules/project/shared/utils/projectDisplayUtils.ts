@@ -30,7 +30,11 @@ export function getPersonInitials(firstName: string, lastName: string): string {
 }
 
 export function formatFileSize(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes < 1024) {
+  if (!Number.isFinite(bytes)) {
+    return '0 B';
+  }
+
+  if (bytes < 1024) {
     return `${Math.max(0, Math.trunc(bytes))} B`;
   }
 
