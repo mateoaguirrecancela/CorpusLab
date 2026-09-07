@@ -29,6 +29,9 @@ public class MetricsRegistry {
                     MetricType.XRR),
             ProjectType.NER,
             Set.of(
+                    MetricType.COHENS_KAPPA,
+                    MetricType.KRIPPENDORFFS_ALPHA,
+                    MetricType.FLEISS_KAPPA,
                     MetricType.XRR,
                     MetricType.SPAN_OVERLAP_F1),
             ProjectType.SEQ2SEQ,

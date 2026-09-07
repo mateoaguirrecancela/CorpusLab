@@ -314,7 +314,7 @@ public class XrrAnnotationDataTransformer implements AnnotationDataTransformer<X
         }
 
         if (projectType == ProjectType.NER) {
-            return normalizeNerAnnotationValue(payload);
+            return IaaPayloadUtils.canonicalizeNerEntities(payload);
         }
         if (projectType == ProjectType.TEXT_CLASSIFICATION_MULTILABEL) {
             return normalizeMultiLabelAnnotationValue(payload);
@@ -355,37 +355,6 @@ public class XrrAnnotationDataTransformer implements AnnotationDataTransformer<X
 
         List<String> labels = normalizeStringList(rawLabels);
         return labels.isEmpty() ? null : String.join("||", labels);
-    }
-
-    private String normalizeNerAnnotationValue(Object payload) {
-        if (!(payload instanceof Map<?, ?> rawMap)) {
-            return null;
-        }
-
-        Map<String, Object> payloadMap = IaaPayloadUtils.toMutableStringObjectMap(rawMap);
-        Object rawEntities = payloadMap.get(IaaPayloadUtils.NER_ANNOTATION_KEY_ENTITIES);
-        if (!(rawEntities instanceof List<?> entities)) {
-            return null;
-        }
-
-        List<String> normalizedEntities = new ArrayList<>();
-        for (Object rawEntity : entities) {
-            if (!(rawEntity instanceof Map<?, ?> rawEntityMap)) {
-                continue;
-            }
-
-            Map<String, Object> entity = IaaPayloadUtils.toMutableStringObjectMap(rawEntityMap);
-            String label = normalizeScalar(entity.get(IaaPayloadUtils.NER_ANNOTATION_KEY_LABEL));
-            Integer startOffset = IaaPayloadUtils.parseOffsetValue(
-                    entity.get(IaaPayloadUtils.NER_ANNOTATION_KEY_START_OFFSET));
-            Integer endOffset = IaaPayloadUtils.parseOffsetValue(
-                    entity.get(IaaPayloadUtils.NER_ANNOTATION_KEY_END_OFFSET));
-            if (label != null && startOffset != null && endOffset != null && endOffset > startOffset) {
-                normalizedEntities.add(startOffset + ":" + endOffset + ":" + label);
-            }
-        }
-
-        return normalizedEntities.stream().sorted().reduce((left, right) -> left + "||" + right).orElse(null);
     }
 
     private List<String> normalizeStringList(Object rawValue) {

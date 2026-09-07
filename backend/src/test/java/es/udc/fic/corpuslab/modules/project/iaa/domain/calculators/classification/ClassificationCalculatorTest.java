@@ -20,6 +20,7 @@ import es.udc.fic.corpuslab.modules.project.iaa.domain.model.IaaResult;
 import es.udc.fic.corpuslab.modules.project.iaa.domain.model.AnnotationUnitKey;
 import es.udc.fic.corpuslab.modules.project.iaa.domain.transformers.AnnotationDataTransformer;
 import es.udc.fic.corpuslab.modules.project.iaa.domain.transformers.classification.NominalAnnotationData;
+import es.udc.fic.corpuslab.modules.project.iaa.domain.transformers.classification.NominalAnnotationDataTransformer;
 
 class ClassificationCalculatorTest {
 
@@ -30,6 +31,38 @@ class ClassificationCalculatorTest {
             List.of(),
             List.of(),
             Map.of());
+
+    private static final IaaCalculationContext NER_CONTEXT = new IaaCalculationContext(
+            1L,
+            ProjectType.NER,
+            List.of(),
+            List.of(),
+            List.of(),
+            Map.of());
+
+    @Test
+    void allClassificationCalculatorsShouldSupportSelectionOfFragments() {
+        NominalAnnotationDataTransformer transformer = new NominalAnnotationDataTransformer();
+
+        assertThat(new CohensKappaCalculator(transformer).supportedProjectTypes()).contains(ProjectType.NER);
+        assertThat(new FleissKappaCalculator(transformer).supportedProjectTypes()).contains(ProjectType.NER);
+        assertThat(new KrippendorffsAlphaCalculator(transformer).supportedProjectTypes()).contains(ProjectType.NER);
+    }
+
+    @Test
+    void cohensKappaShouldCalculateKappaOverStrictMatchSpanCategories() {
+        // Valor de referencia calculado a mano: dos anotadores sobre tres unidades,
+        // cada una con un único span canonicalizado a "inicio:fin:etiqueta" (selección
+        // de fragmentos). Po=2/3, Pe=(2/3*1/3)+(1/3*2/3)=4/9, kappa=(2/3-4/9)/(5/9)=0,4.
+        NominalAnnotationData data = data(
+                vector(1L, Map.of(unit(1), "0:5:PER", unit(2), "0:5:ORG", unit(3), "0:5:PER")),
+                vector(2L, Map.of(unit(1), "0:5:PER", unit(2), "0:5:ORG", unit(3), "0:5:ORG")));
+
+        IaaResult result = new CohensKappaCalculator(new StubTransformer(data)).calculate(NER_CONTEXT);
+
+        assertThat(result.calculable()).isTrue();
+        assertThat(result.value()).isCloseTo(0.4, org.assertj.core.data.Offset.offset(1.0e-12));
+    }
 
     @Test
     void cohensKappaShouldCalculatePairwiseNominalKappa() {

@@ -25,7 +25,10 @@ public class CohensKappaCalculator
     CohensKappaCalculator(AnnotationDataTransformer<NominalAnnotationData> transformer) {
         super(
                 MetricType.COHENS_KAPPA,
-                Set.of(ProjectType.TEXT_CLASSIFICATION_SIMPLE, ProjectType.TEXT_CLASSIFICATION_MULTILABEL),
+                Set.of(
+                        ProjectType.TEXT_CLASSIFICATION_SIMPLE,
+                        ProjectType.TEXT_CLASSIFICATION_MULTILABEL,
+                        ProjectType.NER),
                 transformer);
     }
 
