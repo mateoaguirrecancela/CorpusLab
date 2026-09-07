@@ -64,8 +64,7 @@ export function useProjectCreatePage(): ProjectCreatePageState {
   const [searchParams] = useSearchParams();
 
   const { data: groups = [], isLoading: isLoadingGroups } = useProjectSetupResearchGroupsQuery();
-  const { finalizeProjectWizard, isFinalizingProject, resetFinalizationProject } =
-    useFinalizeProjectWizard();
+  const { finalizeProjectWizard, isFinalizingProject } = useFinalizeProjectWizard();
   const projectInfoSchema = useMemo(() => createProjectInfoSchema(t), [t]);
   const projectInfoForm = useForm<ProjectCreateInfoFormValues>({
     defaultValues: {
@@ -177,7 +176,6 @@ export function useProjectCreatePage(): ProjectCreatePageState {
       return;
     }
 
-    resetFinalizationProject();
     setCurrentStep(2);
   };
 
@@ -186,7 +184,6 @@ export function useProjectCreatePage(): ProjectCreatePageState {
       return;
     }
 
-    resetFinalizationProject();
     setProjectSetupPayload(null);
     setCurrentStep(3);
   };

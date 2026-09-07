@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { toast } from 'sonner';
 import {
   useAssignProjectParticipantsMutation,
@@ -41,7 +40,6 @@ type FinalizeProjectWizardState = Readonly<{
     input: FinalizeProjectWizardInput,
   ) => Promise<FinalizeProjectWizardResult>;
   isFinalizingProject: boolean;
-  resetFinalizationProject: () => void;
 }>;
 
 type WizardFailureStep = 'dataset_upload_failed' | 'setup_config_failed' | 'assignment_failed';
@@ -51,23 +49,17 @@ export function useFinalizeProjectWizard(): FinalizeProjectWizardState {
   const uploadDatasetMutation = useUploadProjectDatasetMutation();
   const configureProjectSetupMutation = useConfigureProjectSetupMutation();
   const assignProjectParticipantsMutation = useAssignProjectParticipantsMutation();
-  const [finalizationProjectId, setFinalizationProjectId] = useState<number | null>(null);
 
   const ensureProjectCreated = async ({
     groupId,
     projectInfo,
   }: Pick<FinalizeProjectWizardInput, 'groupId' | 'projectInfo'>): Promise<number | null> => {
-    if (finalizationProjectId !== null) {
-      return finalizationProjectId;
-    }
-
     try {
       const createdProject = await projectCreateMutation.mutateAsync({
         groupId,
         payload: projectInfo,
       });
 
-      setFinalizationProjectId(createdProject.id);
       return createdProject.id;
     } catch (error) {
       toast.error(getCreateProjectErrorMessage(error));
@@ -136,7 +128,6 @@ export function useFinalizeProjectWizard(): FinalizeProjectWizardState {
   };
 
   const cleanupFailedProject = async (groupId: number, projectId: number) => {
-    setFinalizationProjectId(null);
     try {
       await cleanupIncompleteProject(groupId, projectId);
     } catch (deleteError) {
@@ -190,6 +181,5 @@ export function useFinalizeProjectWizard(): FinalizeProjectWizardState {
       uploadDatasetMutation.isPending ||
       configureProjectSetupMutation.isPending ||
       assignProjectParticipantsMutation.isPending,
-    resetFinalizationProject: () => setFinalizationProjectId(null),
   };
 }
