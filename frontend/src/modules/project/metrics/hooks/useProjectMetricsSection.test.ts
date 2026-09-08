@@ -1,6 +1,9 @@
 import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useProjectMetricsSection } from '@/modules/project/metrics/hooks/useProjectMetricsSection';
+import {
+  PROJECT_METRIC_ORDER,
+  useProjectMetricsSection,
+} from '@/modules/project/metrics/hooks/useProjectMetricsSection';
 import { type ProjectMetric } from '@/modules/project/shared/types/project';
 
 // Controls whether a translation key that carries a `defaultValue` (i.e. one
@@ -80,9 +83,7 @@ describe('metricsSupported / emptyMessage', () => {
   });
 
   it('reports unavailable on a query error once there is progress', () => {
-    const { result } = renderHook(() =>
-      useProjectMetricsSection(baseParams({ isError: true })),
-    );
+    const { result } = renderHook(() => useProjectMetricsSection(baseParams({ isError: true })));
 
     expect(result.current.emptyMessage).toBe('project.detail.metrics.unavailable');
   });
@@ -94,9 +95,7 @@ describe('metricsSupported / emptyMessage', () => {
   });
 
   it('has no empty message while metrics are loading', () => {
-    const { result } = renderHook(() =>
-      useProjectMetricsSection(baseParams({ isLoading: true })),
-    );
+    const { result } = renderHook(() => useProjectMetricsSection(baseParams({ isLoading: true })));
 
     expect(result.current.emptyMessage).toBe('');
   });
@@ -117,21 +116,48 @@ describe('showLoading', () => {
 });
 
 describe('skeletonMetricTypes', () => {
-  it('shows 2 placeholders for NER and 4 for other project types', () => {
+  it('shows 5 placeholders for NER and 4 for other project types', () => {
     const ner = renderHook(() => useProjectMetricsSection(baseParams({ projectType: 'NER' })));
-    expect(ner.result.current.skeletonMetricTypes).toHaveLength(2);
+    expect(ner.result.current.skeletonMetricTypes).toHaveLength(5);
 
     const classification = renderHook(() => useProjectMetricsSection(baseParams()));
     expect(classification.result.current.skeletonMetricTypes).toHaveLength(4);
   });
 });
 
+describe('metricsGridClassName', () => {
+  it('uses one column per metric so the five NER metrics fit in a single row', () => {
+    const metrics = PROJECT_METRIC_ORDER.map((metricType) => metric({ metricType }));
+    const { result } = renderHook(() =>
+      useProjectMetricsSection(baseParams({ metrics, projectType: 'NER' })),
+    );
+
+    expect(result.current.metricItems).toHaveLength(5);
+    expect(result.current.metricsGridClassName).toContain('xl:grid-cols-5');
+  });
+
+  it('keeps four columns for classification projects', () => {
+    const metrics = PROJECT_METRIC_ORDER.slice(0, 4).map((metricType) => metric({ metricType }));
+    const { result } = renderHook(() => useProjectMetricsSection(baseParams({ metrics })));
+
+    expect(result.current.metricsGridClassName).toContain('lg:grid-cols-4');
+  });
+
+  it('sizes the grid from the skeleton while metrics are loading', () => {
+    const { result } = renderHook(() =>
+      useProjectMetricsSection(
+        baseParams({ isLoading: true, metrics: undefined, projectType: 'NER' }),
+      ),
+    );
+
+    expect(result.current.showLoading).toBe(true);
+    expect(result.current.metricsGridClassName).toContain('xl:grid-cols-5');
+  });
+});
+
 describe('metricItems ordering and formatting', () => {
   it('sorts metrics by the canonical metric order regardless of input order', () => {
-    const metrics = [
-      metric({ metricType: 'XRR' }),
-      metric({ metricType: 'COHENS_KAPPA' }),
-    ];
+    const metrics = [metric({ metricType: 'XRR' }), metric({ metricType: 'COHENS_KAPPA' })];
     const { result } = renderHook(() => useProjectMetricsSection(baseParams({ metrics })));
 
     expect(result.current.metricItems.map((item) => item.metricType)).toEqual([
@@ -142,7 +168,13 @@ describe('metricItems ordering and formatting', () => {
 
   it('formats a calculable value and tones it by magnitude', () => {
     const metrics = [
-      metric({ metricType: 'COHENS_KAPPA', value: 0.8, calculable: true, annotatorCount: 2, itemCount: 10 }),
+      metric({
+        metricType: 'COHENS_KAPPA',
+        value: 0.8,
+        calculable: true,
+        annotatorCount: 2,
+        itemCount: 10,
+      }),
       metric({ metricType: 'FLEISS_KAPPA', value: 0.5, calculable: true }),
       metric({ metricType: 'XRR', value: 0.1, calculable: true }),
       metric({ metricType: 'SPAN_OVERLAP_F1', value: -0.2, calculable: true }),
@@ -178,11 +210,18 @@ describe('metricItems ordering and formatting', () => {
 
   it('surfaces a generic provisional message when nothing is inactive yet', () => {
     const metrics = [
-      metric({ metricType: 'COHENS_KAPPA', value: 0.5, calculable: true, details: { provisional: true } }),
+      metric({
+        metricType: 'COHENS_KAPPA',
+        value: 0.5,
+        calculable: true,
+        details: { provisional: true },
+      }),
     ];
     const { result } = renderHook(() => useProjectMetricsSection(baseParams({ metrics })));
 
-    expect(result.current.metricItems[0].provisionalMessage).toBe('project.detail.metrics.provisional');
+    expect(result.current.metricItems[0].provisionalMessage).toBe(
+      'project.detail.metrics.provisional',
+    );
   });
 
   it('surfaces the active-annotator count once some annotators are inactive', () => {
@@ -276,7 +315,11 @@ describe('countedNonCalculableMessage per metric type', () => {
   it('falls through to the generic reason cascade when both XRR groups have positive IRR', () => {
     resolvableKeys.has = (key) => key === 'project.detail.metrics.reasons.generic.UNDEFINED';
     const metrics = [
-      metric({ metricType: 'XRR', status: 'UNDEFINED', details: { groupXIrr: 0.5, groupYIrr: 0.5 } }),
+      metric({
+        metricType: 'XRR',
+        status: 'UNDEFINED',
+        details: { groupXIrr: 0.5, groupYIrr: 0.5 },
+      }),
     ];
     const { result } = renderHook(() => useProjectMetricsSection(baseParams({ metrics })));
 
@@ -395,7 +438,8 @@ describe('countedNonCalculableMessage per metric type', () => {
 
 describe('nonCalculableMessage fallback cascade for an uncounted status', () => {
   it('uses the per-metric-status reason when the resource defines it', () => {
-    resolvableKeys.has = (key) => key === 'project.detail.metrics.reasons.COHENS_KAPPA.NO_ANNOTATIONS';
+    resolvableKeys.has = (key) =>
+      key === 'project.detail.metrics.reasons.COHENS_KAPPA.NO_ANNOTATIONS';
     const metrics = [metric({ metricType: 'COHENS_KAPPA', status: 'NO_ANNOTATIONS' })];
     const { result } = renderHook(() => useProjectMetricsSection(baseParams({ metrics })));
 
