@@ -63,12 +63,13 @@ function ProjectMetricsHeader({
 }
 
 type ProjectMetricsSkeletonProps = Readonly<{
+  gridClassName: string;
   metricTypes: ProjectMetricType[];
 }>;
 
-function ProjectMetricsSkeleton({ metricTypes }: ProjectMetricsSkeletonProps) {
+function ProjectMetricsSkeleton({ gridClassName, metricTypes }: ProjectMetricsSkeletonProps) {
   return (
-    <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className={cn('grid gap-x-6 gap-y-4', gridClassName)}>
       {metricTypes.map((metricType) => (
         <div className="min-w-0 animate-pulse" key={metricType}>
           <div className="mb-2 h-3 w-24 rounded-full bg-muted" />
@@ -128,12 +129,13 @@ function ProjectMetricItem({ item }: ProjectMetricItemProps) {
 }
 
 type ProjectMetricsListProps = Readonly<{
+  gridClassName: string;
   items: ProjectMetricDisplayItem[];
 }>;
 
-function ProjectMetricsList({ items }: ProjectMetricsListProps) {
+function ProjectMetricsList({ gridClassName, items }: ProjectMetricsListProps) {
   return (
-    <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+    <dl className={cn('grid gap-x-6 gap-y-4', gridClassName)}>
       {items.map((item) => (
         <ProjectMetricItem item={item} key={item.metricType} />
       ))}
@@ -152,6 +154,7 @@ export function ProjectMetricsSection({
     coverage,
     emptyMessage,
     metricItems,
+    metricsGridClassName,
     metricsSupported,
     showLoading,
     skeletonMetricTypes,
@@ -169,11 +172,16 @@ export function ProjectMetricsSection({
 
   let content: ReactNode;
   if (showLoading) {
-    content = <ProjectMetricsSkeleton metricTypes={skeletonMetricTypes} />;
+    content = (
+      <ProjectMetricsSkeleton
+        gridClassName={metricsGridClassName}
+        metricTypes={skeletonMetricTypes}
+      />
+    );
   } else if (emptyMessage.length > 0) {
     content = <ProjectMetricsEmptyState isError={isError} message={emptyMessage} />;
   } else {
-    content = <ProjectMetricsList items={metricItems} />;
+    content = <ProjectMetricsList gridClassName={metricsGridClassName} items={metricItems} />;
   }
 
   return (

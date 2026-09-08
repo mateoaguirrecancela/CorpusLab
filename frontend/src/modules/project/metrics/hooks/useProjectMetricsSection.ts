@@ -53,10 +53,23 @@ type UseProjectMetricsSectionResult = Readonly<{
   coverage: ProjectMetricCoverage | null;
   emptyMessage: string;
   metricItems: ProjectMetricDisplayItem[];
+  metricsGridClassName: string;
   metricsSupported: boolean;
   showLoading: boolean;
   skeletonMetricTypes: ProjectMetricType[];
 }>;
+
+const METRICS_GRID_COLUMN_CLASS_NAMES: Record<number, string> = {
+  1: '',
+  2: 'sm:grid-cols-2',
+  3: 'sm:grid-cols-2 lg:grid-cols-3',
+  4: 'sm:grid-cols-2 lg:grid-cols-4',
+  5: 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5',
+};
+
+function metricsGridClassName(metricCount: number): string {
+  return METRICS_GRID_COLUMN_CLASS_NAMES[metricCount] ?? METRICS_GRID_COLUMN_CLASS_NAMES[4];
+}
 
 function metricLabelKey(metricType: ProjectMetricType): string {
   return `project.detail.metrics.labels.${metricType}`;
@@ -279,7 +292,7 @@ export function useProjectMetricsSection({
   );
   const coverage = metricCoverage(sortedMetrics);
   const showLoading = isLoading && metricsSupported && completionPercentage > 0;
-  const skeletonMetricTypes = PROJECT_METRIC_ORDER.slice(0, projectType === 'NER' ? 2 : 4);
+  const skeletonMetricTypes = PROJECT_METRIC_ORDER.slice(0, projectType === 'NER' ? 5 : 4);
 
   let emptyMessage = '';
   if (!metricsSupported) {
@@ -311,6 +324,9 @@ export function useProjectMetricsSection({
     coverage,
     emptyMessage,
     metricItems,
+    metricsGridClassName: metricsGridClassName(
+      showLoading ? skeletonMetricTypes.length : metricItems.length,
+    ),
     metricsSupported,
     showLoading,
     skeletonMetricTypes,
