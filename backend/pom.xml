@@ -10,21 +10,30 @@
 	</parent>
 	<groupId>es.udc.fic</groupId>
 	<artifactId>corpuslab</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<name>CorpusLab</name>
-	<description>Plataforma web colaborativa para el apoyo en tareas de anotación en experimentos científicos.</description>
-	<url/>
+	<description>Plataforma web colaborativa para el apoyo en tareas de anotación en proyectos científicos.</description>
+	<url>https://github.com/mateoaguirrecancela/CorpusLab</url>
 	<licenses>
-		<license/>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>repo</distribution>
+		</license>
 	</licenses>
 	<developers>
-		<developer/>
+		<developer>
+			<name>Mateo Aguirre Cancela</name>
+			<url>https://github.com/mateoaguirrecancela</url>
+			<organization>Universidade da Coruña</organization>
+			<organizationUrl>https://www.udc.es</organizationUrl>
+		</developer>
 	</developers>
 	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
+		<connection>scm:git:https://github.com/mateoaguirrecancela/CorpusLab.git</connection>
+		<developerConnection>scm:git:ssh://git@github.com/mateoaguirrecancela/CorpusLab.git</developerConnection>
+		<tag>HEAD</tag>
+		<url>https://github.com/mateoaguirrecancela/CorpusLab</url>
 	</scm>
 	<properties>
 		<java.version>21</java.version>
