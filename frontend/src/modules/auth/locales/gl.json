@@ -1,0 +1,103 @@
+{
+  "auth": {
+    "header": {
+      "login": "Iniciar Sesión",
+      "signup": "Crear Conta"
+    },
+    "gender": {
+      "select": "Selecciona xénero",
+      "male": "Home",
+      "female": "Muller",
+      "other": "Outro"
+    },
+    "validation": {
+      "cityMax": "A cidade non pode superar 128 caracteres.",
+      "emailMax": "O correo non pode superar 254 caracteres.",
+      "nameMax": "O nome non pode superar 128 caracteres."
+    },
+    "login": {
+      "title": "Iniciar Sesión",
+      "email": "Correo electrónico",
+      "password": "Contrasinal",
+      "forgotPassword": "Esqueciches o contrasinal?",
+      "submit": "Iniciar Sesión",
+      "submitting": "Iniciando Sesión...",
+      "invalidEmail": "Introduce un correo electrónico valido.",
+      "orContinueWith": "Ou continua con",
+      "newToLab": "Novo en CorpusLab?",
+      "createAccount": "Crear unha conta",
+      "required": "Completa correo e contrasinal antes de continuar.",
+      "welcome": "Benvido de novo, {{name}}. Sesion iniciada correctamente."
+    },
+    "signup": {
+      "title": "Crear Conta",
+      "firstName": "Nome",
+      "lastName": "Apelidos",
+      "email": "Correo electrónico",
+      "password": "Contrasinal",
+      "dateOfBirth": "Data de nacemento",
+      "gender": "Xénero",
+      "country": "País",
+      "city": "Cidade",
+      "submit": "Crear conta",
+      "submitting": "Creando conta...",
+      "invalidEmail": "Introduce un correo electrónico valido.",
+      "passwordLength": "O contrasinal debe ter polo menos 8 caracteres.",
+      "underAge": "Debes ter polo menos 16 anos.",
+      "required": "Completa todos os campos obrigatorios antes de continuar.",
+      "orContinueWith": "Ou continua con",
+      "alreadyInLab": "Xa formas parte de CorpusLab?",
+      "goToLogin": "Inicia sesión",
+      "success": "Conta creada para {{name}}.",
+      "searchCountry": "Buscar país"
+    },
+    "forgotPassword": {
+      "title": "Recuperar Contrasinal",
+      "email": "Correo electrónico",
+      "submit": "Enviar ligazón de recuperación",
+      "submitting": "Enviando ligazón...",
+      "remembered": "Lembraches o contrasinal?",
+      "backToLogin": "Volver a iniciar sesión",
+      "required": "Introduce un correo electrónico válido antes de continuar."
+    },
+    "resetPassword": {
+      "title": "Restablecer Contrasinal",
+      "newPassword": "Novo contrasinal",
+      "confirmPassword": "Confirmar contrasinal",
+      "submit": "Restablecer contrasinal",
+      "submitting": "Actualizando contrasinal...",
+      "alreadyUpdated": "Contrasinal xa actualizado?",
+      "goToLogin": "Ir a iniciar sesión",
+      "missingToken": "Falta o token de recuperacion na URL. Abre a ligazón enviada ao teu correo.",
+      "passwordMismatch": "A confirmacion do contrasinal non coincide.",
+      "required": "Completa todos os campos obrigatorios antes de continuar."
+    },
+    "oauth": {
+      "providerFallback": "OAuth",
+      "title": "Inicio con {{provider}}",
+      "completing": "Completando autenticacion...",
+      "errors": {
+        "default": "Non se puido completar o inicio con OAuth. Intentalo de novo.",
+        "missingEmail": "O provedor OAuth non devolveu un correo electronico. Usa outra conta.",
+        "authenticationFailed": "A autenticacion OAuth fallou. Intentalo de novo.",
+        "invalidPrincipal": "Resposta OAuth inesperada. Intentalo de novo.",
+        "unverifiedEmail": "O provedor OAuth non devolveu un correo verificado. Usa outra conta.",
+        "withCode": "O inicio OAuth fallou ({{code}}). Intentalo de novo.",
+        "missingCode": "O inicio OAuth volveu sen codigo de acceso. Intentalo de novo.",
+        "profileLoad": "O inicio OAuth completouse, pero non puidemos cargar o teu perfil. Intentalo de novo."
+      }
+    },
+    "errors": {
+      "emailExists": "Correo xa rexistrado: {{email}}",
+      "unexpected": {
+        "login": "Erro inesperado ao iniciar sesión. Intentalo de novo.",
+        "signup": "Erro inesperado ao crear a conta. Intentalo de novo.",
+        "logout": "Erro inesperado ao pechar sesión. Intentalo de novo.",
+        "accountRecovery": "Erro inesperado ao solicitar recuperación de contrasinal. Intentalo de novo.",
+        "credentialUpdate": "Erro inesperado ao restablecer o contrasinal. Intentalo de novo.",
+        "profile": "Erro inesperado ao cargar o teu perfil. Intentalo de novo.",
+        "updateProfile": "Erro inesperado ao actualizar o teu perfil. Intentalo de novo."
+      }
+    }
+  }
+}

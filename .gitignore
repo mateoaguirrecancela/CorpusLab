@@ -1,11 +1,21 @@
 # Java / Maven
 **/target/
 **.class
+*.jar
+*.war
+*.log
 
 # Node / React
 **/node_modules/
 **/dist/
+**/build/
+.vite/
+*.tsbuildinfo
+.eslintcache
+**/coverage/
+.env
 .env.local
+.env.*.local
 
 # IDEs
 .idea/

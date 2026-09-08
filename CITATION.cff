@@ -1,0 +1,44 @@
+cff-version: 1.2.0
+title: >-
+  CorpusLab: Plataforma web colaborativa para el apoyo en tareas de
+  anotación en proyectos científicos.
+message: >-
+  Si utilizas este software en un trabajo académico, por favor cítalo tal y como
+  se indica en este fichero.
+type: software
+authors:
+  - family-names: Aguirre Cancela
+    given-names: Mateo
+    affiliation: Universidade da Coruña
+repository-code: "https://github.com/mateoaguirrecancela/CorpusLab"
+url: "https://github.com/mateoaguirrecancela/CorpusLab"
+abstract: >-
+  CorpusLab es una plataforma web colaborativa para el apoyo en tareas de
+  anotación en proyectos científicos. Permite configurar proyectos, cargar
+  datasets, definir guías de anotación, asignar participantes, registrar
+  anotaciones de clasificación, detección de entidades y generación de texto,
+  calcular métricas de acuerdo entre anotadores (Kappa de Cohen, Alfa de
+  Krippendorff, Kappa de Fleiss, xRR y F1 de solapamiento de spans) y exportar
+  los resultados.
+keywords:
+  - annotation
+  - corpus
+  - inter-annotator agreement
+  - natural language processing
+  - research data management
+license: Apache-2.0
+version: 1.0.0
+date-released: 2026-09-08
+references:
+  - type: thesis
+    title: >-
+      CorpusLab: Plataforma web colaborativa para el apoyo en tareas de
+      anotación en proyectos científicos.
+    authors:
+      - family-names: Aguirre Cancela
+        given-names: Mateo
+    thesis-type: Trabajo de Fin de Grado
+    institution:
+      name: Universidade da Coruña
+    department: Facultade de Informática
+    year: 2026

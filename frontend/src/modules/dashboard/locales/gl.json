@@ -1,0 +1,96 @@
+{
+  "home": {
+    "nav": {
+      "dashboard": "Panel",
+      "researchGroups": "Grupos de Investigación",
+      "projects": "Proxectos",
+      "laboratories": "Laboratorios",
+      "settings": "Configuración"
+    },
+    "dashboard": {
+      "title": "Panel",
+      "subtitle": "Resumo diario dos teus proxectos activos, anotacions e alertas de revisores.",
+      "actions": {
+        "viewProjects": "Ver proxectos",
+        "newProject": "Novo proxecto"
+      },
+      "loading": {
+        "metrics": "Cargando resumo do panel...",
+        "trends": "Cargando tendencias de anotacion...",
+        "projects": "Cargando proxectos...",
+        "activity": "Cargando actividade..."
+      },
+      "errors": {
+        "metricsLoadFailed": "Non se puido cargar o resumo do panel.",
+        "trendsLoadFailed": "Non se puideron cargar as tendencias de anotacion.",
+        "projectsLoadFailed": "Non se puideron cargar os proxectos do panel."
+      },
+      "empty": {
+        "metrics": "Ainda non hai metricas para mostrar.",
+        "trends": "Non hai anotacions nos ultimos 7 dias.",
+        "advancedProjects": "Ainda non hai proxectos con progreso.",
+        "recentProjects": "Ainda non hai proxectos recentes.",
+        "activity": "Non hai actividade recente."
+      },
+      "kpis": {
+        "activeProjects": {
+          "title": "Proxectos activos",
+          "supportingText": "En {{count}} grupos de investigacion"
+        },
+        "annotationsToday": {
+          "title": "Anotacions de hoxe",
+          "supportingText": "Completadas por ti hoxe",
+          "trend": "mais ca onte",
+          "trendDown": "menos ca onte"
+        },
+        "pendingAnnotations": {
+          "title": "Anotacions pendentes",
+          "supportingText": "En {{count}} proxectos asignados",
+          "trend": "menos ca onte"
+        },
+        "openAlerts": {
+          "title": "Alertas abertas",
+          "supportingText": "Marcadas por revisores",
+          "trend": "novas desde onte"
+        }
+      },
+      "trends": {
+        "title": "Anotacions semanais",
+        "description": "Evolucion de anotacions completadas durante os ultimos 7 dias.",
+        "filterLabel": "Filtrar grupo de investigacion",
+        "allGroups": "Todos os grupos"
+      },
+      "projects": {
+        "advancedTitle": "Proxectos mais avanzados",
+        "recentTitle": "Proxectos recentes",
+        "open": "Abrir",
+        "viewAll": "Ver todo",
+        "progress": "Progreso",
+        "pendingAnnotations": "{{count}} pendentes"
+      },
+      "activity": {
+        "title": "Notificacions",
+        "description": "As mesmas actualizacions relevantes da cabeceira."
+      }
+    },
+    "profile": {
+      "title": "O meu perfil",
+      "firstName": "Nome",
+      "lastName": "Apelidos",
+      "birthDate": "Data de nacemento",
+      "gender": "Xénero",
+      "country": "País",
+      "city": "Cidade",
+      "firstNamePlaceholder": "Teu nome",
+      "lastNamePlaceholder": "Teus apelidos",
+      "cityPlaceholder": "Tua cidade",
+      "searchCountry": "Buscar país",
+      "requiredFields": "Completa todos os campos obrigatorios e usa unha data de nacemento de polo menos 16 anos.",
+      "updated": "Perfil actualizado correctamente.",
+      "validation": {
+        "cityMax": "A cidade non pode superar 128 caracteres.",
+        "nameMax": "O nome non pode superar 128 caracteres."
+      }
+    }
+  }
+}

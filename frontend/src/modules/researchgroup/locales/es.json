@@ -1,0 +1,125 @@
+{
+  "researchGroup": {
+    "title": "Grupos de Investigación",
+    "noGroups": "Aún no perteneces a ningún grupo de investigación.",
+    "memberCount_one": "{{count}} Miembro",
+    "memberCount_other": "{{count}} Miembros",
+    "enter": "Entrar",
+    "invitations": "Invitaciones",
+    "newGroup": "Nuevo Grupo de Investigación",
+    "errors": {
+      "loadFailed": "No se pudieron cargar los grupos de investigación. Inténtalo más tarde.",
+      "createFailed": "No se pudo crear el grupo de investigación. Inténtalo de nuevo.",
+      "updateFailed": "No se pudo actualizar el grupo de investigación. Inténtalo de nuevo.",
+      "deleteFailed": "No se pudo eliminar el grupo de investigación. Inténtalo de nuevo.",
+      "detailLoadFailed": "No se pudo cargar el detalle del grupo de investigación.",
+      "invalidGroupId": "El identificador del grupo no es válido.",
+      "inviteFailed": "No se pudo enviar la invitación. Inténtalo de nuevo.",
+      "invitationsLoadFailed": "No se pudieron cargar tus invitaciones.",
+      "joinByCodeFailed": "No se pudo unir al grupo con ese código.",
+      "acceptInvitationFailed": "No se pudo aceptar la invitación.",
+      "declineInvitationFailed": "No se pudo rechazar la invitación.",
+      "updateMemberRoleFailed": "No se pudo actualizar el rol del investigador.",
+      "removeMemberFailed": "No se pudo eliminar al investigador del grupo."
+    },
+    "loading": "Cargando grupos de investigación...",
+    "roles": {
+      "OWNER": "Propietario",
+      "ADMIN": "Administrador",
+      "ANNOTATOR": "Anotador"
+    },
+    "validation": {
+      "descriptionMax": "La descripcion no puede superar 2048 caracteres.",
+      "emailMax": "El email no puede superar 254 caracteres.",
+      "emailRequired": "El email es obligatorio.",
+      "invitationCodeMax": "El codigo de invitacion no puede superar 64 caracteres.",
+      "invitationCodeRequired": "Introduce un codigo de invitacion.",
+      "nameMax": "El nombre no puede superar 256 caracteres.",
+      "nameRequired": "El nombre es obligatorio."
+    },
+    "create": {
+      "title": "Nuevo Grupo de Investigación",
+      "nameLabel": "Nombre",
+      "namePlaceholder": "Nombre del Grupo de Investigación",
+      "descriptionLabel": "Descripción",
+      "descriptionPlaceholder": "Describe brevemente el propósito del grupo...",
+      "submit": "Crear Grupo de Investigación"
+    },
+    "edit": {
+      "title": "Editar Grupo de Investigación",
+      "nameLabel": "Nombre",
+      "namePlaceholder": "Nombre del Grupo de Investigación",
+      "descriptionLabel": "Descripción",
+      "descriptionPlaceholder": "Describe brevemente el propósito del grupo...",
+      "submit": "Guardar cambios",
+      "delete": "Eliminar grupo",
+      "deleting": "Eliminando...",
+      "deleteTitle": "Eliminar grupo de investigación",
+      "deleteConfirm": "Esta acción eliminará el grupo \"{{groupName}}\" y todos sus proyectos. No se puede deshacer.",
+      "deleteSuccess": "Grupo de investigación eliminado correctamente."
+    },
+    "invite": {
+      "title": "Invitar investigador",
+      "emailLabel": "Email",
+      "emailPlaceholder": "usuario@ejemplo.com",
+      "invalidEmail": "El email no tiene un formato válido.",
+      "roleLabel": "Rol",
+      "submit": "Enviar invitación",
+      "success": "Invitación enviada correctamente."
+    },
+    "invitationsDialog": {
+      "title": "Invitaciones y unión por código",
+      "myInvitations": "Mis invitaciones",
+      "loadingInvitations": "Cargando invitaciones...",
+      "noInvitations": "No tienes invitaciones pendientes.",
+      "invitedBy": "Invitado por {{name}}",
+      "expiresAt": "Expira: {{date}}",
+      "joinByCode": "Unirse mediante código",
+      "codeLabel": "Código de invitación",
+      "codePlaceholder": "Introduce el código de invitación",
+      "joinSubmit": "Unirme",
+      "joining": "Uniéndome...",
+      "joinSuccess": "Te has unido al grupo correctamente.",
+      "acceptAria": "Aceptar invitación",
+      "declineAria": "Rechazar invitación",
+      "acceptSuccess": "Invitación aceptada correctamente.",
+      "declineSuccess": "Invitación rechazada correctamente."
+    },
+    "detail": {
+      "backToGroups": "Volver a grupos",
+      "loading": "Cargando detalle del grupo...",
+      "totalMembers": "Total Miembros",
+      "activeProjects": "Proyectos Activos",
+      "projects": "Proyectos",
+      "newProject": "Nuevo Proyecto",
+      "projectsListPending": "La visualización completa de proyectos se integrará en el siguiente paso del epic.",
+      "researchers": "Investigadores",
+      "editGroup": "Editar grupo",
+      "inviteMember": "Invitar Miembro",
+      "invitationCode": "Código de invitación",
+      "copyCode": "Copiar código",
+      "copied": "Copiado",
+      "codeCopied": "Código copiado al portapapeles.",
+      "codeCopyFailed": "No se pudo copiar el código automáticamente.",
+      "memberActions": "Acciones del investigador",
+      "manage": {
+        "title": "Gestionar investigador",
+        "researcher": "Investigador",
+        "roleLabel": "Rol",
+        "setRole": "Cambiar a {{role}}",
+        "updateRole": "Actualizar rol",
+        "remove": "Eliminar",
+        "removing": "Eliminando...",
+        "updateSuccess": "Rol actualizado correctamente.",
+        "confirmRemoveTitle": "Eliminar investigador",
+        "confirmRemove": "¿Seguro que quieres eliminar a {{name}} del grupo?"
+      },
+      "columns": {
+        "name": "Nombre",
+        "role": "Rol",
+        "projects": "Proyectos",
+        "action": "Acción"
+      }
+    }
+  }
+}

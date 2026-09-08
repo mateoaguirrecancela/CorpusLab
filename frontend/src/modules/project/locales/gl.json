@@ -1,0 +1,383 @@
+{
+  "project": {
+    "list": {
+      "pageTitle": "Os meus proxectos",
+      "loading": "Cargando os teus proxectos asignados...",
+      "emptyArchived": "Non tes proxectos arquivados.",
+      "loadMore": "Ver mais",
+      "loadingMore": "Cargando mais...",
+      "viewArchived": "Ver Arquivados",
+      "viewActive": "Ver Activos",
+      "tabs": {
+        "active": "Os meus proxectos",
+        "archived": "Arquivados"
+      },
+      "empty": "Aínda non tes proxectos asignados.",
+      "newProject": "Novo proxecto",
+      "openProject": "Abrir proxecto",
+      "noDescription": "Sen descrición.",
+      "columns": {
+        "name": "Proxecto",
+        "group": "Grupo",
+        "role": "Rol",
+        "status": "Estado",
+        "createdAt": "Creado"
+      },
+      "roles": {
+        "creator": "Creador",
+        "participant": "Participante"
+      },
+      "status": {
+        "ready": "Listo",
+        "pendingSetup": "Pendente"
+      }
+    },
+    "detail": {
+      "backToProjects": "Proxectos",
+      "loading": "Cargando detalle do proxecto...",
+      "invalidId": "O identificador do proxecto non é válido.",
+      "cards": {
+        "role": "Rol",
+        "group": "Grupo de Investigacion",
+        "type": "Tipo",
+        "completion": "Completado",
+        "datasetItems": "Items de dataset",
+        "createdAt": "Creado"
+      },
+      "metrics": {
+        "title": "Métricas IAA",
+        "loading": "Calculando",
+        "empty": "Ainda non hai metricas dispoñibles.",
+        "emptyNoProgress": "As metricas apareceran cando haxa anotacions completadas.",
+        "unsupported": "Este tipo de proxecto non ten metricas configuradas.",
+        "unavailable": "Non se puideron cargar as metricas.",
+        "notAvailable": "N/D",
+        "sample": "{{items}} items - {{annotators}} anotadores",
+        "provisional": "Provisional",
+        "counts": {
+          "activeAnnotator": {
+            "one": "{{count}} activo",
+            "other": "{{count}} activos"
+          },
+          "missingAnnotation": {
+            "one": "Falta {{count}} anotacion.",
+            "other": "Faltan {{count}} anotacions."
+          },
+          "missingAnnotator": {
+            "one": "Falta {{count}} anotador.",
+            "other": "Faltan {{count}} anotadores."
+          },
+          "missingGroup": {
+            "one": "Falta {{count}} grupo.",
+            "other": "Faltan {{count}} grupos."
+          },
+          "missingItem": {
+            "one": "Falta {{count}} item.",
+            "other": "Faltan {{count}} items."
+          }
+        },
+        "labels": {
+          "COHENS_KAPPA": "Cohen's kappa",
+          "KRIPPENDORFFS_ALPHA": "Krippendorff's alpha",
+          "FLEISS_KAPPA": "Fleiss' kappa",
+          "XRR": "XRR",
+          "SPAN_OVERLAP_F1": "Span overlap F1"
+        },
+        "status": {
+          "calculable": "Calculable",
+          "noAnnotations": "Sen anotacions",
+          "insufficientAnnotators": "Faltan anotadores",
+          "insufficientItems": "Faltan items",
+          "noSharedItems": "Sen items compartidos",
+          "noValidPairs": "Sen pares validos",
+          "undefined": "Indefinido"
+        },
+        "reasons": {
+          "generic": {
+            "NO_ANNOTATIONS": "Faltan anotacions.",
+            "INSUFFICIENT_ANNOTATORS": "Faltan anotadores.",
+            "INSUFFICIENT_ITEMS": "Faltan items completos.",
+            "NO_SHARED_ITEMS": "Faltan items compartidos.",
+            "NO_VALID_PAIRS": "Falta solapamento.",
+            "UNDEFINED": "Resultado indefinido."
+          },
+          "FLEISS_KAPPA": {
+            "INSUFFICIENT_ITEMS": "Faltan anotacions completas.",
+            "UNDEFINED": "Acordo esperado total."
+          },
+          "XRR": {
+            "INSUFFICIENT_ANNOTATORS": "Falta segundo grupo.",
+            "INSUFFICIENT_ITEMS": "Faltan items completos.",
+            "IRR_NOT_POSITIVE": "IRR grupo {{group}} <= 0",
+            "UNDEFINED": "Normalizacion non posible."
+          }
+        }
+      },
+      "participantsTitle": "Participantes",
+      "participantInfo": "A tua participacion neste proxecto:",
+      "myRole": "O meu Rol",
+      "participantsName": "Participante",
+      "participantsRole": "Rol",
+      "participantsGroup": "Grupo",
+      "participantsCompletion": "Completado",
+      "participantsActions": "Accións",
+      "viewParticipantAnnotations": "Ver anotacións",
+      "participantsEmpty": "Non hai participantes asignados a este proxecto.",
+      "completionValue": "{{value}}% completado",
+      "datasetTitle": "Dataset",
+      "datasetEmpty": "Este proxecto non ten arquivos de dataset.",
+      "labelsTitle": "Etiquetas",
+      "noLabels": "Este proxecto non ten etiquetas definidas.",
+      "guidelineTitle": "Guideline",
+      "guidelinePdfAttached": "Este proxecto ten un guideline adxunto en PDF.",
+      "guidelineDocument": "Documento guideline",
+      "guidelinePdfFile": "Arquivo PDF adxunto",
+      "downloadDatasetFile": "Descargar",
+      "openDatasetFile": "Abrir",
+      "editProject": "Editar proxecto",
+      "archiveProject": "Arquivar",
+      "unarchiveProject": "Desarquivar",
+      "updatingArchiveState": "Actualizando...",
+      "archiveSuccess": "Proxecto arquivado correctamente.",
+      "unarchiveSuccess": "Proxecto desarquivado correctamente.",
+      "exportAnnotationsCsv": "Exportar anotacións",
+      "projectActions": "Accións do proxecto",
+      "openAnnotationWorkspace": "Ir a anotar",
+      "openGuidelinePdfError": "Non se puido abrir o guideline en PDF.",
+      "noGuideline": "Este proxecto non ten guideline dispoñible.",
+      "annotation": {
+        "title": "Realizar anotacion",
+        "loading": "Cargando pasos de anotacion...",
+        "progress": "O meu progreso",
+        "page": "Mostrando pasos {{from}}-{{to}} de {{total}}",
+        "previous": "Anterior",
+        "next": "Seguinte",
+        "emptySteps": "Non hai pasos de anotacion dispoñibles para este proxecto.",
+        "saveStep": "Gardar",
+        "saved": "Anotacion gardada correctamente.",
+        "columns": {
+          "step": "Paso",
+          "source": "Orixe",
+          "preview": "Contido",
+          "annotation": "Anotacion",
+          "status": "Estado",
+          "actions": "Accions"
+        },
+        "status": {
+          "completed": "Completado",
+          "pending": "Pendente"
+        },
+        "fields": {
+          "selectLabelPlaceholder": "Selecciona unha etiqueta",
+          "labelsPlaceholder": "Etiquetas separadas por coma",
+          "seq2seqPlaceholder": "Escribe a anotacion"
+        },
+        "errors": {
+          "emptyPayload": "Debes introducir unha anotacion antes de gardar."
+        }
+      }
+    },
+    "annotationPage": {
+      "loading": "Cargando espazo de anotación...",
+      "backToProject": "Volver ao detalle",
+      "projectBadge": "Espazo de anotación",
+      "currentStep": "Paso {{current}} de {{total}}",
+      "progress": "O meu progreso",
+      "emptySteps": "Non hai pasos de anotación dispoñibles para este proxecto.",
+      "saved": "Anotación gardada correctamente.",
+      "guidelineTitle": "Guía de anotación",
+      "guidelinePdfLoading": "Cargando guía en PDF...",
+      "sourceTitle": "Documento fonte",
+      "sourceLoading": "Cargando documento...",
+      "sourceImageAlt": "Documento de orixe",
+      "sourceNotSupported": "Este tipo de arquivo non se pode visualizar en liña. Móstrase un resumo do contido.",
+      "csvTargetColumnBadge": "Columna obxectivo: {{column}}",
+      "csvFieldColumn": "Campo",
+      "csvValueColumn": "Valor",
+      "csvLabelOptionsTitle": "Opcións de etiqueta",
+      "classificationTitle": "Clasificación",
+      "reviewingParticipant": "Vendo anotacións de:",
+      "nerSelectionAreaLabel": "Área de texto para anotar entidades",
+      "nerChooseLabelFirst": "Selecciona unha etiqueta para comezar a remarcar texto.",
+      "removeEntity": "Eliminar entidade",
+      "nerNoLabels": "Debes definir etiquetas para poder anotar entidades.",
+      "notesTitle": "Notas do anotador",
+      "previous": "Anterior",
+      "next": "Seguinte",
+      "finish": "Terminar anotación",
+      "autoSaved": "A anotación gardouse automaticamente.",
+      "save": "Gardar",
+      "cancel": "Cancelar",
+      "status": {
+        "completed": "Completado",
+        "pending": "Pendente"
+      },
+      "warningToggleLabel": "Alternar alerta de revision",
+      "warningTooltip": "Marcar para revision",
+      "warningResolveTooltip": "Marcar alerta como resolta",
+      "warningMarked": "Alerta marcada.",
+      "warningCleared": "Alerta desmarcada.",
+      "warningResolved": "Alerta resolta.",
+      "warningToggled": "Estado da alerta actualizado.",
+      "fields": {
+        "selectLabelPlaceholder": "Selecciona unha etiqueta",
+        "labelsPlaceholder": "Etiquetas separadas por coma",
+        "annotationPlaceholder": "Escribe a anotación",
+        "notesPlaceholder": "Explica o teu criterio ou engade aclaracións"
+      },
+      "errors": {
+        "invalidId": "O identificador do proxecto non é válido.",
+        "emptyPayload": "Debes introducir unha anotación antes de gardar.",
+        "classificationRequired": "Debes completar a clasificación antes de continuar.",
+        "nerLabelRequired": "Selecciona unha etiqueta antes de resaltar texto.",
+        "nerOverlappingEntities": "Non se permiten entidades solapadas.",
+        "warningToggleFailed": "Non se puido actualizar a alerta de revision."
+      }
+    },
+    "create": {
+      "title": "Novo Proxecto",
+      "pageTitle": "Crear Proxecto",
+      "steps": {
+        "basicConfig": "Basic Config",
+        "dataset": "Dataset",
+        "taskDesign": "Task Design",
+        "assignment": "Assignment"
+      },
+      "groupLabel": "Grupo de investigación",
+      "nameLabel": "Nome",
+      "namePlaceholder": "Nome do proxecto",
+      "descriptionLabel": "Descrición",
+      "descriptionPlaceholder": "Describe brevemente o obxectivo do proxecto...",
+      "loadingGroups": "Cargando grupos dispoñibles...",
+      "noGroups": "Non tes permisos de owner ou admin en ningún grupo para crear proxectos.",
+      "submit": "Crear Proxecto",
+      "nextStep": "Seguinte Paso",
+      "nextStepSimple": "Seguinte paso",
+      "previousStepSimple": "Paso anterior",
+      "success": "Proxecto creado correctamente.",
+      "datasetUploadSuccess": "Dataset subido correctamente.",
+      "datasetFormatsTitle": "Dataset do Proxecto",
+      "datasetFormatsDescription": "Podes subir arquivos PDF, TXT, JSON, imaxes, CSV e outros formatos para construír o dataset.",
+      "selectFiles": "Seleccionar arquivos",
+      "selectFilesHint": "Subiranse todos os arquivos seleccionados ao dataset do proxecto.",
+      "removeFile": "Eliminar arquivo",
+      "backToBasicConfig": "Volver á configuración básica",
+      "uploadingDataset": "Subindo dataset...",
+      "finishCreateProject": "Finalizar creación",
+      "finishingCreateProject": "Finalizando creación...",
+      "taskDesignTitle": "Crear etiquetas e guideline",
+      "taskDesignDescription": "Define o tipo de proxecto, as etiquetas necesarias e o guideline para o equipo.",
+      "projectTypeLabel": "Tipo de proxecto",
+      "annotationTargetColumnLabel": "Columna a anotar",
+      "annotationTargetColumnPlaceholder": "Ex: distil_predictions",
+      "annotationTargetColumnLoading": "Lendo columnas do CSV...",
+      "annotationTargetColumnHeadersReadError": "Non se puideron ler as cabeceiras CSV. Introduce a columna manualmente.",
+      "nerDatasetIncompatibleHint": "NER só está dispoñible se todos os arquivos do dataset son texto, JSON ou CSV.",
+      "nerDatasetIncompatibleError": "Non podes seleccionar NER co dataset actual. Usa só arquivos de texto, JSON ou CSV.",
+      "csvSingleFileError": "Só se permite subir un único arquivo cando o dataset contén un CSV.",
+      "duplicateFileError": "O arquivo {{fileName}} xa está seleccionado.",
+      "fileSizeError": "O arquivo {{fileName}} excede o límite de {{limit}}MB.",
+      "totalSizeError": "O tamaño total dos arquivos supera o límite de {{limit}}MB.",
+      "forbiddenExtensionError": "O tipo de arquivo .{{extension}} non está permitido por razóns de seguridade.",
+      "singleFileError": "Selecciona un único arquivo.",
+      "projectTypes": {
+        "textClassificationSimple": "Clasificación Simple",
+        "textClassificationMultiLabel": "Clasificación Multietiqueta",
+        "ner": "Extracción de Entidades (NER)",
+        "seq2seq": "Sequence-to-Sequence (Seq2Seq)"
+      },
+      "projectTypesDescriptions": {
+        "textClassificationSimple": "Asignar unha única categoría a cada elemento.",
+        "textClassificationMultiLabel": "Asignar múltiples categorías a cada elemento.",
+        "ner": "Identificar e clasificar entidades nomeadas no texto.",
+        "seq2seq": "Tradución, resumo ou outras tarefas de texto a texto."
+      },
+      "labelsSectionTitle": "Etiquetas",
+      "labelsSectionDescription": "Engade as etiquetas que poderán asignarse no proxecto.",
+      "labelsSectionDescriptionNer": "Engade etiquetas de entidade e asigna unha cor a cada unha.",
+      "useCsvColumnsAsLabels": "Usar columnas do CSV como etiquetas",
+      "useCsvColumnsAsLabelsHint": "Ao engadir etiquetas poderás escoller columnas do CSV excepto a columna a anotar e as columnas xa seleccionadas como etiquetas.",
+      "labelsEmptyState": "Aínda non hai etiquetas. Engade a primeira para continuar.",
+      "addLabel": "Engadir etiqueta",
+      "editLabel": "Editar etiqueta",
+      "removeLabel": "Eliminar etiqueta",
+      "labelName": "Nome da etiqueta",
+      "csvLabelNamePlaceholder": "Seleccionar columna",
+      "labelNamePlaceholder": "Ex: Persoa, Organización, Positivo...",
+      "labelColor": "Cor",
+      "createLabelTitle": "Crear etiqueta",
+      "editLabelTitle": "Editar etiqueta",
+      "saveLabel": "Gardar etiqueta",
+      "labelsDuplicateError": "Xa existe unha etiqueta con ese nome.",
+      "labelsMinCountError": "Os proxectos de clasificación requiren polo menos 2 etiquetas.",
+      "guidelineSectionTitle": "Guideline",
+      "guidelineSectionDescription": "Escribe un guideline ou sobe un PDF. Só se pode usar unha opción.",
+      "guidelineAsText": "Texto",
+      "guidelineAsPdf": "PDF",
+      "guidelineWriteTab": "Texto",
+      "guidelineUploadTab": "Subir PDF",
+      "guidelineTextLabel": "Guideline en texto",
+      "guidelineTextPlaceholder": "Define criterios, exemplos e regras para anotar correctamente.",
+      "guidelinePdfLabel": "Adxuntar guideline en PDF",
+      "guidelineUploadTitle": "Arrastra e solta a documentación do protocolo",
+      "guidelinePdfHint": "Sube un único arquivo PDF co guideline do proxecto.",
+      "guidelineBrowseFiles": "Examinar arquivos",
+      "guidelinePdfReadError": "Non se puido ler o PDF do guideline.",
+      "savingSetup": "Gardando configuración...",
+      "assignmentTitle": "Asignar investigadores",
+      "assignmentDescription": "Selecciona que investigadores do equipo participarán no proxecto. O creador engádese automaticamente.",
+      "assignmentCycleLabel": "{{name}}: {{state}}",
+      "assignmentGroups": {
+        "GROUP_A": "Grupo A",
+        "GROUP_B": "Grupo B",
+        "unassigned": "Sen grupo"
+      },
+      "loadingMembers": "Cargando investigadores do equipo...",
+      "noAssignableMembers": "Non hai investigadores adicionais dispoñibles para asignar.",
+      "validation": {
+        "annotationTargetColumnRequired": "Selecciona a columna a anotar.",
+        "descriptionMax": "A descricion non pode superar 2048 caracteres.",
+        "groupRequired": "Selecciona un grupo de investigacion.",
+        "guidelineRequired": "Escribe un guideline ou sube un PDF.",
+        "labelColorRequired": "Selecciona unha cor para cada etiqueta NER.",
+        "labelsRequired": "Engade polo menos unha etiqueta.",
+        "nameMax": "O nome non pode superar 256 caracteres.",
+        "nameRequired": "O nome e obrigatorio."
+      }
+    },
+    "edit": {
+      "title": "Editar Proxecto",
+      "nameLabel": "Nome",
+      "namePlaceholder": "Nome do proxecto",
+      "descriptionLabel": "Descrición",
+      "descriptionPlaceholder": "Describe brevemente o obxectivo do proxecto...",
+      "participantsLabel": "Investigadores",
+      "submit": "Gardar cambios",
+      "updateSuccess": "Proxecto actualizado correctamente.",
+      "delete": "Eliminar proxecto",
+      "deleting": "Eliminando...",
+      "deleteTitle": "Eliminar proxecto",
+      "deleteConfirm": "Esta acción eliminará o proxecto \"{{projectName}}\" e as súas anotacións. Non se pode desfacer.",
+      "deleteSuccess": "Proxecto eliminado correctamente."
+    },
+    "errors": {
+      "loadFailed": "Non se puideron cargar os proxectos. Téntao de novo.",
+      "detailLoadFailed": "Non se puido cargar o detalle do proxecto. Téntao de novo.",
+      "createFailed": "Non se puido crear o proxecto. Téntao de novo.",
+      "updateFailed": "Non se puido actualizar o proxecto. Téntao de novo.",
+      "deleteFailed": "Non se puido eliminar o proxecto. Téntao de novo.",
+      "archiveFailed": "Non se puido arquivar o proxecto. Téntao de novo.",
+      "unarchiveFailed": "Non se puido desarquivar o proxecto. Téntao de novo.",
+      "datasetUploadFailed": "Non se puido subir o dataset. Téntao de novo.",
+      "setupFailed": "Non se puido gardar a configuración do proxecto. Téntao de novo.",
+      "assignmentFailed": "Non se puideron asignar os investigadores. Téntao de novo.",
+      "annotationLoadFailed": "Non se puideron cargar os pasos de anotacion. Téntao de novo.",
+      "annotationSaveFailed": "Non se puido gardar a anotacion. Téntao de novo.",
+      "annotationExportFailed": "Non se puido exportar o CSV de anotacións. Téntao de novo.",
+      "metricsLoadFailed": "Non se puideron cargar as metricas do proxecto. Tentao de novo.",
+      "assignmentContextLoadFailed": "Non se puideron cargar os investigadores asignables. Téntao de novo.",
+      "guidelinePdfLoadFailed": "Non se puido cargar o PDF do guideline. Téntao de novo.",
+      "sourceContentLoadFailed": "Non se puido cargar o contido do documento. Téntao de novo."
+    }
+  }
+}

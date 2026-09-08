@@ -1,0 +1,125 @@
+{
+  "researchGroup": {
+    "title": "Research Groups",
+    "noGroups": "You don't belong to any research group yet.",
+    "memberCount_one": "{{count}} Member",
+    "memberCount_other": "{{count}} Members",
+    "enter": "Enter",
+    "invitations": "Invitations",
+    "newGroup": "New Research Group",
+    "errors": {
+      "loadFailed": "Could not load research groups. Please try again later.",
+      "createFailed": "Could not create the research group. Please try again.",
+      "updateFailed": "Could not update the research group. Please try again.",
+      "deleteFailed": "Could not delete the research group. Please try again.",
+      "detailLoadFailed": "Could not load research group details.",
+      "invalidGroupId": "The research group identifier is not valid.",
+      "inviteFailed": "Could not send the invitation. Please try again.",
+      "invitationsLoadFailed": "Could not load your invitations.",
+      "joinByCodeFailed": "Could not join the group with that code.",
+      "acceptInvitationFailed": "Could not accept the invitation.",
+      "declineInvitationFailed": "Could not decline the invitation.",
+      "updateMemberRoleFailed": "Could not update the researcher's role.",
+      "removeMemberFailed": "Could not remove the researcher from the group."
+    },
+    "loading": "Loading research groups...",
+    "roles": {
+      "OWNER": "Owner",
+      "ADMIN": "Admin",
+      "ANNOTATOR": "Annotator"
+    },
+    "validation": {
+      "descriptionMax": "Description cannot exceed 2048 characters.",
+      "emailMax": "Email cannot exceed 254 characters.",
+      "emailRequired": "Email is required.",
+      "invitationCodeMax": "Invitation code cannot exceed 64 characters.",
+      "invitationCodeRequired": "Enter an invitation code.",
+      "nameMax": "Name cannot exceed 256 characters.",
+      "nameRequired": "Name is required."
+    },
+    "create": {
+      "title": "New Research Group",
+      "nameLabel": "Name",
+      "namePlaceholder": "Name of the Research Group",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Briefly describe the group's purpose...",
+      "submit": "Create Research Group"
+    },
+    "edit": {
+      "title": "Edit Research Group",
+      "nameLabel": "Name",
+      "namePlaceholder": "Name of the Research Group",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Briefly describe the group's purpose...",
+      "submit": "Save changes",
+      "delete": "Delete group",
+      "deleting": "Deleting...",
+      "deleteTitle": "Delete research group",
+      "deleteConfirm": "This action will delete the group \"{{groupName}}\" and all its projects. This cannot be undone.",
+      "deleteSuccess": "Research group deleted successfully."
+    },
+    "invite": {
+      "title": "Invite researcher",
+      "emailLabel": "Email",
+      "emailPlaceholder": "user@example.com",
+      "invalidEmail": "The email format is invalid.",
+      "roleLabel": "Role",
+      "submit": "Send invitation",
+      "success": "Invitation sent successfully."
+    },
+    "invitationsDialog": {
+      "title": "Invitations and join by code",
+      "myInvitations": "My invitations",
+      "loadingInvitations": "Loading invitations...",
+      "noInvitations": "You have no pending invitations.",
+      "invitedBy": "Invited by {{name}}",
+      "expiresAt": "Expires: {{date}}",
+      "joinByCode": "Join with invitation code",
+      "codeLabel": "Invitation code",
+      "codePlaceholder": "Enter invitation code",
+      "joinSubmit": "Join",
+      "joining": "Joining...",
+      "joinSuccess": "You joined the group successfully.",
+      "acceptAria": "Accept invitation",
+      "declineAria": "Decline invitation",
+      "acceptSuccess": "Invitation accepted successfully.",
+      "declineSuccess": "Invitation declined successfully."
+    },
+    "detail": {
+      "backToGroups": "Back to groups",
+      "loading": "Loading group details...",
+      "totalMembers": "Total Members",
+      "activeProjects": "Active Projects",
+      "projects": "Projects",
+      "newProject": "New Project",
+      "projectsListPending": "The full project listing will be integrated in the next epic step.",
+      "researchers": "Researchers",
+      "editGroup": "Edit group",
+      "inviteMember": "Invite Member",
+      "invitationCode": "Invitation code",
+      "copyCode": "Copy code",
+      "copied": "Copied",
+      "codeCopied": "Invitation code copied to clipboard.",
+      "codeCopyFailed": "Could not copy the code automatically.",
+      "memberActions": "Researcher actions",
+      "manage": {
+        "title": "Manage researcher",
+        "researcher": "Researcher",
+        "roleLabel": "Role",
+        "setRole": "Change to {{role}}",
+        "updateRole": "Update role",
+        "remove": "Remove",
+        "removing": "Removing...",
+        "updateSuccess": "Role updated successfully.",
+        "confirmRemoveTitle": "Remove researcher",
+        "confirmRemove": "Are you sure you want to remove {{name}} from the group?"
+      },
+      "columns": {
+        "name": "Name",
+        "role": "Role",
+        "projects": "Projects",
+        "action": "Action"
+      }
+    }
+  }
+}

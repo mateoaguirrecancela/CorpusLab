@@ -1,0 +1,383 @@
+{
+  "project": {
+    "list": {
+      "pageTitle": "My projects",
+      "loading": "Loading your assigned projects...",
+      "empty": "You do not have assigned projects yet.",
+      "emptyArchived": "You do not have archived projects.",
+      "newProject": "New project",
+      "openProject": "Open project",
+      "noDescription": "No description.",
+      "loadMore": "Load more",
+      "loadingMore": "Loading more...",
+      "viewArchived": "View Archived",
+      "viewActive": "View Active",
+      "tabs": {
+        "active": "My projects",
+        "archived": "Archived"
+      },
+      "columns": {
+        "name": "Project",
+        "group": "Group",
+        "role": "Role",
+        "status": "Status",
+        "createdAt": "Created"
+      },
+      "roles": {
+        "creator": "Creator",
+        "participant": "Participant"
+      },
+      "status": {
+        "ready": "Ready",
+        "pendingSetup": "Pending"
+      }
+    },
+    "detail": {
+      "backToProjects": "Projects",
+      "loading": "Loading project detail...",
+      "invalidId": "The project identifier is invalid.",
+      "cards": {
+        "role": "Role",
+        "group": "Research Group",
+        "type": "Type",
+        "completion": "Completed",
+        "datasetItems": "Dataset items",
+        "createdAt": "Created"
+      },
+      "metrics": {
+        "title": "IAA Metrics",
+        "loading": "Calculating",
+        "empty": "No metrics are available yet.",
+        "emptyNoProgress": "Metrics will appear after the first annotations are completed.",
+        "unsupported": "This project type does not have metrics configured.",
+        "unavailable": "Metrics could not be loaded.",
+        "notAvailable": "N/A",
+        "sample": "{{items}} items - {{annotators}} annotators",
+        "provisional": "Provisional",
+        "counts": {
+          "activeAnnotator": {
+            "one": "{{count}} active",
+            "other": "{{count}} active"
+          },
+          "missingAnnotation": {
+            "one": "Missing {{count}} annotation.",
+            "other": "Missing {{count}} annotations."
+          },
+          "missingAnnotator": {
+            "one": "Missing {{count}} annotator.",
+            "other": "Missing {{count}} annotators."
+          },
+          "missingGroup": {
+            "one": "Missing {{count}} group.",
+            "other": "Missing {{count}} groups."
+          },
+          "missingItem": {
+            "one": "Missing {{count}} item.",
+            "other": "Missing {{count}} items."
+          }
+        },
+        "labels": {
+          "COHENS_KAPPA": "Cohen's kappa",
+          "KRIPPENDORFFS_ALPHA": "Krippendorff's alpha",
+          "FLEISS_KAPPA": "Fleiss' kappa",
+          "XRR": "XRR",
+          "SPAN_OVERLAP_F1": "Span overlap F1"
+        },
+        "status": {
+          "calculable": "Calculable",
+          "noAnnotations": "No annotations",
+          "insufficientAnnotators": "Not enough annotators",
+          "insufficientItems": "Not enough items",
+          "noSharedItems": "No shared items",
+          "noValidPairs": "No valid pairs",
+          "undefined": "Undefined"
+        },
+        "reasons": {
+          "generic": {
+            "NO_ANNOTATIONS": "Missing annotations.",
+            "INSUFFICIENT_ANNOTATORS": "Missing annotators.",
+            "INSUFFICIENT_ITEMS": "Missing complete items.",
+            "NO_SHARED_ITEMS": "Missing shared items.",
+            "NO_VALID_PAIRS": "Missing overlap.",
+            "UNDEFINED": "Undefined result."
+          },
+          "FLEISS_KAPPA": {
+            "INSUFFICIENT_ITEMS": "Missing complete annotations.",
+            "UNDEFINED": "Expected agreement is total."
+          },
+          "XRR": {
+            "INSUFFICIENT_ANNOTATORS": "Missing second group.",
+            "INSUFFICIENT_ITEMS": "Missing complete items.",
+            "IRR_NOT_POSITIVE": "Group {{group}} IRR <= 0",
+            "UNDEFINED": "Normalization unavailable."
+          }
+        }
+      },
+      "participantsTitle": "Participants",
+      "participantInfo": "Your participation in this project:",
+      "myRole": "My Role",
+      "participantsName": "Participant",
+      "participantsRole": "Role",
+      "participantsGroup": "Group",
+      "participantsCompletion": "Completed",
+      "participantsActions": "Actions",
+      "viewParticipantAnnotations": "View annotations",
+      "participantsEmpty": "There are no participants assigned to this project.",
+      "completionValue": "{{value}}% completed",
+      "datasetTitle": "Dataset",
+      "datasetEmpty": "This project has no dataset files.",
+      "labelsTitle": "Labels",
+      "noLabels": "This project has no labels defined.",
+      "guidelineTitle": "Guideline",
+      "guidelinePdfAttached": "This project has an attached PDF guideline.",
+      "guidelineDocument": "Guideline Document",
+      "guidelinePdfFile": "PDF file attached",
+      "downloadDatasetFile": "Download",
+      "openDatasetFile": "Open",
+      "editProject": "Edit project",
+      "archiveProject": "Archive",
+      "unarchiveProject": "Unarchive",
+      "updatingArchiveState": "Updating...",
+      "archiveSuccess": "Project archived successfully.",
+      "unarchiveSuccess": "Project unarchived successfully.",
+      "exportAnnotationsCsv": "Export Annotations",
+      "projectActions": "Project actions",
+      "openAnnotationWorkspace": "Open annotation workspace",
+      "openGuidelinePdfError": "Could not open the guideline PDF.",
+      "noGuideline": "This project has no guideline available.",
+      "annotation": {
+        "title": "Perform annotation",
+        "loading": "Loading annotation steps...",
+        "progress": "My progress",
+        "page": "Showing steps {{from}}-{{to}} of {{total}}",
+        "previous": "Previous",
+        "next": "Next",
+        "emptySteps": "There are no annotation steps available for this project.",
+        "saveStep": "Save",
+        "saved": "Annotation saved successfully.",
+        "columns": {
+          "step": "Step",
+          "source": "Source",
+          "preview": "Content",
+          "annotation": "Annotation",
+          "status": "Status",
+          "actions": "Actions"
+        },
+        "status": {
+          "completed": "Completed",
+          "pending": "Pending"
+        },
+        "fields": {
+          "selectLabelPlaceholder": "Select a label",
+          "labelsPlaceholder": "Labels separated by comma",
+          "seq2seqPlaceholder": "Write the annotation"
+        },
+        "errors": {
+          "emptyPayload": "You must provide an annotation before saving."
+        }
+      }
+    },
+    "annotationPage": {
+      "loading": "Loading annotation workspace...",
+      "backToProject": "Back to detail",
+      "projectBadge": "Annotation workspace",
+      "currentStep": "Step {{current}} of {{total}}",
+      "progress": "My progress",
+      "emptySteps": "There are no annotation steps available for this project.",
+      "saved": "Annotation saved successfully.",
+      "guidelineTitle": "Annotation guideline",
+      "guidelinePdfLoading": "Loading PDF guideline...",
+      "sourceTitle": "Source document",
+      "sourceLoading": "Loading document...",
+      "sourceImageAlt": "Source document",
+      "sourceNotSupported": "This file type cannot be previewed inline. A content summary is shown instead.",
+      "csvTargetColumnBadge": "Target column: {{column}}",
+      "csvFieldColumn": "Field",
+      "csvValueColumn": "Value",
+      "csvLabelOptionsTitle": "Label options",
+      "classificationTitle": "Classification",
+      "reviewingParticipant": "Viewing annotations from:",
+      "nerSelectionAreaLabel": "Text area to annotate entities",
+      "nerChooseLabelFirst": "Select a label to start highlighting text.",
+      "removeEntity": "Remove entity",
+      "nerNoLabels": "You must define labels before annotating entities.",
+      "notesTitle": "Annotator notes",
+      "previous": "Previous",
+      "next": "Next",
+      "finish": "Finish annotation",
+      "autoSaved": "Annotation was saved automatically.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "status": {
+        "completed": "Completed",
+        "pending": "Pending"
+      },
+      "fields": {
+        "selectLabelPlaceholder": "Select a label",
+        "labelsPlaceholder": "Labels separated by comma",
+        "annotationPlaceholder": "Write the annotation",
+        "notesPlaceholder": "Explain your reasoning or add clarifications"
+      },
+      "warningToggleLabel": "Toggle review warning",
+      "warningTooltip": "Mark for review",
+      "warningResolveTooltip": "Mark warning as resolved",
+      "warningMarked": "Alert marked.",
+      "warningCleared": "Alert cleared.",
+      "warningResolved": "Alert resolved.",
+      "warningToggled": "Review warning status updated.",
+      "errors": {
+        "invalidId": "The project identifier is invalid.",
+        "emptyPayload": "You must provide an annotation before saving.",
+        "classificationRequired": "You must complete the classification before continuing.",
+        "nerLabelRequired": "Select a label before highlighting text.",
+        "nerOverlappingEntities": "Overlapping entities are not allowed.",
+        "warningToggleFailed": "Could not update the review warning status."
+      }
+    },
+    "create": {
+      "title": "New Project",
+      "pageTitle": "Create Project",
+      "steps": {
+        "basicConfig": "Basic Config",
+        "dataset": "Dataset",
+        "taskDesign": "Task Design",
+        "assignment": "Assignment"
+      },
+      "groupLabel": "Research group",
+      "nameLabel": "Name",
+      "namePlaceholder": "Project name",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Briefly describe the project objective...",
+      "loadingGroups": "Loading available groups...",
+      "noGroups": "You do not have owner or admin permissions in any group to create projects.",
+      "submit": "Create Project",
+      "nextStep": "Next Step",
+      "nextStepSimple": "Next step",
+      "previousStepSimple": "Previous step",
+      "success": "Project created successfully.",
+      "datasetUploadSuccess": "Dataset uploaded successfully.",
+      "datasetFormatsTitle": "Project Dataset",
+      "datasetFormatsDescription": "You can upload PDF, TXT, JSON, image, CSV, and other files to build the dataset.",
+      "selectFiles": "Select files",
+      "selectFilesHint": "All selected files will be uploaded to the project dataset.",
+      "removeFile": "Remove file",
+      "backToBasicConfig": "Back to basic config",
+      "uploadingDataset": "Uploading dataset...",
+      "finishCreateProject": "Finish creation",
+      "finishingCreateProject": "Finishing creation...",
+      "taskDesignTitle": "Create labels and guideline",
+      "taskDesignDescription": "Define the project type, required labels, and the guideline for the team.",
+      "projectTypeLabel": "Project type",
+      "annotationTargetColumnLabel": "Column to annotate",
+      "annotationTargetColumnPlaceholder": "Ex: distil_predictions",
+      "annotationTargetColumnLoading": "Reading CSV columns...",
+      "annotationTargetColumnHeadersReadError": "Could not read CSV headers. Enter the column manually.",
+      "nerDatasetIncompatibleHint": "NER is only available if all dataset files are text, JSON, or CSV.",
+      "nerDatasetIncompatibleError": "You cannot select NER with the current dataset. Use only text, JSON, or CSV files.",
+      "csvSingleFileError": "Only a single file is allowed when the dataset contains a CSV file.",
+      "duplicateFileError": "The file {{fileName}} is already selected.",
+      "fileSizeError": "The file {{fileName}} exceeds the {{limit}}MB limit.",
+      "totalSizeError": "The total size of the files exceeds the {{limit}}MB limit.",
+      "forbiddenExtensionError": "The file type .{{extension}} is not allowed for security reasons.",
+      "singleFileError": "Select a single file.",
+      "projectTypes": {
+        "textClassificationSimple": "Simple Classification",
+        "textClassificationMultiLabel": "Multi-label Classification",
+        "ner": "Named Entity Recognition (NER)",
+        "seq2seq": "Sequence-to-Sequence (Seq2Seq)"
+      },
+      "projectTypesDescriptions": {
+        "textClassificationSimple": "Assign a single category to each item.",
+        "textClassificationMultiLabel": "Assign multiple categories to each item.",
+        "ner": "Identify and classify named entities in the text.",
+        "seq2seq": "Translation, summarization or other text-to-text tasks."
+      },
+      "labelsSectionTitle": "Labels",
+      "labelsSectionDescription": "Add the labels that can be assigned in the project.",
+      "labelsSectionDescriptionNer": "Add entity labels and assign a color to each one.",
+      "useCsvColumnsAsLabels": "Use CSV columns as labels",
+      "useCsvColumnsAsLabelsHint": "When adding labels, you can choose CSV columns except the column to annotate and columns already selected as labels.",
+      "labelsEmptyState": "There are no labels yet. Add the first one to continue.",
+      "addLabel": "Add label",
+      "editLabel": "Edit label",
+      "removeLabel": "Remove label",
+      "labelName": "Label name",
+      "csvLabelNamePlaceholder": "Select column",
+      "labelNamePlaceholder": "Ex: Person, Organization, Positive...",
+      "labelColor": "Color",
+      "createLabelTitle": "Create label",
+      "editLabelTitle": "Edit label",
+      "saveLabel": "Save label",
+      "labelsDuplicateError": "A label with that name already exists.",
+      "labelsMinCountError": "Classification projects require at least 2 labels.",
+      "guidelineSectionTitle": "Guideline",
+      "guidelineSectionDescription": "Write a guideline or upload a PDF. Only one option can be used.",
+      "guidelineAsText": "Text",
+      "guidelineAsPdf": "PDF",
+      "guidelineWriteTab": "Text",
+      "guidelineUploadTab": "Upload PDF",
+      "guidelineTextLabel": "Guideline as text",
+      "guidelineTextPlaceholder": "Define criteria, examples, and rules to annotate correctly.",
+      "guidelinePdfLabel": "Attach guideline PDF",
+      "guidelineUploadTitle": "Drag and drop protocol documentation",
+      "guidelinePdfHint": "Upload a single PDF file with the project guideline.",
+      "guidelineBrowseFiles": "Browse files",
+      "guidelinePdfReadError": "Could not read the guideline PDF.",
+      "savingSetup": "Saving setup...",
+      "assignmentTitle": "Assign investigators",
+      "assignmentDescription": "Select which research team members will participate in this project. The creator is included automatically.",
+      "assignmentCycleLabel": "{{name}}: {{state}}",
+      "assignmentGroups": {
+        "GROUP_A": "Group A",
+        "GROUP_B": "Group B",
+        "unassigned": "No group"
+      },
+      "loadingMembers": "Loading team investigators...",
+      "noAssignableMembers": "There are no additional investigators available to assign.",
+      "validation": {
+        "annotationTargetColumnRequired": "Select the column to annotate.",
+        "descriptionMax": "Description cannot exceed 2048 characters.",
+        "groupRequired": "Select a research group.",
+        "guidelineRequired": "Write a guideline or upload a PDF.",
+        "labelColorRequired": "Select a color for each NER label.",
+        "labelsRequired": "Add at least one label.",
+        "nameMax": "Name cannot exceed 256 characters.",
+        "nameRequired": "Name is required."
+      }
+    },
+    "edit": {
+      "title": "Edit Project",
+      "nameLabel": "Name",
+      "namePlaceholder": "Project name",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Briefly describe the project objective...",
+      "participantsLabel": "Investigators",
+      "submit": "Save changes",
+      "updateSuccess": "Project updated successfully.",
+      "delete": "Delete project",
+      "deleting": "Deleting...",
+      "deleteTitle": "Delete project",
+      "deleteConfirm": "This action will delete the project \"{{projectName}}\" and its annotations. This cannot be undone.",
+      "deleteSuccess": "Project deleted successfully."
+    },
+    "errors": {
+      "loadFailed": "Could not load projects. Please try again.",
+      "detailLoadFailed": "Could not load project detail. Please try again.",
+      "createFailed": "Could not create the project. Please try again.",
+      "updateFailed": "Could not update the project. Please try again.",
+      "deleteFailed": "Could not delete the project. Please try again.",
+      "archiveFailed": "Could not archive the project. Please try again.",
+      "unarchiveFailed": "Could not unarchive the project. Please try again.",
+      "datasetUploadFailed": "Could not upload the dataset. Please try again.",
+      "setupFailed": "Could not save the project setup. Please try again.",
+      "assignmentFailed": "Could not assign investigators. Please try again.",
+      "annotationLoadFailed": "Could not load annotation steps. Please try again.",
+      "annotationSaveFailed": "Could not save the annotation. Please try again.",
+      "annotationExportFailed": "Could not export annotation CSV. Please try again.",
+      "metricsLoadFailed": "Could not load project metrics. Please try again.",
+      "assignmentContextLoadFailed": "Could not load assignable investigators. Please try again.",
+      "guidelinePdfLoadFailed": "Could not load the guideline PDF. Please try again.",
+      "sourceContentLoadFailed": "Could not load the document content. Please try again."
+    }
+  }
+}

@@ -1,0 +1,137 @@
+package es.udc.fic.corpuslab.modules.notification.services;
+
+import es.udc.fic.corpuslab.modules.notification.dtos.NotificationDto;
+import es.udc.fic.corpuslab.modules.notification.dtos.NotificationListResponseDto;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+/**
+ * Public API for the notification module.
+ * All method signatures use exclusively primitives and DTOs — no entity imports.
+ */
+public interface NotificationService {
+
+    NotificationListResponseDto findMyNotifications(String authenticatedEmail, int limit);
+
+    SseEmitter openNotificationStream(String authenticatedEmail);
+
+    NotificationDto markNotificationAsRead(String authenticatedEmail, Long notificationId);
+
+    void markAllNotificationsAsRead(String authenticatedEmail);
+
+    void createResearchGroupInvitationReceivedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName,
+            Long invitationId);
+
+    void createResearchGroupInvitationAcceptedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createResearchGroupInvitationDeclinedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createResearchGroupMemberJoinedByCodeNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createResearchGroupMemberRoleUpdatedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createResearchGroupMemberRemovedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createProjectParticipantAssignedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createProjectParticipantUnassignedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createProjectArchivedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createProjectDeletedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createProjectAnnotationCompletedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName);
+
+    void createProjectAnnotationWarningNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName,
+            Long datasetItemId,
+            Integer datasetItemIndex,
+            String datasetItemName,
+            Integer annotationStepIndex);
+
+    void createProjectAnnotationWarningResolvedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName,
+            Long datasetItemId,
+            Integer datasetItemIndex,
+            String datasetItemName,
+            Integer annotationStepIndex);
+
+    void createProjectAnnotationWarningClearedNotification(
+            Long recipientUserId,
+            Long actorUserId,
+            Long projectId,
+            String projectName,
+            Long researchGroupId,
+            String researchGroupName,
+            Long datasetItemId,
+            Integer datasetItemIndex,
+            String datasetItemName,
+            Integer annotationStepIndex);
+
+    void deleteNotificationsByProjectId(Long projectId);
+
+    void deleteNotificationsByResearchGroupId(Long researchGroupId);
+}

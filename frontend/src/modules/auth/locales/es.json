@@ -1,0 +1,103 @@
+{
+  "auth": {
+    "header": {
+      "login": "Iniciar Sesión",
+      "signup": "Crear Cuenta"
+    },
+    "gender": {
+      "select": "Selecciona género",
+      "male": "Hombre",
+      "female": "Mujer",
+      "other": "Otro"
+    },
+    "validation": {
+      "cityMax": "La ciudad no puede superar 128 caracteres.",
+      "emailMax": "El correo no puede superar 254 caracteres.",
+      "nameMax": "El nombre no puede superar 128 caracteres."
+    },
+    "login": {
+      "title": "Iniciar Sesión",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "submit": "Iniciar Sesión",
+      "submitting": "Iniciando Sesión...",
+      "invalidEmail": "Introduce un correo electrónico válido.",
+      "orContinueWith": "O continua con",
+      "newToLab": "¿Nuevo en CorpusLab?",
+      "createAccount": "Crear una cuenta",
+      "required": "Completa correo electrónico y contraseña antes de continuar.",
+      "welcome": "Bienvenido de nuevo, {{name}}. Sesión iniciada correctamente."
+    },
+    "signup": {
+      "title": "Crear Cuenta",
+      "firstName": "Nombre",
+      "lastName": "Apellidos",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "dateOfBirth": "Fecha de nacimiento",
+      "gender": "Género",
+      "country": "País",
+      "city": "Ciudad",
+      "submit": "Crear cuenta",
+      "submitting": "Creando cuenta...",
+      "invalidEmail": "Introduce un correo electrónico válido.",
+      "passwordLength": "La contraseña debe tener al menos 8 caracteres.",
+      "underAge": "Debes tener al menos 16 años.",
+      "required": "Completa todos los campos obligatorios antes de continuar.",
+      "orContinueWith": "O continua con",
+      "alreadyInLab": "¿Ya formas parte de CorpusLab?",
+      "goToLogin": "Inicia sesión",
+      "success": "Cuenta creada para {{name}}.",
+      "searchCountry": "Buscar país"
+    },
+    "forgotPassword": {
+      "title": "Recuperar contraseña",
+      "email": "Correo electrónico",
+      "submit": "Enviar enlace de recuperación",
+      "submitting": "Enviando enlace...",
+      "remembered": "¿Recordaste tu contraseña?",
+      "backToLogin": "Volver a iniciar sesión",
+      "required": "Introduce un correo electrónico válido antes de continuar."
+    },
+    "resetPassword": {
+      "title": "Restablecer contraseña",
+      "newPassword": "Nueva contraseña",
+      "confirmPassword": "Confirmar contraseña",
+      "submit": "Restablecer contraseña",
+      "submitting": "Actualizando contraseña...",
+      "alreadyUpdated": "¿Contraseña ya actualizada?",
+      "goToLogin": "Ir a iniciar sesión",
+      "missingToken": "Falta el token de recuperacion en la URL. Abre el enlace enviado a tu correo.",
+      "passwordMismatch": "La confirmacion de contrasena no coincide.",
+      "required": "Completa todos los campos obligatorios antes de continuar."
+    },
+    "oauth": {
+      "providerFallback": "OAuth",
+      "title": "Inicio con {{provider}}",
+      "completing": "Completando autenticación...",
+      "errors": {
+        "default": "No se pudo completar el inicio con OAuth. Intentalo de nuevo.",
+        "missingEmail": "El proveedor OAuth no devolvio un correo electronico. Usa otra cuenta.",
+        "authenticationFailed": "La autenticacion OAuth fallo. Intentalo de nuevo.",
+        "invalidPrincipal": "Respuesta OAuth inesperada. Intentalo de nuevo.",
+        "unverifiedEmail": "El proveedor OAuth no devolvio un correo verificado. Usa otra cuenta.",
+        "withCode": "El inicio OAuth fallo ({{code}}). Intentalo de nuevo.",
+        "missingCode": "El inicio OAuth volvio sin codigo de acceso. Intentalo de nuevo.",
+        "profileLoad": "El inicio OAuth se completo, pero no pudimos cargar tu perfil. Intentalo de nuevo."
+      }
+    },
+    "errors": {
+      "emailExists": "Correo ya registrado: {{email}}",
+      "unexpected": {
+        "login": "Error inesperado al iniciar sesión. Intentalo de nuevo.",
+        "signup": "Error inesperado al crear la cuenta. Intentalo de nuevo.",
+        "logout": "Error inesperado al cerrar sesión. Intentalo de nuevo.",
+        "accountRecovery": "Error inesperado al solicitar recuperación de contraseña. Intentalo de nuevo.",
+        "credentialUpdate": "Error inesperado al restablecer la contraseña. Intentalo de nuevo.",
+        "profile": "Error inesperado al cargar tu perfil. Intentalo de nuevo.",
+        "updateProfile": "Error inesperado al actualizar tu perfil. Intentalo de nuevo."
+      }
+    }
+  }
+}

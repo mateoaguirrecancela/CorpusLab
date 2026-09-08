@@ -1,0 +1,33 @@
+{
+  "common": {
+    "appName": "CorpusLab",
+    "user": "Usuario",
+    "actions": {
+      "cancel": "Cancelar",
+      "saveChanges": "Guardar cambios",
+      "saving": "Guardando...",
+      "goBack": "Volver",
+      "editProfile": "Editar perfil",
+      "viewProfile": "Ver perfil",
+      "logout": "Cerrar sesión",
+      "loggingOut": "Cerrando sesión..."
+    },
+    "aria": {
+      "expandSidebar": "Expandir barra lateral",
+      "collapseSidebar": "Colapsar barra lateral",
+      "closeSidebar": "Cerrar barra lateral",
+      "showPassword": "Mostrar contraseña",
+      "hidePassword": "Ocultar contraseña"
+    },
+    "loading": {
+      "profile": "Cargando perfil..."
+    },
+    "notFound": {
+      "documentTitle": "Pagina no encontrada | CorpusLab",
+      "code": "Error 404",
+      "name": "Pagina no encontrada",
+      "primaryAction": "Volver al inicio",
+      "imageAlt": "Ilustracion de pagina no encontrada"
+    }
+  }
+}
